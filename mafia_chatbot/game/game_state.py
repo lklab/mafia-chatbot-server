@@ -16,6 +16,7 @@ class GameInfo :
 
 class GameState :
     def __init__(self, gameInfo: GameInfo) :
+        self.gameInfo = gameInfo
         self.humanPlayer = Player(gameInfo.humanName, True)
 
         names = NAMES.copy()
@@ -25,7 +26,7 @@ class GameState :
         self.players.insert(random.randint(0, gameInfo.playerCount-1), self.humanPlayer)
 
         for i in range(gameInfo.mafiaCount) :
-            self.players[i].role = ROLE_MAFIA
-        self.players[gameInfo.mafiaCount+0].role = ROLE_POLICE
-        self.players[gameInfo.mafiaCount+1].role = ROLE_DOC
+            self.players[i].role = Role.MAFIA
+        self.players[gameInfo.mafiaCount+0].role = Role.POLICE
+        self.players[gameInfo.mafiaCount+1].role = Role.DOCTOR
         random.shuffle(self.players)

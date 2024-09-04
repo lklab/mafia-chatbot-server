@@ -1,22 +1,18 @@
-ROLE_CITIZEN = 0
-ROLE_MAFIA = 1
-ROLE_POLICE = 2
-ROLE_DOC = 3
+from enum import Enum
 
-roleToStr = {
-    ROLE_CITIZEN: 'Citizen',
-    ROLE_MAFIA: 'Mafia',
-    ROLE_POLICE: 'Police',
-    ROLE_DOC: 'Doctor',
-}
+class Role(Enum) :
+    CITIZEN = 0
+    MAFIA = 1
+    POLICE = 2
+    DOCTOR = 3
 
 class Player :
     def __init__(self, name, isAI) :
         self.name = name
         self.isAI = isAI
-        self.role = ROLE_CITIZEN
+        self.role = Role.CITIZEN
 
-        self.publicRole = ROLE_CITIZEN
+        self.publicRole = Role.CITIZEN
         self.currentTargets = []
         self.pastTargets = []
         self.strategy = None
@@ -25,4 +21,4 @@ class Player :
         return self.name
 
     def __repr__(self) :
-        return f'{self.name}({roleToStr[self.role]})'
+        return f'{self.name}({self.role.name})'
