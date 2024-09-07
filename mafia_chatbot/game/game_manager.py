@@ -88,7 +88,7 @@ class GameManager :
                 isTie = False
                 maxVote = vote
                 maxPlayer = player
-        
+
         if isTie :
             print('동률로 인해 아무도 처형하지 않았습니다.')
         else :
