@@ -47,7 +47,8 @@ class GameManager :
 
             player = players[index]
             if player.info.isAI :
-                evaluator.evaluateVoteStrategy(self.gameState, players[index])
+                strategy: Strategy = evaluator.evaluateVoteStrategy(self.gameState, players[index])
+                player.setStrategy(strategy)
                 print(player.getDiscussion())
             else :
                 input('당신의 차례입니다: ')
@@ -56,21 +57,17 @@ class GameManager :
         self.discussionIndex %= playerCount
 
     def processEvening(self) :
+        print()
+
         players = self.gameState.players
         voteDict: dict[PlayerInfo, int] = {}
 
-        print()
-
         for player in players :
             if player.info.isAI :
-                target = player.strategy.targets[0]
+                target = player.strategy.mainTarget
             else :
                 targetName = input('투표할 대상을 정하세요: ')
-                target = None
-                for p in players :
-                    if targetName == p.info.name :
-                        target = p.info
-                        break
+                target = self.gameState.getPlayerByName(targetName).info
 
             if target is not None :
                 if target not in voteDict :
@@ -98,7 +95,42 @@ class GameManager :
             self.gameState.removePlayerByInfo(maxPlayer)
 
     def processNight(self) :
-        pass
+        # mafia action: kill
+        print()
+        killVoteDict: dict[PlayerInfo, int] = {}
+
+        for mafia in self.gameState.mafiaPlayers :
+            if mafia.info.isAI :
+                strategy: Strategy = evaluator.evaluateKillStrategy(self.gameState, mafia)
+                target: PlayerInfo = strategy.mainTarget
+            else :
+                targetName = input('암살할 대상을 정하세요: ')
+                target: PlayerInfo = self.gameState.getPlayerByName(targetName).info
+
+            if target is not None :
+                if target not in killVoteDict :
+                    killVoteDict[target] = 0
+                killVoteDict[target] += 1
+
+        print(f'암살 투표 현황: {killVoteDict}')
+
+        maxKillVote = 0
+        maxKillTargets: list[PlayerInfo] = []
+
+        for playerInfo, vote in killVoteDict.items() :
+            if maxKillVote == vote :
+                maxKillTargets.append(playerInfo)
+            elif maxKillVote < vote :
+                maxKillVote = vote
+                maxKillTargets.clear()
+                maxKillTargets.append(playerInfo)
+
+        if len(maxKillTargets) == 0 :
+            print('마피아의 실수로 암살에 실패했습니다.')
+        else :
+            killTarget: PlayerInfo = random.choice(maxKillTargets)
+            print(f'{killTarget.name}이 마피아에 의해 암살당했습니다.')
+            self.gameState.removePlayerByInfo(killTarget)
 
     def checkGameEnd(self) :
         civilCount = 0

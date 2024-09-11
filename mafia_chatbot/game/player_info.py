@@ -7,10 +7,10 @@ class Role(Enum) :
     DOCTOR = 3
 
 class PlayerInfo :
-    def __init__(self, name, isAI) :
-        self.name = name
-        self.isAI = isAI
-        self.role = Role.CITIZEN
+    def __init__(self, name: str, isAI: bool) :
+        self.name: str = name
+        self.isAI: bool = isAI
+        self.role: Role = Role.CITIZEN
 
     def __str__(self) :
         return self.name

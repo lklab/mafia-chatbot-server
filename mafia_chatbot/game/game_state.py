@@ -58,3 +58,9 @@ class GameState :
 
     def getPlayerByInfo(self, playerInfo: PlayerInfo) -> Player :
         return self.allPlayerMap.get(playerInfo)
+
+    def getPlayerByName(self, name: str) -> Player :
+        for player in self.allPlayers :
+            if name == player.info.name :
+                return player
+        return None

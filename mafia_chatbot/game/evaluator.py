@@ -24,18 +24,20 @@ def sameTargetStrategy(gameState: GameState, player: Player) -> Strategy :
 
     return Strategy(targets)
 
-def evaluateVoteStrategyCitizen(gameState: GameState, player: Player) :
-    strategy = None
+def evaluateVoteStrategyCitizen(gameState: GameState, player: Player) -> Strategy :
+    strategy: Strategy = None
 
     # voting another player who targeted a citizen
     players: list[Player] = []
     for other in gameState.players :
-        if other != player :
-            for target in other.allTargets :
-                targetPlayer = gameState.getPlayerByInfo(target)
-                if not targetPlayer.isLive and target.role != Role.MAFIA :
-                    players.append(other)
-                    break
+        if other == player :
+            continue
+
+        for target in other.allTargets :
+            targetPlayer = gameState.getPlayerByInfo(target)
+            if not targetPlayer.isLive and target.role != Role.MAFIA :
+                players.append(other)
+                break
 
     if len(players) > 0 :
         strategy = pickOneStrategy(players)
@@ -45,11 +47,11 @@ def evaluateVoteStrategyCitizen(gameState: GameState, player: Player) :
         players = list(filter(lambda p : p != player, gameState.players))
         strategy = pickOneStrategy(players)
 
-    # set strategy
-    player.setStrategy(strategy)
+    # return
+    return strategy
 
-def evaluateVoteStrategyMafia(gameState: GameState, player: Player) :
-    strategy = None
+def evaluateVoteStrategyMafia(gameState: GameState, player: Player) -> Strategy :
+    strategy: Strategy = None
 
     # voting for the same target as another mafia member
     for mafia in gameState.mafiaPlayers :
@@ -63,8 +65,8 @@ def evaluateVoteStrategyMafia(gameState: GameState, player: Player) :
         players = list(filter(lambda p : p.info.role != Role.MAFIA, gameState.players))
         strategy = pickOneStrategy(players)
 
-    # set strategy
-    player.setStrategy(strategy)
+    # return
+    return strategy
 
 voteStrategyEvaluator : dict[Role, Callable[[GameState, Player], None]] = {
     Role.CITIZEN: evaluateVoteStrategyCitizen,
@@ -73,5 +75,41 @@ voteStrategyEvaluator : dict[Role, Callable[[GameState, Player], None]] = {
     Role.DOCTOR: evaluateVoteStrategyCitizen,
 }
 
-def evaluateVoteStrategy(gameState: GameState, player: Player) :
-    voteStrategyEvaluator[player.info.role](gameState, player)
+def evaluateVoteStrategy(gameState: GameState, player: Player) -> Strategy :
+    return voteStrategyEvaluator[player.info.role](gameState, player)
+
+def evaluateKillStrategy(gameState: GameState, mafia: Player) -> Strategy :
+    # Kill the player who suspects me
+    players: list[Player] = []
+    for player in gameState.players :
+        if player.info.role == Role.MAFIA :
+            continue
+
+        for target in player.allTargets :
+            if target == mafia.info :
+                players.append(player)
+                break
+
+    if len(players) > 0 :
+        strategy: Strategy = pickOneStrategy(players)
+        return strategy
+
+    # Kill the player who suspects the other mafia
+    players: list[Player] = []
+    for player in gameState.players :
+        if player.info.role == Role.MAFIA :
+            continue
+
+        for target in player.allTargets :
+            if target.role == Role.MAFIA :
+                players.append(player)
+                break
+
+    if len(players) > 0 :
+        strategy: Strategy = pickOneStrategy(players)
+        return strategy
+
+    # Kill the random player
+    players: list[Player] = list(filter(lambda p : p.info.role != Role.MAFIA, gameState.players))
+    strategy: Strategy = pickOneStrategy(players)
+    return strategy
