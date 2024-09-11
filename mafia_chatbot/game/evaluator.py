@@ -4,9 +4,9 @@ from typing import Callable
 from game.game_state import GameState
 from game.player import *
 
-def pickOneStrategy(players: list[Player], publicRole=Role.CITIZEN) -> Strategy :
+def pickOneStrategy(players: list[Player]) -> Strategy :
     target = random.choice(players).info
-    return Strategy([target], publicRole)
+    return Strategy([target])
 
 def sameTargetStrategy(gameState: GameState, player: Player) -> Strategy :
     if player.strategy == None :

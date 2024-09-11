@@ -17,10 +17,19 @@ class Player :
         return self.info.__repr__()
 
     def setStrategy(self, strategy: Strategy) :
+        pastPublicRole: Role = None
+
         if self.strategy != None :
             self.pastStrategies.append(self.strategy)
+            pastPublicRole = self.strategy.publicRole
 
         self.strategy = strategy
+
+        if self.strategy.publicRole == None :
+            if pastPublicRole != None :
+                self.strategy.publicRole = pastPublicRole
+            else :
+                self.strategy.publicRole = Role.CITIZEN
 
         for target in self.strategy.targets :
             self.allTargets.add(target)
