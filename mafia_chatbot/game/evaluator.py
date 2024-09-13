@@ -68,10 +68,43 @@ def evaluateVoteStrategyMafia(gameState: GameState, player: Player) -> Strategy 
     # return
     return strategy
 
+def evaluateVoteStrategyPolice(gameState: GameState, player: Player) -> Strategy :
+    knownMafias: list[Player] = []
+    candidates: list[Player] = []
+
+    for other in gameState.players :
+        if other == player :
+            continue
+
+        if other in player.testResults :
+            if player.testResults[other] == Role.MAFIA :
+                knownMafias.append(other)
+        else :
+            candidates.append(other)
+
+    # voting for a known mafia
+    if len(knownMafias) > 0 :
+        return pickOneStrategy(knownMafias)
+
+    # voting another player who targeted a citizen
+    players: list[Player] = []
+    for other in candidates :
+        for target in other.allTargets :
+            targetPlayer = gameState.getPlayerByInfo(target)
+            if not targetPlayer.isLive and target.role != Role.MAFIA :
+                players.append(other)
+                break
+
+    if len(players) > 0 :
+        return pickOneStrategy(players)
+
+    # voting for a random target
+    return pickOneStrategy(candidates)
+
 voteStrategyEvaluator : dict[Role, Callable[[GameState, Player], None]] = {
     Role.CITIZEN: evaluateVoteStrategyCitizen,
     Role.MAFIA: evaluateVoteStrategyMafia,
-    Role.POLICE: evaluateVoteStrategyCitizen,
+    Role.POLICE: evaluateVoteStrategyPolice,
     Role.DOCTOR: evaluateVoteStrategyCitizen,
 }
 
@@ -112,4 +145,29 @@ def evaluateKillStrategy(gameState: GameState, mafia: Player) -> Strategy :
     # Kill the random player
     players: list[Player] = list(filter(lambda p : p.info.role != Role.MAFIA, gameState.players))
     strategy: Strategy = pickOneStrategy(players)
+    return strategy
+
+def evaluateTestStrategy(gameState: GameState, police: Player) -> Strategy :
+    candidates: list[Player] = list(filter(lambda p : p != police and p not in police.testResults, gameState.players))
+
+    # test another player who targeted a citizen
+    players: list[Player] = []
+    for other in candidates :
+        for target in other.allTargets :
+            targetPlayer = gameState.getPlayerByInfo(target)
+            if not targetPlayer.isLive and target.role != Role.MAFIA :
+                players.append(other)
+                break
+
+    if len(players) > 0 :
+        strategy: Strategy = pickOneStrategy(players)
+        return strategy
+
+    # test for a random target
+    if len(candidates) > 0 :
+        strategy: Strategy = pickOneStrategy(candidates)
+        return strategy
+
+    # already tested everyone
+    strategy: Strategy = pickOneStrategy(gameState.players)
     return strategy

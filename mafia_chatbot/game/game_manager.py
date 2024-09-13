@@ -67,7 +67,7 @@ class GameManager :
                 target = player.strategy.mainTarget
             else :
                 targetName = input('투표할 대상을 정하세요: ')
-                target = self.gameState.getPlayerByName(targetName).info
+                target = self.gameState.getPlayerInfoByName(targetName)
 
             if target is not None :
                 if target not in voteDict :
@@ -105,7 +105,7 @@ class GameManager :
                 target: PlayerInfo = strategy.mainTarget
             else :
                 targetName = input('암살할 대상을 정하세요: ')
-                target: PlayerInfo = self.gameState.getPlayerByName(targetName).info
+                target: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
 
             if target is not None :
                 if target not in killVoteDict :
@@ -131,6 +131,22 @@ class GameManager :
             killTarget: PlayerInfo = random.choice(maxKillTargets)
             print(f'{killTarget.name}이 마피아에 의해 암살당했습니다.')
             self.gameState.removePlayerByInfo(killTarget)
+
+        # police action: test
+        police: Player = self.gameState.policePlayer
+        if police.isLive :
+            if police.info.isAI :
+                strategy: Strategy = evaluator.evaluateTestStrategy(self.gameState, police)
+                targetPlayer: Player = self.gameState.getPlayerByInfo(strategy.mainTarget)
+                police.addTestResult(targetPlayer, targetPlayer.info.role)
+                print()
+                print(f'경찰은 {targetPlayer.info.name}의 직업이 {targetPlayer.info.role}임을 확인했습니다.')
+            else :
+                print()
+                targetName = input('조사할 대상을 정하세요: ')
+                target: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
+                if target != None :
+                    print(f'{target.name}의 직업은 {target.role} 입니다.')
 
     def checkGameEnd(self) :
         civilCount = 0

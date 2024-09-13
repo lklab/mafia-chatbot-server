@@ -2,6 +2,9 @@ from game.player_info import *
 from game.strategy import *
 
 class Player :
+    pass
+
+class Player :
     def __init__(self, name, isAI) :
         self.isLive = True
         self.info = PlayerInfo(name, isAI)
@@ -9,6 +12,8 @@ class Player :
         self.strategy: Strategy = None
         self.pastStrategies: list[Strategy] = []
         self.allTargets: set[PlayerInfo] = set()
+
+        self.testResults: dict[Player, Role] = {}
 
     def __str__(self) :
         return self.info.__str__()
@@ -33,6 +38,9 @@ class Player :
 
         for target in self.strategy.targets :
             self.allTargets.add(target)
+
+    def addTestResult(self, player: Player, role: Role) :
+        self.testResults[player] = role
 
     def getDiscussion(self) :
         targetsStr = ', '.join(map(lambda playerInfo : playerInfo.name, self.strategy.targets))

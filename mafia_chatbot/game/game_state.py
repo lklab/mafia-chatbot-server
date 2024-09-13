@@ -32,6 +32,9 @@ class GameState :
         self.players[gameInfo.mafiaCount+0].info.role = Role.POLICE
         self.players[gameInfo.mafiaCount+1].info.role = Role.DOCTOR
 
+        self.policePlayer: Player = self.players[gameInfo.mafiaCount+0]
+        self.doctorPlayer: Player = self.players[gameInfo.mafiaCount+1]
+
         # shuffle player order
         random.shuffle(self.players)
 
@@ -64,3 +67,10 @@ class GameState :
             if name == player.info.name :
                 return player
         return None
+
+    def getPlayerInfoByName(self, name: str) -> PlayerInfo :
+        player: Player = self.getPlayerByName(name)
+        if player != None :
+            return player.info
+        else :
+            return None
