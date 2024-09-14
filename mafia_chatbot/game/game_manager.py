@@ -95,6 +95,21 @@ class GameManager :
             self.gameState.removePlayerByInfo(maxPlayer)
 
     def processNight(self) :
+        # doctor action: Heal
+        doctor: Player = self.gameState.doctorPlayer
+        healTarget: PlayerInfo = None
+
+        if doctor.isLive :
+            if doctor.info.isAI :
+                strategy: Strategy = evaluator.evaluateHealStrategy(self.gameState, doctor)
+                healTarget = strategy.mainTarget
+                print()
+                print(f'의사는 {healTarget.name}을 치료합니다.')
+            else :
+                print()
+                targetName = input('치료할 대상을 정하세요: ')
+                healTarget: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
+
         # mafia action: kill
         print()
         killVoteDict: dict[PlayerInfo, int] = {}
@@ -129,8 +144,11 @@ class GameManager :
             print('마피아의 실수로 암살에 실패했습니다.')
         else :
             killTarget: PlayerInfo = random.choice(maxKillTargets)
-            print(f'{killTarget.name}이 마피아에 의해 암살당했습니다.')
-            self.gameState.removePlayerByInfo(killTarget)
+            if killTarget == healTarget :
+                print(f'마피아는 {killTarget.name}을 암살하려 했지만 의사의 치료로 실패했습니다.')
+            else :
+                print(f'{killTarget.name}이 마피아에 의해 암살당했습니다.')
+                self.gameState.removePlayerByInfo(killTarget)
 
         # police action: test
         police: Player = self.gameState.policePlayer

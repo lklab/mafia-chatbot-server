@@ -171,3 +171,19 @@ def evaluateTestStrategy(gameState: GameState, police: Player) -> Strategy :
     # already tested everyone
     strategy: Strategy = pickOneStrategy(gameState.players)
     return strategy
+
+def evaluateHealStrategy(gameState: GameState, doctor: Player) -> Strategy :
+    # Heal the player who suspects the mafia
+    players: list[Player] = []
+    for player in gameState.players :
+        for target in player.allTargets :
+            targetPlayer = gameState.getPlayerByInfo(target)
+            if not targetPlayer.isLive and target.role == Role.MAFIA :
+                players.append(player)
+                break
+
+    if len(players) > 0 :
+        return pickOneStrategy(players)
+
+    # Heal myself
+    return Strategy([doctor.info])
