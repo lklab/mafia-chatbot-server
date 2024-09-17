@@ -4,11 +4,11 @@ from typing import Callable
 from game.game_state import GameState
 from game.player import *
 
-def pickOneStrategy(players: list[Player]) -> Strategy :
+def pickOneStrategy(players: list[Player], reason: str = '') -> Strategy :
     target = random.choice(players).info
-    return Strategy([target])
+    return Strategy([target], reason)
 
-def sameTargetStrategy(gameState: GameState, player: Player) -> Strategy :
+def sameTargetStrategy(gameState: GameState, player: Player, reason: str = '') -> Strategy :
     if player.strategy == None :
         return None
 
@@ -22,7 +22,7 @@ def sameTargetStrategy(gameState: GameState, player: Player) -> Strategy :
     if len(targets) == 0 :
         return None
 
-    return Strategy(targets)
+    return Strategy(targets, reason)
 
 def evaluateVoteStrategyCitizen(gameState: GameState, player: Player) -> Strategy :
     strategy: Strategy = None
@@ -40,12 +40,18 @@ def evaluateVoteStrategyCitizen(gameState: GameState, player: Player) -> Strateg
                 break
 
     if len(players) > 0 :
-        strategy = pickOneStrategy(players)
+        strategy = pickOneStrategy(
+            players,
+            reason='I suspect him as the mafia because he has accused a civilian before.',
+        )
 
     # voting for a random target
     if strategy == None :
         players = list(filter(lambda p : p != player, gameState.players))
-        strategy = pickOneStrategy(players)
+        strategy = pickOneStrategy(
+            players,
+            reason='Due to a lack of information, I will randomly suspect someone as the mafia.',
+        )
 
     # return
     return strategy
@@ -56,14 +62,21 @@ def evaluateVoteStrategyMafia(gameState: GameState, player: Player) -> Strategy 
     # voting for the same target as another mafia member
     for mafia in gameState.mafiaPlayers :
         if mafia != player :
-            strategy = sameTargetStrategy(gameState, mafia)
+            strategy = sameTargetStrategy(
+                gameState,
+                mafia,
+                reason=f'I suspect him as the mafia because I agree with {mafia.info.name}\'s opinion.',
+            )
             if strategy != None :
                 break
 
     # voting for a random target
     if strategy == None :
         players = list(filter(lambda p : p.info.role != Role.MAFIA, gameState.players))
-        strategy = pickOneStrategy(players)
+        strategy = pickOneStrategy(
+            players,
+            reason='Due to a lack of information, I will randomly suspect someone as the mafia.',
+        )
 
     # return
     return strategy
@@ -84,7 +97,10 @@ def evaluateVoteStrategyPolice(gameState: GameState, player: Player) -> Strategy
 
     # voting for a known mafia
     if len(knownMafias) > 0 :
-        return pickOneStrategy(knownMafias)
+        return pickOneStrategy(
+            knownMafias,
+            reason='I know he is the mafia because my role is police.',
+        )
 
     # voting another player who targeted a citizen
     players: list[Player] = []
@@ -96,10 +112,16 @@ def evaluateVoteStrategyPolice(gameState: GameState, player: Player) -> Strategy
                 break
 
     if len(players) > 0 :
-        return pickOneStrategy(players)
+        return pickOneStrategy(
+            players,
+            reason='I suspect him as the mafia because he has accused a civilian before.',
+        )
 
     # voting for a random target
-    return pickOneStrategy(candidates)
+    return pickOneStrategy(
+        candidates,
+        reason='Due to a lack of information, I will randomly suspect someone as the mafia.',
+    )
 
 voteStrategyEvaluator : dict[Role, Callable[[GameState, Player], None]] = {
     Role.CITIZEN: evaluateVoteStrategyCitizen,

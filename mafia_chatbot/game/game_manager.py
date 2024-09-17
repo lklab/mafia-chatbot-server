@@ -2,6 +2,7 @@ from enum import Enum
 
 from game.game_state import *
 import game.evaluator as evaluator
+from game.llm import LLM
 
 class Phase(Enum) :
     DAY = 0
@@ -11,6 +12,7 @@ class Phase(Enum) :
 class GameManager :
     def __init__(self, gameInfo: GameInfo) :
         self.gameState = GameState(gameInfo)
+        self.llm = LLM()
         print(self.gameState.players)
 
     def start(self) :
@@ -49,9 +51,12 @@ class GameManager :
             if player.info.isAI :
                 strategy: Strategy = evaluator.evaluateVoteStrategy(self.gameState, players[index])
                 player.setStrategy(strategy)
-                print(player.getDiscussion())
+                discussion: str = self.llm.getDiscussion(self.gameState, player)
+                self.gameState.appendDiscussionHistory(player.info, discussion)
+                print(f'{player.info.name}: {discussion}')
             else :
-                input('당신의 차례입니다: ')
+                discussion: str = input('당신의 차례입니다: ')
+                self.gameState.appendDiscussionHistory(player.info, discussion)
 
         self.discussionIndex += 1
         self.discussionIndex %= playerCount

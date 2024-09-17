@@ -40,11 +40,15 @@ class GameState :
 
         # setup allPlayers
         self.allPlayers: list[Player] = self.players.copy()
+        self.allMafiaPlayers: list[Player] = self.mafiaPlayers.copy()
 
         # setup allPlayerMap
         self.allPlayerMap: dict[PlayerInfo, Player] = {}
         for player in self.allPlayers :
             self.allPlayerMap[player.info] = player
+
+        # initialize discussion history
+        self.discussionHistory: list[str] = []
 
     def removePlayer(self, player: Player) :
         if player == None or not player.isLive :
@@ -74,3 +78,6 @@ class GameState :
             return player.info
         else :
             return None
+
+    def appendDiscussionHistory(self, playerInfo: PlayerInfo, discussion: str) :
+        self.discussionHistory.append(f'{playerInfo.name}: {discussion}')
