@@ -104,10 +104,10 @@ class LLM :
             "Survivor List: {survivors_list}",
             "Discussion History:\n{discussion_history}"
         ])
-        strategyTemplateText = '\n'.join([
-            "Mafia Suspect: {discussion_target}",
-            "Reason for Suspecting Mafia: {discussion_reason}",
-        ])
+        strategyTemplateText = (
+            "You must suspect {discussion_target} of being the mafia. Refer to the following as evidence."
+            "\n{discussion_reason}"
+        )
 
         template = PromptTemplate.from_template(templateText)
         informationTemplate = PromptTemplate.from_template(informationTemplateText)

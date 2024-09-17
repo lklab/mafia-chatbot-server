@@ -42,7 +42,7 @@ def evaluateVoteStrategyCitizen(gameState: GameState, player: Player) -> Strateg
     if len(players) > 0 :
         strategy = pickOneStrategy(
             players,
-            reason='I suspect him as the mafia because he has accused a civilian before.',
+            reason='You suspect him of being a mafia because he previously suspected a citizen of being a mafia.',
         )
 
     # voting for a random target
@@ -50,7 +50,7 @@ def evaluateVoteStrategyCitizen(gameState: GameState, player: Player) -> Strateg
         players = list(filter(lambda p : p != player, gameState.players))
         strategy = pickOneStrategy(
             players,
-            reason='Due to a lack of information, I will randomly suspect someone as the mafia.',
+            reason='Due to a lack of information, You will randomly suspect someone as the mafia.',
         )
 
     # return
@@ -65,7 +65,7 @@ def evaluateVoteStrategyMafia(gameState: GameState, player: Player) -> Strategy 
             strategy = sameTargetStrategy(
                 gameState,
                 mafia,
-                reason=f'I suspect him as the mafia because I agree with {mafia.info.name}\'s opinion.',
+                reason=f'You suspect him as the mafia because you agree with {mafia.info.name}\'s opinion.',
             )
             if strategy != None :
                 break
@@ -75,7 +75,7 @@ def evaluateVoteStrategyMafia(gameState: GameState, player: Player) -> Strategy 
         players = list(filter(lambda p : p.info.role != Role.MAFIA, gameState.players))
         strategy = pickOneStrategy(
             players,
-            reason='Due to a lack of information, I will randomly suspect someone as the mafia.',
+            reason='Due to a lack of information, You will randomly suspect someone as the mafia.',
         )
 
     # return
@@ -99,7 +99,7 @@ def evaluateVoteStrategyPolice(gameState: GameState, player: Player) -> Strategy
     if len(knownMafias) > 0 :
         return pickOneStrategy(
             knownMafias,
-            reason='I know he is the mafia because my role is police.',
+            reason='You know he is the mafia because your role is police.',
         )
 
     # voting another player who targeted a citizen
@@ -114,13 +114,13 @@ def evaluateVoteStrategyPolice(gameState: GameState, player: Player) -> Strategy
     if len(players) > 0 :
         return pickOneStrategy(
             players,
-            reason='I suspect him as the mafia because he has accused a civilian before.',
+            reason='You suspect him of being a mafia because he previously suspected a citizen of being a mafia.',
         )
 
     # voting for a random target
     return pickOneStrategy(
         candidates,
-        reason='Due to a lack of information, I will randomly suspect someone as the mafia.',
+        reason='Due to a lack of information, You will randomly suspect someone as the mafia.',
     )
 
 voteStrategyEvaluator : dict[Role, Callable[[GameState, Player], None]] = {
