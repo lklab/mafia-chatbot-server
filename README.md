@@ -22,7 +22,9 @@ pip install langchain
 pip install -qU langchain-openai
 ```
 
-3. Create an `apikeys.json` file in the root of the repository and configure your API keys:
+3. In the root directory of the repository, create a file called `apikeys.json` and configure your API keys:
+    * To get an OpenAI API key, visit [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys). Please note that payment is required to use the key.
+    * To obtain a Langchain API key, log in at [https://smith.langchain.com](https://smith.langchain.com) and generate your key.
 
 ``` json
 {
@@ -33,14 +35,14 @@ pip install -qU langchain-openai
 
 ### Run
 
-1. Navigate to the working directory:
+1. Move your working directory to the root of the repository:
 
 ``` bash
-cd {repository root}/mafia_chatbot
+cd {repository root}
 ```
 
 2. Run the application:
 
 ``` bash
-python main.py
+python mafia_chatbot/main.py
 ```
