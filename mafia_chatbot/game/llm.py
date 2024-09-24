@@ -22,8 +22,9 @@ class LLM :
             keys = json.load(f)
 
         os.environ["OPENAI_API_KEY"] = keys['OPENAI_API_KEY']
-        os.environ["LANGCHAIN_TRACING_V2"] = "true"
-        os.environ["LANGCHAIN_API_KEY"] = keys['LANGCHAIN_API_KEY']
+        if 'LANGCHAIN_API_KEY' in keys :
+            os.environ["LANGCHAIN_TRACING_V2"] = "true"
+            os.environ["LANGCHAIN_API_KEY"] = keys['LANGCHAIN_API_KEY']
 
         # setup model
         model = ChatOpenAI(
