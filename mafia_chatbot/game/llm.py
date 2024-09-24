@@ -11,9 +11,9 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
-from game.game_state import *
-from game.player import *
-from game.player_info import *
+from mafia_chatbot.game.game_state import *
+from mafia_chatbot.game.player import *
+from mafia_chatbot.game.player_info import *
 
 class LLM :
     def __init__(self) :
@@ -68,7 +68,7 @@ class LLM :
                 'surviving_mafia_count': len(gameState.mafiaPlayers),
                 'survivors_list': ','.join(map(lambda p: p.info.name, gameState.players)),
                 'discussion_history': '\n'.join(gameState.discussionHistory),
-                'discussion_target': player.strategy.mainTarget.name,
+                'discussion_assumptions': ', '.join(map(lambda asm: f'the role of {asm[0].name} is {asm[1].name.lower()}', player.strategy.assumptions)),
                 'discussion_reason': player.strategy.reason,
             }
 
@@ -105,7 +105,7 @@ class LLM :
             "Discussion History:\n{discussion_history}"
         ])
         strategyTemplateText = (
-            "You must suspect {discussion_target} of being the mafia. Refer to the following as evidence."
+            "You must argue that {discussion_assumptions}, based on the following evidence."
             "\n{discussion_reason}"
         )
 

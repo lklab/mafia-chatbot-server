@@ -1,8 +1,8 @@
 import random
 
-from game.game_info import *
-from game.player_info import *
-from game.player import *
+from mafia_chatbot.game.game_info import *
+from mafia_chatbot.game.player_info import *
+from mafia_chatbot.game.player import *
 
 NAMES = [
     'Oliver', 'Emma', 'Noah', 'Ava', 'Liam', 'Sophia', 'Mason', 'Isabella',

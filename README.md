@@ -44,5 +44,5 @@ cd {repository root}
 2. Run the application:
 
 ``` bash
-python mafia_chatbot/main.py
+python main.py
 ```

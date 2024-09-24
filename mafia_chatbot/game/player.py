@@ -1,5 +1,5 @@
-from game.player_info import *
-from game.strategy import *
+from mafia_chatbot.game.player_info import *
+from mafia_chatbot.game.strategy import *
 
 class Player :
     pass
@@ -36,8 +36,9 @@ class Player :
             else :
                 self.strategy.publicRole = Role.CITIZEN
 
-        for target in self.strategy.targets :
-            self.allTargets.add(target)
+        for playerInfo, role in self.strategy.assumptions :
+            if role == Role.MAFIA :
+                self.allTargets.add(playerInfo)
 
     def addTestResult(self, player: Player, role: Role) :
         self.testResults[player] = role
