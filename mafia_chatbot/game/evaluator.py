@@ -1,8 +1,8 @@
 import random
 from typing import Callable
 
-from game.game_state import GameState
-from game.player import *
+from mafia_chatbot.game.game_state import GameState
+from mafia_chatbot.game.player import *
 
 def pickOneStrategy(players: list[Player], reason: str = '') -> Strategy :
     target = random.choice(players).info

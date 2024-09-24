@@ -1,8 +1,8 @@
 from enum import Enum
 
-from game.game_state import *
-import game.evaluator as evaluator
-from game.llm import LLM
+from mafia_chatbot.game.game_state import *
+import mafia_chatbot.game.evaluator as evaluator
+from mafia_chatbot.game.llm import LLM
 
 class Phase(Enum) :
     DAY = 0

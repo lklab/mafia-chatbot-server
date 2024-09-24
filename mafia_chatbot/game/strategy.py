@@ -1,4 +1,4 @@
-from game.player_info import *
+from mafia_chatbot.game.player_info import *
 
 class Strategy :
     def __init__(self, targets: list[PlayerInfo], reason: str = '', publicRole: Role = None) :

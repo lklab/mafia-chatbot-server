@@ -1,4 +1,4 @@
-from game import *
+from mafia_chatbot.game import *
 
 if __name__ == "__main__" :
     gameInfo = game_info.GameInfo(

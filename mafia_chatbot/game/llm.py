@@ -11,9 +11,9 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
-from game.game_state import *
-from game.player import *
-from game.player_info import *
+from mafia_chatbot.game.game_state import *
+from mafia_chatbot.game.player import *
+from mafia_chatbot.game.player_info import *
 
 class LLM :
     def __init__(self) :

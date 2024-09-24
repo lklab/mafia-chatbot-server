@@ -1,5 +1,5 @@
-from game.player_info import *
-from game.strategy import *
+from mafia_chatbot.game.player_info import *
+from mafia_chatbot.game.strategy import *
 
 class Player :
     pass
