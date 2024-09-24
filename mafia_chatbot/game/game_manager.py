@@ -51,7 +51,12 @@ class GameManager :
             if player.info.isAI :
                 strategy: Strategy = evaluator.evaluateVoteStrategy(self.gameState, players[index])
                 player.setStrategy(strategy)
-                discussion: str = self.llm.getDiscussion(self.gameState, player)
+
+                if self.gameState.gameInfo.useLLM :
+                    discussion: str = self.llm.getDiscussion(self.gameState, player)
+                else :
+                    discussion: str = strategy.getDescription()
+
                 self.gameState.appendDiscussionHistory(player.info, discussion)
                 print(f'{player.info.name}: {discussion}')
             else :

@@ -8,3 +8,6 @@ class Strategy :
         self.mainTarget = self.targets[0]
 
         self.reason = reason
+
+    def getDescription(self) :
+        return f'publicRole={self.publicRole}, targets={self.targets}, prompt={self.reason}'
