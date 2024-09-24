@@ -29,7 +29,7 @@ pip install -qU langchain-openai
 ``` json
 {
     "OPENAI_API_KEY": "your_openai_api_key_here",
-    "LANGCHAIN_API_KEY": "your_langchain_api_key_here"
+    "LANGCHAIN_API_KEY": "(optional) your_langchain_api_key_here"
 }
 ```
 
