@@ -49,7 +49,7 @@ class GameManager :
 
             player = players[index]
             if player.info.isAI :
-                strategy: Strategy = evaluator.evaluateVoteStrategy(self.gameState, players[index])
+                strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, players[index])
                 player.setStrategy(strategy)
 
                 if self.gameState.gameInfo.useLLM :
@@ -74,7 +74,7 @@ class GameManager :
 
         for player in players :
             if player.info.isAI :
-                target = player.strategy.mainTarget
+                target = evaluator.evaluateVoteTarget(self.gameState, player)
             else :
                 targetName = input('투표할 대상을 정하세요: ')
                 target = self.gameState.getPlayerInfoByName(targetName)
@@ -111,8 +111,7 @@ class GameManager :
 
         if doctor.isLive :
             if doctor.info.isAI :
-                strategy: Strategy = evaluator.evaluateHealStrategy(self.gameState, doctor)
-                healTarget = strategy.mainTarget
+                healTarget = evaluator.evaluateHealTarget(self.gameState, doctor)
                 print()
                 print(f'의사는 {healTarget.name}을 치료합니다.')
             else :
@@ -126,8 +125,7 @@ class GameManager :
 
         for mafia in self.gameState.mafiaPlayers :
             if mafia.info.isAI :
-                strategy: Strategy = evaluator.evaluateKillStrategy(self.gameState, mafia)
-                target: PlayerInfo = strategy.mainTarget
+                target: PlayerInfo = evaluator.evaluateKillTarget(self.gameState, mafia)
             else :
                 targetName = input('암살할 대상을 정하세요: ')
                 target: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
@@ -164,8 +162,8 @@ class GameManager :
         police: Player = self.gameState.policePlayer
         if police.isLive :
             if police.info.isAI :
-                strategy: Strategy = evaluator.evaluateTestStrategy(self.gameState, police)
-                targetPlayer: Player = self.gameState.getPlayerByInfo(strategy.mainTarget)
+                target: PlayerInfo = evaluator.evaluateTestTarget(self.gameState, police)
+                targetPlayer: Player = self.gameState.getPlayerByInfo(target)
                 police.addTestResult(targetPlayer, targetPlayer.info.role)
                 print()
                 print(f'경찰은 {targetPlayer.info.name}의 직업이 {targetPlayer.info.role}임을 확인했습니다.')

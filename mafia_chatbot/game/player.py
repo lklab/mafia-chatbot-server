@@ -36,8 +36,9 @@ class Player :
             else :
                 self.strategy.publicRole = Role.CITIZEN
 
-        for target in self.strategy.targets :
-            self.allTargets.add(target)
+        for playerInfo, role in self.strategy.assumptions :
+            if role == Role.MAFIA :
+                self.allTargets.add(playerInfo)
 
     def addTestResult(self, player: Player, role: Role) :
         self.testResults[player] = role
