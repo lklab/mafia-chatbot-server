@@ -70,8 +70,7 @@ class LLM :
                 'surviving_mafia_count': len(gameState.mafiaPlayers),
                 'survivors_list': ','.join(map(lambda p: p.info.name, gameState.players)),
                 'discussion_history': '\n'.join(gameState.discussionHistory),
-                'discussion_assumptions': ', '.join(map(lambda asm: f'the role of {asm[0].name} is {asm[1].name.lower()}', player.strategy.assumptions)),
-                'discussion_reason': player.strategy.reason,
+                'discussion_assumptions': player.discussionStrategy.assumptionsToPrompt(),
             }
 
         def _setupInformationPrompt(input) :
@@ -107,8 +106,7 @@ class LLM :
             "Discussion History:\n{discussion_history}"
         ])
         strategyTemplateText = (
-            "You must argue that {discussion_assumptions}, based on the following evidence."
-            "\n{discussion_reason}"
+            "You must argue that {discussion_assumptions}."
         )
 
         template = PromptTemplate.from_template(templateText)
