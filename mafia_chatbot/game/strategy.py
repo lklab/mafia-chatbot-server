@@ -1,27 +1,40 @@
 from mafia_chatbot.game.player_info import *
 
-class Assumption :
+class Estimate :
     def __init__(self,
-            roleEstimates: list[tuple[PlayerInfo, Role]],
-            reason: str,
+            playerInfo: PlayerInfo,
+            role: Role,
             isFirst: bool = False,
             isSurelyMafia: bool = False) :
 
-        self.roleEstimates = roleEstimates
-        self.reason = reason
-
+        self.playerInfo = playerInfo
+        self.role = role
         self.isFirst = isFirst
         self.isSurelyMafia = isSurelyMafia
 
     def __str__(self) :
-        estimates = ','.join(map(lambda estimate: f'{estimate[0].name}={estimate[1].name.lower()}', self.roleEstimates))
+        return f'{self.playerInfo.name}={self.role.name.lower()}'
+
+    def __repr__(self) :
+        return self.__str__()
+
+    def getPrompt(self) :
+        return f'{self.playerInfo.name}\'s role is {self.role.name.lower()}'
+
+class Assumption :
+    def __init__(self, estimates: list[Estimate], reason: str) :
+        self.estimates = estimates
+        self.reason = reason
+
+    def __str__(self) :
+        estimates = ','.join(map(lambda estimate: str(estimate), self.estimates))
         return f'{estimates} ({self.reason})'
 
     def __repr__(self) :
         return self.__str__()
 
     def getPrompt(self) :
-        estimates = ', '.join(map(lambda estimate: f'{estimate[0].name}\'s role is {estimate[1].name.lower()}', self.roleEstimates)) 
+        estimates = ', '.join(map(lambda estimate: estimate.getPrompt(), self.estimates)) 
         return f'{estimates} because {self.reason}.'
 
 class Strategy :
@@ -33,16 +46,17 @@ class Strategy :
         self.mainTarget: PlayerInfo = None
 
         for assumption in assumptions :
-            if assumption.role == Role.MAFIA :
-                self.mainMafiaAssumption = assumption
-                self.mainTarget = assumption.playerInfo
-                break
+            for estimate in assumption.estimates :
+                if estimate.role == Role.MAFIA :
+                    self.mainMafiaAssumption = assumption
+                    self.mainTarget = estimate.playerInfo
+                    break
 
     def __str__(self) :
         return f'publicRole={self.publicRole}, assumptions={self.assumptions}'
 
     def assumptionsToStr(self) :
-        return ', '.join(map(lambda assumption: str(assumption), self.assumptions))
+        return str(self.assumptions)
 
     def assumptionsToPrompt(self) :
         return '\n'.join(map(lambda assumption: assumption.getPrompt(), self.assumptions))
