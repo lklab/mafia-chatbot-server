@@ -50,6 +50,12 @@ class GameState :
         # initialize discussion history
         self.discussionHistory: list[str] = []
 
+        # initialize round
+        self.round = 0
+
+        # remove history
+        self.removedPlayers: list[Player] = []
+
     def removePlayer(self, player: Player) :
         if player == None or not player.isLive :
             return
@@ -60,8 +66,16 @@ class GameState :
         if player.info.role == Role.MAFIA :
             self.mafiaPlayers.remove(player)
 
+        self.removedPlayers.append(player)
+
     def removePlayerByInfo(self, playerInfo: PlayerInfo) :
         self.removePlayer(self.getPlayerByInfo(playerInfo))
+
+    def getLastRemovedPlayer(self) -> Player :
+        count = len(self.removedPlayers)
+        if count <= 0 :
+            return None
+        return self.removedPlayers[count - 1]
 
     def getPlayerByInfo(self, playerInfo: PlayerInfo) -> Player :
         return self.allPlayerMap.get(playerInfo)
@@ -78,6 +92,9 @@ class GameState :
             return player.info
         else :
             return None
+
+    def addRound(self) :
+        self.round += 1
 
     def appendDiscussionHistory(self, playerInfo: PlayerInfo, discussion: str) :
         self.discussionHistory.append(f'{playerInfo.name}: {discussion}')
