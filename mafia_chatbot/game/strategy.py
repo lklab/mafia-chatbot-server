@@ -2,27 +2,27 @@ from mafia_chatbot.game.player_info import *
 
 class Assumption :
     def __init__(self,
-            playerInfo: PlayerInfo,
-            role: Role,
+            roleEstimates: list[tuple[PlayerInfo, Role]],
             reason: str,
             isFirst: bool = False,
             isSurelyMafia: bool = False) :
 
-        self.playerInfo = playerInfo
-        self.role = role
+        self.roleEstimates = roleEstimates
         self.reason = reason
 
         self.isFirst = isFirst
         self.isSurelyMafia = isSurelyMafia
 
     def __str__(self) :
-        return f'{self.playerInfo.name}: {self.role.name.lower()} ({self.reason})'
+        estimates = ','.join(map(lambda estimate: f'{estimate[0].name}={estimate[1].name.lower()}', self.roleEstimates))
+        return f'{estimates} ({self.reason})'
 
     def __repr__(self) :
         return self.__str__()
 
     def getPrompt(self) :
-        return f'the role of {self.playerInfo.name} is {self.role.name.lower()} because {self.reason}'
+        estimates = ', '.join(map(lambda estimate: f'{estimate[0].name}\'s role is {estimate[1].name.lower()}', self.roleEstimates)) 
+        return f'{estimates} because {self.reason}.'
 
 class Strategy :
     def __init__(self, publicRole: Role, assumptions: list[Assumption]) :
@@ -45,4 +45,4 @@ class Strategy :
         return ', '.join(map(lambda assumption: str(assumption), self.assumptions))
 
     def assumptionsToPrompt(self) :
-        return ', '.join(map(lambda assumption: assumption.getPrompt(), self.assumptions))
+        return '\n'.join(map(lambda assumption: assumption.getPrompt(), self.assumptions))
