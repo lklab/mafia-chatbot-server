@@ -9,10 +9,19 @@ class Player :
         self.isLive = True
         self.info = PlayerInfo(name, isAI)
 
-        self.strategy: Strategy = None
-        self.pastStrategies: list[Strategy] = []
-        self.allTargets: set[PlayerInfo] = set()
+        # strategies
+        self.discussionStrategy: Strategy = None
+        self.voteStrategy: Strategy = None
+        self.allDiscussionStrategies: list[Strategy] = []
+        self.allVoteStrategies = list[Strategy] = []
 
+        # strategy summary
+        self.firstMafiaAssumptions: set[PlayerInfo] = set()
+        self.citizenAssumptions: set[PlayerInfo] = set()
+        self.publicRole = Role.CITIZEN
+        self.voteHistory: list[PlayerInfo] = []
+
+        # police's private data
         self.testResults: dict[Player, Role] = {}
 
     def __str__(self) :
@@ -21,28 +30,45 @@ class Player :
     def __repr__(self) :
         return self.info.__repr__()
 
-    def setStrategy(self, strategy: Strategy) :
-        pastPublicRole: Role = None
+    def setDiscussionStrategy(self, round: int, strategy: Strategy) :
+        self.discussionStrategy = strategy
 
-        if self.strategy != None :
-            self.pastStrategies.append(self.strategy)
-            pastPublicRole = self.strategy.publicRole
+        # update allDiscussionStrategies
+        self.expandList(self.allDiscussionStrategies, round + 1)
+        self.allDiscussionStrategies[round] = strategy
 
-        self.strategy = strategy
+        for assumption in strategy.assumptions :
+            for estimate in assumption.estimates :
+                # update firstMafiaAssumptions
+                if estimate.isFirst and estimate.role == Role.MAFIA :
+                    self.firstMafiaAssumptions.add(estimate.playerInfo)
 
-        if self.strategy.publicRole == None :
-            if pastPublicRole != None :
-                self.strategy.publicRole = pastPublicRole
-            else :
-                self.strategy.publicRole = Role.CITIZEN
+                # update citizenAssumptions
+                if estimate.role != Role.CITIZEN :
+                    self.citizenAssumptions.add(estimate.playerInfo)
+                else :
+                    self.citizenAssumptions.discard(estimate.playerInfo)
 
-        for playerInfo, role in self.strategy.assumptions :
-            if role == Role.MAFIA :
-                self.allTargets.add(playerInfo)
+        # update publicRole
+        self.publicRole = strategy.publicRole
+
+    def setVoteStrategy(self, round: int, strategy: Strategy) :
+        self.voteStrategy = strategy
+
+        # update allVoteStrategies
+        self.expandList(self.allVoteStrategies, round + 1)
+        self.allVoteStrategies[round] = strategy
+
+        # update voteHistory
+        self.expandList(self.voteHistory, round + 1)
+        self.voteHistory[round] = strategy.mainTarget
+
+    def getDiscussion(self) :
+        return self.discussionStrategy.assumptionsToStr()
 
     def addTestResult(self, player: Player, role: Role) :
         self.testResults[player] = role
 
-    def getDiscussion(self) :
-        targetsStr = ', '.join(map(lambda playerInfo : playerInfo.name, self.strategy.targets))
-        return f'{self.info.name}: 저는 {targetsStr}를 의심합니다.'
+    def expandList(self, l: list, size: int, fillValue = None) :
+        for _ in range(len(l), size) :
+            l.append(fillValue)
