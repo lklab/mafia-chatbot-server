@@ -1,6 +1,6 @@
 from mafia_chatbot.game.player_info import *
 
-class Estimate :
+class Estimation :
     def __init__(self,
             playerInfo: PlayerInfo,
             role: Role,
@@ -22,20 +22,20 @@ class Estimate :
         return f'{self.playerInfo.name}\'s role is {self.role.name.lower()}'
 
 class Assumption :
-    def __init__(self, estimates: list[Estimate], reason: str) :
-        self.estimates = estimates
+    def __init__(self, estimations: list[Estimation], reason: str) :
+        self.estimations = estimations
         self.reason = reason
 
     def __str__(self) :
-        estimates = ','.join(map(lambda estimate: str(estimate), self.estimates))
-        return f'{estimates} ({self.reason})'
+        estimations = ','.join(map(lambda estimation: str(estimation), self.estimations))
+        return f'{estimations} ({self.reason})'
 
     def __repr__(self) :
         return self.__str__()
 
     def getPrompt(self) :
-        estimates = ', '.join(map(lambda estimate: estimate.getPrompt(), self.estimates)) 
-        return f'{estimates} because {self.reason}.'
+        estimations = ', '.join(map(lambda estimation: estimation.getPrompt(), self.estimations)) 
+        return f'{estimations} because {self.reason}.'
 
 class Strategy :
     def __init__(self, publicRole: Role, assumptions: list[Assumption]) :
@@ -46,10 +46,10 @@ class Strategy :
         self.mainTarget: PlayerInfo = None
 
         for assumption in assumptions :
-            for estimate in assumption.estimates :
-                if estimate.role == Role.MAFIA :
+            for estimation in assumption.estimations :
+                if estimation.role == Role.MAFIA :
                     self.mainMafiaAssumption = assumption
-                    self.mainTarget = estimate.playerInfo
+                    self.mainTarget = estimation.playerInfo
                     break
 
     def __str__(self) :

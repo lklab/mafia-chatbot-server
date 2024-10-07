@@ -38,16 +38,16 @@ class Player :
         self.allDiscussionStrategies[round] = strategy
 
         for assumption in strategy.assumptions :
-            for estimate in assumption.estimates :
+            for estimation in assumption.estimations :
                 # update firstMafiaAssumptions
-                if estimate.isFirst and estimate.role == Role.MAFIA :
-                    self.firstMafiaAssumptions.add(estimate.playerInfo)
+                if estimation.isFirst and estimation.role == Role.MAFIA :
+                    self.firstMafiaAssumptions.add(estimation.playerInfo)
 
                 # update citizenAssumptions
-                if estimate.role != Role.CITIZEN :
-                    self.citizenAssumptions.add(estimate.playerInfo)
+                if estimation.role != Role.CITIZEN :
+                    self.citizenAssumptions.add(estimation.playerInfo)
                 else :
-                    self.citizenAssumptions.discard(estimate.playerInfo)
+                    self.citizenAssumptions.discard(estimation.playerInfo)
 
         # update publicRole
         self.publicRole = strategy.publicRole
