@@ -44,14 +44,17 @@ class Strategy :
 
         self.mainMafiaAssumption : Assumption = None
         self.mainTarget: PlayerInfo = None
+        self.containsSurelyMafia = False
 
         for assumption in assumptions :
             for estimation in assumption.estimations :
-                if estimation.role == Role.MAFIA :
+                if self.mainMafiaAssumption == None and estimation.role == Role.MAFIA :
                     self.mainMafiaAssumption = assumption
                     self.mainTarget = estimation.playerInfo
-                    break
-            if self.mainMafiaAssumption == None :
+                if estimation.isSurelyMafia :
+                    self.containsSurelyMafia = True
+
+            if self.mainMafiaAssumption != None and self.containsSurelyMafia :
                 break
 
         self.estimations: list[Estimation] = [estimation for assumption in assumptions for estimation in assumption.estimations]

@@ -58,6 +58,8 @@ class GameState :
 
         # shortcut data
         self.isPoliceLive = True
+        self.publicPolicePlayers: set[Player] = []
+        self.onePublicPolicePlayer: Player = None
 
     def removePlayer(self, player: Player) :
         if player == None or not player.isLive :
@@ -74,6 +76,12 @@ class GameState :
         # update shortcut data
         if player.info.role == Role.POLICE :
             self.isPoliceLive = False
+
+        self.publicPolicePlayers.discard(player)
+        if len(self.publicPolicePlayers) == 1 :
+            self.onePublicPolicePlayer = next(iter(self.publicPolicePlayers))
+        else :
+            self.onePublicPolicePlayer = None
 
     def removePlayerByInfo(self, playerInfo: PlayerInfo) :
         self.removePlayer(self.getPlayerByInfo(playerInfo))
@@ -105,3 +113,10 @@ class GameState :
 
     def appendDiscussionHistory(self, playerInfo: PlayerInfo, discussion: str) :
         self.discussionHistory.append(f'{playerInfo.name}: {discussion}')
+
+    def addPublicPolice(self, player: Player) :
+        self.publicPolicePlayers.add(player)
+        if len(self.publicPolicePlayers) == 1 :
+            self.onePublicPolicePlayer = player
+        else :
+            self.onePublicPolicePlayer = None

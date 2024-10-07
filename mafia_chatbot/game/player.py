@@ -1,9 +1,9 @@
 from mafia_chatbot.game.player_info import *
 from mafia_chatbot.game.strategy import *
 
-TRUST_MIN: float = -100
-TRUST_DEFAULT: float = 0
-TRUST_MAX: float = 100
+TRUST_MIN: int = -100
+TRUST_DEFAULT: int = 0
+TRUST_MAX: int = 100
 
 class Player :
     pass
@@ -28,8 +28,12 @@ class Player :
         self.estimationsAsPolice: dict[PlayerInfo, Estimation] = {}
 
         # trust data
-        self.trustPoint: float = 0
+        self.trustPoint: int = 0
         self.trustMainIssue: str = ''
+        self.isSurelyMafia: bool = False
+        self.isNotVoteSurelyMafiaCount: int = 0
+        self.figuredOutMafiasAsPolice: list[PlayerInfo] = []
+        self.isTrustedPolice: bool = False
 
         # police's private data
         self.testResults: dict[Player, Role] = {}
@@ -91,9 +95,22 @@ class Player :
     def addTestResult(self, player: Player, role: Role) :
         self.testResults[player] = role
 
-    def setTrustData(self, trustPoint: float, mainIssue: str) :
+    def setTrustData(self, trustPoint: int, mainIssue: str = '', isSurelyMafia: bool = False) :
+        if isinstance(trustPoint, float) :
+            trustPoint = round(trustPoint)
+
+        if trustPoint > TRUST_MAX :
+            trustPoint = TRUST_MAX
+        elif trustPoint < TRUST_MIN :
+            trustPoint = TRUST_MIN
+
         self.trustPoint = trustPoint
         self.trustMainIssue = mainIssue
+        self.isSurelyMafia = isSurelyMafia
+
+    def addFiguredOutMafiasAsPolice(self, playerInfo: PlayerInfo) :
+        self.figuredOutMafiasAsPolice.append(playerInfo)
+        self.isTrustedPolice = True
 
     def expandList(self, l: list, size: int, fillValue = None) :
         for _ in range(len(l), size) :

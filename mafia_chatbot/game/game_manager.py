@@ -44,18 +44,20 @@ class GameManager :
         players = self.gameState.players
         playerCount = len(players)
         for i in range(playerCount) :
+            self.updateAllTrustPoint()
+
             index = self.discussionIndex + i
             index %= playerCount
 
             player = players[index]
             if player.info.isAI :
                 strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, players[index])
-                player.setStrategy(strategy)
+                player.setDiscussionStrategy(strategy)
 
                 if self.gameState.gameInfo.useLLM :
                     discussion: str = self.llm.getDiscussion(self.gameState, player)
                 else :
-                    discussion: str = strategy.getDescription()
+                    discussion: str = str(strategy)
 
                 self.gameState.appendDiscussionHistory(player.info, discussion)
                 print(f'{player.info.name}: {discussion}')
@@ -63,10 +65,15 @@ class GameManager :
                 discussion: str = input('당신의 차례입니다: ')
                 self.gameState.appendDiscussionHistory(player.info, discussion)
 
+            if player.publicRole == Role.POLICE :
+                self.gameState.addPublicPolice(player)
+
         self.discussionIndex += 1
         self.discussionIndex %= playerCount
 
     def processEvening(self) :
+        self.updateAllTrustPoint()
+
         print()
 
         players = self.gameState.players
@@ -86,6 +93,17 @@ class GameManager :
 
         print(f'투표 현황: {voteDict}')
 
+        # update player.isNotVoteSurelyMafiaCount
+        isSurelyMafiaExists = False
+        for player in players :
+            if player.isSurelyMafia :
+                isSurelyMafiaExists = True
+                break
+        if isSurelyMafiaExists :
+            for player in players :
+                if not player.voteStrategy.containsSurelyMafia :
+                    player.isNotVoteSurelyMafiaCount += 1
+
         isTie = False
         maxVote = 0
         maxPlayer: PlayerInfo = None
@@ -103,6 +121,15 @@ class GameManager :
         else :
             print(f'{maxPlayer.name}을 처형합니다. 그의 직업은 {maxPlayer.role.name}이었습니다.')
             self.gameState.removePlayerByInfo(maxPlayer)
+
+            # update player.figuredOutMafiasAsPolice
+            if maxPlayer.role == Role.MAFIA :
+                for player in players :
+                    if player.publicRole == Role.POLICE :
+                        for estimation in player.estimationsAsPolice.values() :
+                            if estimation.playerInfo == maxPlayer and estimation.role == Role.MAFIA :
+                                player.addFiguredOutMafiasAsPolice(maxPlayer)
+                                break
 
     def processNight(self) :
         # doctor action: Heal
@@ -192,18 +219,34 @@ class GameManager :
         else :
             return False
 
+    def updateAllTrustPoint(self) :
+        for player in self.gameState.players :
+            self.updateTrustPoint(player)
+
     def updateTrustPoint(self, player: Player) :
         # surely mafia
         if player.publicRole == Role.MAFIA :
-            player.setTrustData(TRUST_MIN, 'He revealed that he is a mafia.')
+            player.setTrustData(
+                TRUST_MIN,
+                'He revealed that he is a mafia.',
+                isSurelyMafia=True,
+            )
             return
         elif player.isContradictoryRole[0] :
             roles = player.isContradictoryRole[1]
-            player.setTrustData(TRUST_MIN, f'He initially claimed his role was {roles[0].name.lower()}, but now he claims to be {roles[1].name.lower()}.')
+            player.setTrustData(
+                TRUST_MIN,
+                f'He initially claimed his role was {roles[0].name.lower()}, but now he claims to be {roles[1].name.lower()}.',
+                isSurelyMafia=True,
+            )
             return
         elif player.publicRole == Role.POLICE :
             if not self.gameState.isPoliceLive :
-                player.setTrustData(TRUST_MIN, 'Despite the police being already eliminated, he claims his role is a police.')
+                player.setTrustData(
+                    TRUST_MIN,
+                    'Despite the police being already eliminated, he claims his role is a police.',
+                    isSurelyMafia=True,
+                )
                 return
 
             mafiaEstimationCount = 0
@@ -212,10 +255,18 @@ class GameManager :
             for estimation in player.estimationsAsPolice.values() :
                 p = self.gameState.getPlayerByInfo(estimation.playerInfo)
                 if p.publicRole == Role.POLICE :
-                    player.setTrustData(TRUST_MIN, f'He claimed that {p.info.name} is a citizen, but {p.info.name} claims his role is a police.')
+                    player.setTrustData(
+                        TRUST_MIN,
+                        f'He claimed that {p.info.name} is a citizen, but {p.info.name} claims his role is a police.',
+                        isSurelyMafia=True,
+                    )
                     return
                 if not p.isLive and p.info.role != estimation.role :
-                    player.setTrustData(TRUST_MIN, 'He incorrectly announced the role of an eliminated player.')
+                    player.setTrustData(
+                        TRUST_MIN,
+                        'He incorrectly announced the role of an eliminated player.',
+                        isSurelyMafia=True,
+                    )
                     return
 
                 if estimation.role == Role.MAFIA :
@@ -224,15 +275,47 @@ class GameManager :
                     citizenEstimationCount += 1
 
             if self.gameState.gameInfo.mafiaCount < mafiaEstimationCount :
-                player.setTrustData(TRUST_MIN, 'There are too many mafia in his investigation results.')
+                player.setTrustData(
+                    TRUST_MIN,
+                    'There are too many mafia in his investigation results.',
+                    isSurelyMafia=True,
+                )
                 return
             elif self.gameState.gameInfo.citizenCount < citizenEstimationCount :
-                player.setTrustData(TRUST_MIN, 'There are too many citizens in his investigation results.')
+                player.setTrustData(
+                    TRUST_MIN,
+                    'There are too many citizens in his investigation results.',
+                    isSurelyMafia=True,
+                )
                 return
 
             if self.gameState.round < len(player.estimationsAsPolice) :
-                player.setTrustData(TRUST_MIN, 'There are contradictions in his investigation results. He has presented more investigation results than what is possible in the current round.')
+                player.setTrustData(
+                    TRUST_MIN,
+                    'There are contradictions in his investigation results. He has presented more investigation results than what is possible in the current round.',
+                    isSurelyMafia=True,
+                )
                 return
+
+        # trusted police
+        if player.publicRole == Role.POLICE and player.isTrustedPolice :
+            player.setTrustData(TRUST_MAX)
+            return
+
+        # trusted police's estimations
+        if self.gameState.onePublicPolicePlayer != None :
+            policePlayer = self.gameState.onePublicPolicePlayer
+            if policePlayer.isTrustedPolice :
+                if policePlayer.estimationsAsPolice[player.info].role == Role.CITIZEN :
+                    player.setTrustData(TRUST_MAX)
+                    return
+                elif policePlayer.estimationsAsPolice[player.info].role == Role.MAFIA :
+                    player.setTrustData(
+                        TRUST_MIN,
+                        'The police identified him as a mafia member.',
+                        isSurelyMafia=True,
+                    )
+                    return
 
         # calculate trust point
         total = 0
@@ -244,7 +327,7 @@ class GameManager :
         for playerInfo in player.firstMafiaAssumptions :
             p = self.gameState.getPlayerByInfo(playerInfo)
             if not p.isLive and p.info.role != Role.MAFIA :
-                point -= max(p.trustPoint, 0) + 10
+                point -= max(p.trustPoint, -10) + 10
 
         total += point
         if point < maxDecreasePoint :
@@ -255,10 +338,29 @@ class GameManager :
         for playerInfo in player.voteHistory :
             p = self.gameState.getPlayerByInfo(playerInfo)
             if not p.isLive and p.info.role == Role.MAFIA :
-                point += 10
+                total += 10
 
         # not pointed surely mafia
+        point = 0
+        point = player.isNotVoteSurelyMafiaCount * 10
 
+        total += point
+        if point < maxDecreasePoint :
+            maxDecreasePoint = point
+            mainIssue = 'He did not vote for the confirmed mafia.'
+
+        # pointed mafia by police
+        point = 0
+
+        if self.gameState.onePublicPolicePlayer != None :
+            policePlayer = self.gameState.onePublicPolicePlayer
+            if policePlayer.estimationsAsPolice[player.info].role == Role.MAFIA :
+                point = -50
+
+        total += point
+        if point < maxDecreasePoint :
+            maxDecreasePoint = point
+            mainIssue = 'The police identified him as a mafia member.'
 
         # update trust data
         player.setTrustData(total, mainIssue)
