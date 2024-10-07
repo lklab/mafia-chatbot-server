@@ -1,6 +1,10 @@
 from mafia_chatbot.game.player_info import *
 from mafia_chatbot.game.strategy import *
 
+TRUST_MIN: float = -100
+TRUST_DEFAULT: float = 0
+TRUST_MAX: float = 100
+
 class Player :
     pass
 
@@ -11,15 +15,21 @@ class Player :
 
         # strategies
         self.discussionStrategy: Strategy = None
-        self.voteStrategy: Strategy = None
+        self.voteStrategy: VoteStrategy = None
         self.allDiscussionStrategies: list[Strategy] = []
-        self.allVoteStrategies = list[Strategy] = []
+        self.allVoteStrategies = list[VoteStrategy] = []
 
         # strategy summary
         self.firstMafiaAssumptions: set[PlayerInfo] = set()
         self.citizenAssumptions: set[PlayerInfo] = set()
         self.publicRole = Role.CITIZEN
+        self.isContradictoryRole: tuple[bool, tuple[Role, Role]] = (False, (None, None))
         self.voteHistory: list[PlayerInfo] = []
+        self.estimationsAsPolice: dict[PlayerInfo, Estimation] = {}
+
+        # trust data
+        self.trustPoint: float = 0
+        self.trustMainIssue: str = ''
 
         # police's private data
         self.testResults: dict[Player, Role] = {}
@@ -50,9 +60,21 @@ class Player :
                     self.citizenAssumptions.discard(estimation.playerInfo)
 
         # update publicRole
-        self.publicRole = strategy.publicRole
+        if self.publicRole != strategy.publicRole :
+            if strategy.publicRole == Role.MAFIA :
+                self.publicRole = strategy.publicRole
+                self.isContradictoryRole = (False, (None, None))
+            elif self.publicRole != Role.CITIZEN and strategy.publicRole != Role.CITIZEN :
+                self.isContradictoryRole = (True, (self.publicRole, strategy.publicRole))
+            else :
+                self.publicRole = strategy.publicRole
 
-    def setVoteStrategy(self, round: int, strategy: Strategy) :
+        # update estimationsAsPolice
+        if strategy.publicRole == Role.POLICE :
+            for estimation in strategy.estimations :
+                self.estimationsAsPolice[estimation.playerInfo] = estimation
+
+    def setVoteStrategy(self, round: int, strategy: VoteStrategy) :
         self.voteStrategy = strategy
 
         # update allVoteStrategies
@@ -68,6 +90,10 @@ class Player :
 
     def addTestResult(self, player: Player, role: Role) :
         self.testResults[player] = role
+
+    def setTrustData(self, trustPoint: float, mainIssue: str) :
+        self.trustPoint = trustPoint
+        self.trustMainIssue = mainIssue
 
     def expandList(self, l: list, size: int, fillValue = None) :
         for _ in range(len(l), size) :

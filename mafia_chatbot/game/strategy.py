@@ -51,12 +51,24 @@ class Strategy :
                     self.mainMafiaAssumption = assumption
                     self.mainTarget = estimation.playerInfo
                     break
+            if self.mainMafiaAssumption == None :
+                break
+
+        self.estimations: list[Estimation] = [estimation for assumption in assumptions for estimation in assumption.estimations]
 
     def __str__(self) :
-        return f'publicRole={self.publicRole}, assumptions={self.assumptions}'
+        return f'publicRole={self.publicRole.name.lower()}, assumptions={self.assumptions}'
 
     def assumptionsToStr(self) :
         return str(self.assumptions)
 
     def assumptionsToPrompt(self) :
         return '\n'.join(map(lambda assumption: assumption.getPrompt(), self.assumptions))
+
+class VoteStrategy(Strategy) :
+    def __init__(self, estimation: Estimation) :
+        assumption = Assumption([estimation], '')
+        super().__init__(
+            publicRole=Role.CITIZEN, # not used
+            assumptions=[assumption],
+        )

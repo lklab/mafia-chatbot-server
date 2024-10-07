@@ -56,6 +56,9 @@ class GameState :
         # remove history
         self.removedPlayers: list[Player] = []
 
+        # shortcut data
+        self.isPoliceLive = True
+
     def removePlayer(self, player: Player) :
         if player == None or not player.isLive :
             return
@@ -67,6 +70,10 @@ class GameState :
             self.mafiaPlayers.remove(player)
 
         self.removedPlayers.append(player)
+
+        # update shortcut data
+        if player.info.role == Role.POLICE :
+            self.isPoliceLive = False
 
     def removePlayerByInfo(self, playerInfo: PlayerInfo) :
         self.removePlayer(self.getPlayerByInfo(playerInfo))

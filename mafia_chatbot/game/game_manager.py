@@ -191,3 +191,45 @@ class GameManager :
             return True
         else :
             return False
+
+    def updateTrustPoint(self, player: Player) :
+        # surely mafia
+        if player.publicRole == Role.MAFIA :
+            player.setTrustData(TRUST_MIN, 'He revealed that he is a mafia.')
+            return
+        elif player.isContradictoryRole[0] :
+            roles = player.isContradictoryRole[1]
+            player.setTrustData(TRUST_MIN, f'He initially claimed his role was {roles[0].name.lower()}, but now he claims to be {roles[1].name.lower()}.')
+            return
+        elif player.publicRole == Role.POLICE :
+            if not self.gameState.isPoliceLive :
+                player.setTrustData(TRUST_MIN, 'Despite the police being already eliminated, he claims his role is a police.')
+                return
+
+            mafiaEstimationCount = 0
+            citizenEstimationCount = 0
+
+            for estimation in player.estimationsAsPolice.values() :
+                p = self.gameState.getPlayerByInfo(estimation.playerInfo)
+                if p.publicRole == Role.POLICE :
+                    player.setTrustData(TRUST_MIN, f'He claimed that {p.info.name} is a citizen, but {p.info.name} claims his role is a police.')
+                    return
+                if not p.isLive and p.info.role != estimation.role :
+                    player.setTrustData(TRUST_MIN, 'He incorrectly announced the role of an eliminated player.')
+                    return
+
+                if estimation.role == Role.MAFIA :
+                    mafiaEstimationCount += 1
+                else :
+                    citizenEstimationCount += 1
+
+            if self.gameState.gameInfo.mafiaCount < mafiaEstimationCount :
+                player.setTrustData(TRUST_MIN, 'There are too many mafia in his investigation results.')
+                return
+            elif self.gameState.gameInfo.citizenCount < citizenEstimationCount :
+                player.setTrustData(TRUST_MIN, 'There are too many citizens in his investigation results.')
+                return
+
+            if self.gameState.round < len(player.estimationsAsPolice) :
+                player.setTrustData(TRUST_MIN, 'There are contradictions in his investigation results. He has presented more investigation results than what is possible in the current round.')
+                return
