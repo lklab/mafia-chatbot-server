@@ -233,3 +233,32 @@ class GameManager :
             if self.gameState.round < len(player.estimationsAsPolice) :
                 player.setTrustData(TRUST_MIN, 'There are contradictions in his investigation results. He has presented more investigation results than what is possible in the current round.')
                 return
+
+        # calculate trust point
+        total = 0
+        maxDecreasePoint = 0
+        mainIssue = ''
+
+        # pointed citizens
+        point = 0
+        for playerInfo in player.firstMafiaAssumptions :
+            p = self.gameState.getPlayerByInfo(playerInfo)
+            if not p.isLive and p.info.role != Role.MAFIA :
+                point -= max(p.trustPoint, 0) + 10
+
+        total += point
+        if point < maxDecreasePoint :
+            maxDecreasePoint = point
+            mainIssue = 'He pointed out the citizen first.'
+
+        # pointed mafias
+        for playerInfo in player.voteHistory :
+            p = self.gameState.getPlayerByInfo(playerInfo)
+            if not p.isLive and p.info.role == Role.MAFIA :
+                point += 10
+
+        # not pointed surely mafia
+
+
+        # update trust data
+        player.setTrustData(total, mainIssue)
