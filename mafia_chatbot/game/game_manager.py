@@ -318,9 +318,7 @@ class GameManager :
                     return
 
         # calculate trust point
-        total = 0
-        maxDecreasePoint = 0
-        mainIssue = ''
+        trustData = TrustData()
 
         # pointed citizens
         point = 0
@@ -329,25 +327,17 @@ class GameManager :
             if not p.isLive and p.info.role != Role.MAFIA :
                 point -= max(p.trustPoint, -10) + 10
 
-        total += point
-        if point < maxDecreasePoint :
-            maxDecreasePoint = point
-            mainIssue = 'He pointed out the citizen first.'
+        trustData.addData(point, 'He pointed out the citizen first.')
 
         # pointed mafias
         for playerInfo in player.voteHistory :
             p = self.gameState.getPlayerByInfo(playerInfo)
             if not p.isLive and p.info.role == Role.MAFIA :
-                total += 10
+                trustData.addData(10)
 
         # not pointed surely mafia
-        point = 0
         point = player.isNotVoteSurelyMafiaCount * 10
-
-        total += point
-        if point < maxDecreasePoint :
-            maxDecreasePoint = point
-            mainIssue = 'He did not vote for the confirmed mafia.'
+        trustData.addData(point, 'He did not vote for the confirmed mafia.')
 
         # pointed mafia by police
         point = 0
@@ -357,10 +347,18 @@ class GameManager :
             if policePlayer.estimationsAsPolice[player.info].role == Role.MAFIA :
                 point = -50
 
-        total += point
-        if point < maxDecreasePoint :
-            maxDecreasePoint = point
-            mainIssue = 'The police identified him as a mafia member.'
+        trustData.addData(point, 'The police identified him as a mafia member.')
 
         # update trust data
-        player.setTrustData(total, mainIssue)
+        player.setTrustData(trustData.total, trustData.mainIssue)
+
+class TrustData :
+    def __init__(self) :
+        self.total = 0
+        self.maxDecreasePoint = 0
+        self.mainIssue = ''
+
+    def addData(self, point: int, issue: str = '') :
+        self.total += point
+        if point < self.maxDecreasePoint :
+            self.mainIssue = issue
