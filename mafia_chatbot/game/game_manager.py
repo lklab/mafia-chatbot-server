@@ -93,17 +93,6 @@ class GameManager :
 
         print(f'투표 현황: {voteDict}')
 
-        # update player.isNotVoteSurelyMafiaCount
-        isSurelyMafiaExists = False
-        for player in players :
-            if player.isSurelyMafia :
-                isSurelyMafiaExists = True
-                break
-        if isSurelyMafiaExists :
-            for player in players :
-                if not player.voteStrategy.containsSurelyMafia :
-                    player.isNotVoteSurelyMafiaCount += 1
-
         isTie = False
         maxVote = 0
         maxPlayer: PlayerInfo = None
@@ -122,13 +111,13 @@ class GameManager :
             print(f'{maxPlayer.name}을 처형합니다. 그의 직업은 {maxPlayer.role.name}이었습니다.')
             self.gameState.removePlayerByInfo(maxPlayer, RemoveReason.VOTE)
 
-            # update player.figuredOutMafiasAsPolice
+            # update player.setTrustedPolice
             if maxPlayer.role == Role.MAFIA :
                 for player in players :
                     if player.publicRole == Role.POLICE :
                         for estimation in player.estimationsAsPolice.values() :
                             if estimation.playerInfo == maxPlayer and estimation.role == Role.MAFIA :
-                                player.addFiguredOutMafiasAsPolice(maxPlayer)
+                                player.setTrustedPolice()
                                 break
 
     def processNight(self) :
@@ -229,7 +218,6 @@ class GameManager :
             player.setTrustData(
                 TRUST_MIN,
                 'He revealed that he is a mafia.',
-                isSurelyMafia=True,
             )
             return
         elif player.isContradictoryRole[0] :
@@ -237,7 +225,6 @@ class GameManager :
             player.setTrustData(
                 TRUST_MIN,
                 f'He initially claimed his role was {roles[0].name.lower()}, but now he claims to be {roles[1].name.lower()}.',
-                isSurelyMafia=True,
             )
             return
         elif player.publicRole == Role.POLICE :
@@ -245,7 +232,6 @@ class GameManager :
                 player.setTrustData(
                     TRUST_MIN,
                     'Despite the police being already eliminated, he claims his role is a police.',
-                    isSurelyMafia=True,
                 )
                 return
 
@@ -258,14 +244,12 @@ class GameManager :
                     player.setTrustData(
                         TRUST_MIN,
                         f'He claimed that {p.info.name} is a citizen, but {p.info.name} claims his role is a police.',
-                        isSurelyMafia=True,
                     )
                     return
                 if not p.isLive and p.info.role != estimation.role :
                     player.setTrustData(
                         TRUST_MIN,
                         'He incorrectly announced the role of an eliminated player.',
-                        isSurelyMafia=True,
                     )
                     return
 
@@ -278,14 +262,12 @@ class GameManager :
                 player.setTrustData(
                     TRUST_MIN,
                     'There are too many mafia in his investigation results.',
-                    isSurelyMafia=True,
                 )
                 return
             elif self.gameState.gameInfo.citizenCount < citizenEstimationCount :
                 player.setTrustData(
                     TRUST_MIN,
                     'There are too many citizens in his investigation results.',
-                    isSurelyMafia=True,
                 )
                 return
 
@@ -293,7 +275,6 @@ class GameManager :
                 player.setTrustData(
                     TRUST_MIN,
                     'There are contradictions in his investigation results. He has presented more investigation results than what is possible in the current round.',
-                    isSurelyMafia=True,
                 )
                 return
 
@@ -302,63 +283,23 @@ class GameManager :
             player.setTrustData(TRUST_MAX)
             return
 
-        # trusted police's estimations
+        # police's estimations
         if self.gameState.onePublicPolicePlayer != None :
             policePlayer = self.gameState.onePublicPolicePlayer
+
+            # the trusted police pointed me citizen
             if policePlayer.isTrustedPolice :
                 if policePlayer.estimationsAsPolice[player.info].role == Role.CITIZEN :
                     player.setTrustData(TRUST_MAX)
                     return
-                elif policePlayer.estimationsAsPolice[player.info].role == Role.MAFIA :
-                    player.setTrustData(
-                        TRUST_MIN,
-                        'The police identified him as a mafia member.',
-                        isSurelyMafia=True,
-                    )
-                    return
 
-        # calculate trust point
-        trustData = TrustData()
-
-        # pointed citizens
-        point = 0
-        for playerInfo in player.firstMafiaAssumptions :
-            p = self.gameState.getPlayerByInfo(playerInfo)
-            if not p.isLive and p.info.role != Role.MAFIA :
-                point -= max(p.trustPoint, -10) + 10
-
-        trustData.addData(point, 'He pointed out the citizen first.')
-
-        # pointed mafias
-        for playerInfo in player.voteHistory :
-            p = self.gameState.getPlayerByInfo(playerInfo)
-            if not p.isLive and p.info.role == Role.MAFIA :
-                trustData.addData(10)
-
-        # not pointed surely mafia
-        point = player.isNotVoteSurelyMafiaCount * 10
-        trustData.addData(point, 'He did not vote for the confirmed mafia.')
-
-        # pointed mafia by police
-        point = 0
-
-        if self.gameState.onePublicPolicePlayer != None :
-            policePlayer = self.gameState.onePublicPolicePlayer
+            # the police pointed me mafia
             if policePlayer.estimationsAsPolice[player.info].role == Role.MAFIA :
-                point = -50
+                player.setTrustData(
+                    TRUST_MIN,
+                    'The police identified him as a mafia member.',
+                )
+                return
 
-        trustData.addData(point, 'The police identified him as a mafia member.')
-
-        # update trust data
-        player.setTrustData(trustData.total, trustData.mainIssue)
-
-class TrustData :
-    def __init__(self) :
-        self.total = 0
-        self.maxDecreasePoint = 0
-        self.mainIssue = ''
-
-    def addData(self, point: int, issue: str = '') :
-        self.total += point
-        if point < self.maxDecreasePoint :
-            self.mainIssue = issue
+        # update trust data by record
+        player.updateTrustDataByRecord()

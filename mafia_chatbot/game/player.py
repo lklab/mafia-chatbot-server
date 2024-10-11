@@ -1,12 +1,31 @@
 from mafia_chatbot.game.player_info import *
 from mafia_chatbot.game.strategy import *
 
+class Player :
+    pass
+
+class TrustRecordType:
+    pass
+
 TRUST_MIN: int = -100
 TRUST_DEFAULT: int = 0
 TRUST_MAX: int = 100
 
-class Player :
-    pass
+class TrustRecordType(Enum) :
+    FIRST_POINT_CITIZEN = 0
+    POINT_MAFIA = 1
+    NOT_VOTE_MAFIA = 2
+
+    toPrompt: dict[TrustRecordType, str] = {
+        { FIRST_POINT_CITIZEN : 'He pointed out the citizen first.' },
+        { POINT_MAFIA : '' },
+        { NOT_VOTE_MAFIA : 'He did not vote for the mafia.' },
+    }
+
+class TrustRecord :
+    def __init__(self, type: TrustRecordType, point: int) :
+        self.type = type
+        self.point = point
 
 class Player :
     def __init__(self, name, isAI) :
@@ -20,19 +39,16 @@ class Player :
         self.allVoteStrategies = list[VoteStrategy] = []
 
         # strategy summary
-        self.firstMafiaAssumptions: set[PlayerInfo] = set()
-        self.citizenAssumptions: set[PlayerInfo] = set()
         self.publicRole = Role.CITIZEN
         self.isContradictoryRole: tuple[bool, tuple[Role, Role]] = (False, (None, None))
         self.voteHistory: list[PlayerInfo] = []
         self.estimationsAsPolice: dict[PlayerInfo, Estimation] = {}
 
         # trust data
+        self.trustRecords: list[TrustRecord] = []
         self.trustPoint: int = 0
         self.trustMainIssue: str = ''
-        self.isSurelyMafia: bool = False
-        self.isNotVoteSurelyMafiaCount: int = 0
-        self.figuredOutMafiasAsPolice: list[PlayerInfo] = []
+
         self.isTrustedPolice: bool = False
 
         # police's private data
@@ -50,18 +66,6 @@ class Player :
         # update allDiscussionStrategies
         self.expandList(self.allDiscussionStrategies, round + 1)
         self.allDiscussionStrategies[round] = strategy
-
-        for assumption in strategy.assumptions :
-            for estimation in assumption.estimations :
-                # update firstMafiaAssumptions
-                if estimation.isFirst and estimation.role == Role.MAFIA :
-                    self.firstMafiaAssumptions.add(estimation.playerInfo)
-
-                # update citizenAssumptions
-                if estimation.role != Role.CITIZEN :
-                    self.citizenAssumptions.add(estimation.playerInfo)
-                else :
-                    self.citizenAssumptions.discard(estimation.playerInfo)
 
         # update publicRole
         if self.publicRole != strategy.publicRole :
@@ -95,7 +99,7 @@ class Player :
     def addTestResult(self, player: Player, role: Role) :
         self.testResults[player] = role
 
-    def setTrustData(self, trustPoint: int, mainIssue: str = '', isSurelyMafia: bool = False) :
+    def setTrustData(self, trustPoint: int, mainIssue: str = '') :
         if isinstance(trustPoint, float) :
             trustPoint = round(trustPoint)
 
@@ -106,10 +110,33 @@ class Player :
 
         self.trustPoint = trustPoint
         self.trustMainIssue = mainIssue
-        self.isSurelyMafia = isSurelyMafia
 
-    def addFiguredOutMafiasAsPolice(self, playerInfo: PlayerInfo) :
-        self.figuredOutMafiasAsPolice.append(playerInfo)
+    def addTrustRecord(self, trustRecord: TrustRecord) :
+        self.trustRecords.append(trustRecord)
+
+    def updateTrustDataByRecord(self) :
+        pointDict: dict[TrustRecordType, int] = {}
+
+        for record in self.trustRecords :
+            if record.type in pointDict :
+                pointDict[record.type] += record.point
+            else :
+                pointDict[record.type] = record.point
+        
+        total = 0
+        maxDecreasePoint = 0
+        mainIssue = ''
+
+        for type in pointDict :
+            point = pointDict[type]
+            total += point
+            if point < maxDecreasePoint :
+                maxDecreasePoint = point
+                mainIssue = TrustRecordType.toPrompt[type]
+
+        self.setTrustData(total, mainIssue)
+
+    def setTrustedPolice(self) :
         self.isTrustedPolice = True
 
     def expandList(self, l: list, size: int, fillValue = None) :

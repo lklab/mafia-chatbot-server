@@ -3,14 +3,10 @@ from mafia_chatbot.game.player_info import *
 class Estimation :
     def __init__(self,
             playerInfo: PlayerInfo,
-            role: Role,
-            isFirst: bool = False,
-            isSurelyMafia: bool = False) :
+            role: Role) :
 
         self.playerInfo = playerInfo
         self.role = role
-        self.isFirst = isFirst
-        self.isSurelyMafia = isSurelyMafia
 
     def __str__(self) :
         return f'{self.playerInfo.name}={self.role.name.lower()}'
@@ -44,17 +40,15 @@ class Strategy :
 
         self.mainMafiaAssumption : Assumption = None
         self.mainTarget: PlayerInfo = None
-        self.containsSurelyMafia = False
 
         for assumption in assumptions :
             for estimation in assumption.estimations :
-                if self.mainMafiaAssumption == None and estimation.role == Role.MAFIA :
+                if estimation.role == Role.MAFIA :
                     self.mainMafiaAssumption = assumption
                     self.mainTarget = estimation.playerInfo
-                if estimation.isSurelyMafia :
-                    self.containsSurelyMafia = True
+                    break
 
-            if self.mainMafiaAssumption != None and self.containsSurelyMafia :
+            if self.mainMafiaAssumption != None :
                 break
 
         self.estimations: list[Estimation] = [estimation for assumption in assumptions for estimation in assumption.estimations]
