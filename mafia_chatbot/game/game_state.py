@@ -10,6 +10,39 @@ NAMES = [
     'Charlotte', 'Henry', 'Evelyn', 'Jack', 'Grace'
 ]
 
+class VoteData :
+    def __init__(self, round: int, players: list[Player]) :
+        self.round = round
+
+        self.voteDict: dict[PlayerInfo, list[Player]] = {}
+        self.voteCount: dict[PlayerInfo, int] = {}
+        for player in players :
+            if player.getVoteStrategy(round) != None :
+                target = player.voteStrategy.mainTarget
+                if target not in self.voteDict :
+                    self.voteDict[target] = [player]
+                    self.voteCount[target] = 1
+                else :
+                    self.voteDict[target].append(player)
+                    self.voteCount[target] += 1
+
+        self.isTie = False
+        self.maxVoteCount = 0
+        self.targetPlayer: PlayerInfo = None
+
+        for playerInfo, vote in self.voteCount.items() :
+            if self.maxVoteCount == vote :
+                self.isTie = True
+            elif self.maxVoteCount < vote :
+                self.isTie = False
+                self.maxVoteCount = vote
+                self.targetPlayer = playerInfo
+
+        self.notVoteTargetPlayers: list[Player] = []
+        for playerInfo, votePlayers in self.voteDict.items() :
+            if playerInfo != self.targetPlayer :
+                self.notVoteTargetPlayers += votePlayers
+
 class RemoveReason(Enum) :
     VOTE = 0
     KILL = 1
@@ -65,15 +98,19 @@ class GameState :
 
         # history
         self.discussionHistory: list[str] = []
+        self.voteHistory: list[VoteData] = []
         self.removedPlayers: dict[Player, PlayerRemoveInfo] = {}
 
         # initialize round
         self.round = 0
 
-        # shortcut data
+        # police data
         self.isPoliceLive = True
         self.publicPolicePlayers: set[Player] = []
         self.onePublicPolicePlayer: Player = None
+
+        # discussion data
+        self.firstPointers: dict[Player, Player] = {}
 
     def removePlayer(self, player: Player, reason: RemoveReason) :
         if player == None or not player.isLive :
@@ -132,9 +169,28 @@ class GameState :
     def appendDiscussionHistory(self, playerInfo: PlayerInfo, discussion: str) :
         self.discussionHistory.append(f'{playerInfo.name}: {discussion}')
 
+    def updateVoteHistory(self) -> VoteData :
+        self.expandList(self.voteHistory, self.round + 1)
+        voteData = VoteData(self.round, self.players)
+        self.voteHistory[self.round] = voteData
+        return voteData
+
+    def getVoteData(self, round: int) :
+        if round >= 0 and round < len(self.voteHistory) :
+            return self.voteHistory[round]
+        else :
+            return None
+
+    def getCurrentVoteData(self) :
+        return self.getVoteData(self.round)
+
     def addPublicPolice(self, player: Player) :
         self.publicPolicePlayers.add(player)
         if len(self.publicPolicePlayers) == 1 :
             self.onePublicPolicePlayer = player
         else :
             self.onePublicPolicePlayer = None
+
+    def expandList(self, l: list, size: int, fillValue = None) :
+        for _ in range(len(l), size) :
+            l.append(fillValue)

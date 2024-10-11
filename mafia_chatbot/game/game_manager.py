@@ -37,6 +37,8 @@ class GameManager :
 
                 if self.checkGameEnd() :
                     return
+                else :
+                    self.gameState.addRound()
 
     def processDay(self) :
         print('\n아침이 되었습니다. 토론을 하세요')
@@ -61,6 +63,12 @@ class GameManager :
 
                 self.gameState.appendDiscussionHistory(player.info, discussion)
                 print(f'{player.info.name}: {discussion}')
+
+                # TODO move it out of the if statement
+                for estimation in strategy.mafiaEstimations :
+                    p: Player = self.gameState.getPlayerByInfo(estimation.playerInfo)
+                    if p not in self.gameState.firstPointers :
+                        self.gameState.firstPointers[p] = player
             else :
                 discussion: str = input('당신의 차례입니다: ')
                 self.gameState.appendDiscussionHistory(player.info, discussion)
@@ -77,46 +85,30 @@ class GameManager :
         print()
 
         players = self.gameState.players
-        voteDict: dict[PlayerInfo, int] = {}
-
         for player in players :
             if player.info.isAI :
-                target = evaluator.evaluateVoteTarget(self.gameState, player)
+                strategy: VoteStrategy = evaluator.evaluateVoteTarget(self.gameState, player)
+                player.setVoteStrategy(self.gameState.round, strategy)
             else :
-                targetName = input('투표할 대상을 정하세요: ')
-                target = self.gameState.getPlayerInfoByName(targetName)
+                # TODO
+                pass
 
-            if target is not None :
-                if target not in voteDict :
-                    voteDict[target] = 0
-                voteDict[target] += 1
+        voteData: VoteData = self.gameState.updateVoteHistory()
+        print(f'투표 현황: {voteData.voteCount}')
 
-        print(f'투표 현황: {voteDict}')
-
-        isTie = False
-        maxVote = 0
-        maxPlayer: PlayerInfo = None
-
-        for playerInfo, vote in voteDict.items() :
-            if maxVote == vote :
-                isTie = True
-            elif maxVote < vote :
-                isTie = False
-                maxVote = vote
-                maxPlayer = playerInfo
-
-        if isTie :
+        if voteData.isTie :
             print('동률로 인해 아무도 처형하지 않았습니다.')
         else :
-            print(f'{maxPlayer.name}을 처형합니다. 그의 직업은 {maxPlayer.role.name}이었습니다.')
-            self.gameState.removePlayerByInfo(maxPlayer, RemoveReason.VOTE)
+            print(f'{voteData.targetPlayer.name}을 처형합니다. 그의 직업은 {voteData.targetPlayer.role.name}이었습니다.')
+            self.gameState.removePlayerByInfo(voteData.targetPlayer, RemoveReason.VOTE)
+            self.updateTrustRecordsForRemovedPlayer(voteData.targetPlayer, RemoveReason.VOTE)
 
             # update player.setTrustedPolice
-            if maxPlayer.role == Role.MAFIA :
+            if voteData.targetPlayer.role == Role.MAFIA :
                 for player in players :
                     if player.publicRole == Role.POLICE :
                         for estimation in player.estimationsAsPolice.values() :
-                            if estimation.playerInfo == maxPlayer and estimation.role == Role.MAFIA :
+                            if estimation.playerInfo == voteData.targetPlayer and estimation.role == Role.MAFIA :
                                 player.setTrustedPolice()
                                 break
 
@@ -173,6 +165,7 @@ class GameManager :
             else :
                 print(f'{killTarget.name}이 마피아에 의해 암살당했습니다.')
                 self.gameState.removePlayerByInfo(killTarget, RemoveReason.KILL)
+                self.updateTrustRecordsForRemovedPlayer(killTarget, RemoveReason.KILL)
 
         # police action: test
         police: Player = self.gameState.policePlayer
@@ -191,13 +184,8 @@ class GameManager :
                     print(f'{target.name}의 직업은 {target.role} 입니다.')
 
     def checkGameEnd(self) :
-        civilCount = 0
-        mafiaCount = 0
-        for player in self.gameState.players :
-            if player.info.role == Role.MAFIA :
-                mafiaCount += 1
-            else :
-                civilCount += 1
+        mafiaCount = len(self.gameState.mafiaPlayers)
+        civilCount = len(self.gameState.players) - mafiaCount
 
         if mafiaCount == 0 :
             print('\n시민의 승리입니다.')
@@ -211,6 +199,47 @@ class GameManager :
     def updateAllTrustPoint(self) :
         for player in self.gameState.players :
             self.updateTrustPoint(player)
+
+    def updateTrustRecordsForRemovedPlayer(self, playerInfo: PlayerInfo, removeReason: RemoveReason) :
+        removeInfo: PlayerRemoveInfo = self.gameState.getPlayerRemoveInfoByInfo(playerInfo)
+        roundInfo: RoundInfo = removeInfo.roundInfo
+        removedPlayer: Player = removeInfo.player
+
+        playerCount = roundInfo.playerCount
+        mafiaCount = roundInfo.mafiaCount
+        civilCount = playerCount - mafiaCount
+
+        if mafiaCount == 0 or civilCount <= mafiaCount :
+            return
+
+        if removedPlayer in self.gameState.firstPointers :
+            player: Player = self.gameState.firstPointers[removedPlayer]
+
+            # FIRST_POINT_CITIZEN
+            if removedPlayer.info.role != Role.MAFIA :
+                player.addTrustRecord(TrustRecord(
+                    type=TrustRecordType.FIRST_POINT_CITIZEN,
+                    point= -(removedPlayer.trustPoint + 100) / (playerCount - 2 * mafiaCount),
+                ))
+
+            # FIRST_POINT_MAFIA
+            else :
+                player.addTrustRecord(TrustRecord(
+                    type=TrustRecordType.FIRST_POINT_MAFIA,
+                    point= 100 / mafiaCount,
+                ))
+
+        # NOT_VOTE_MAFIA
+        if removedPlayer.info.role == Role.MAFIA and removeReason == RemoveReason.VOTE :
+            voteData: VoteData = self.gameState.getCurrentVoteData()
+            notVoteTargetCount = len(voteData.notVoteTargetPlayers)
+
+            for player in voteData.notVoteTargetPlayers :
+                if player.isLive :
+                    player.addTrustRecord(TrustRecord(
+                        type=TrustRecordType.NOT_VOTE_MAFIA,
+                        point= - 100 / notVoteTargetCount
+                    ))
 
     def updateTrustPoint(self, player: Player) :
         # surely mafia

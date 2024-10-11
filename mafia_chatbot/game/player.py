@@ -13,17 +13,20 @@ TRUST_MAX: int = 100
 
 class TrustRecordType(Enum) :
     FIRST_POINT_CITIZEN = 0
-    POINT_MAFIA = 1
+    FIRST_POINT_MAFIA = 1
     NOT_VOTE_MAFIA = 2
 
     toPrompt: dict[TrustRecordType, str] = {
         { FIRST_POINT_CITIZEN : 'He pointed out the citizen first.' },
-        { POINT_MAFIA : '' },
+        { FIRST_POINT_MAFIA : '' },
         { NOT_VOTE_MAFIA : 'He did not vote for the mafia.' },
     }
 
 class TrustRecord :
     def __init__(self, type: TrustRecordType, point: int) :
+        if isinstance(point, float) :
+            point = round(point)
+
         self.type = type
         self.point = point
 
@@ -92,6 +95,12 @@ class Player :
         # update voteHistory
         self.expandList(self.voteHistory, round + 1)
         self.voteHistory[round] = strategy.mainTarget
+
+    def getVoteStrategy(self, round: int) -> VoteStrategy :
+        if round >= 0 and round < len(self.allVoteStrategies) :
+            return self.allVoteStrategies[round]
+        else :
+            return None
 
     def getDiscussion(self) :
         return self.discussionStrategy.assumptionsToStr()
