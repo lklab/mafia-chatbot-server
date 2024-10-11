@@ -34,6 +34,7 @@ class Player :
     def __init__(self, name, isAI) :
         self.isLive = True
         self.info = PlayerInfo(name, isAI)
+        self.conformity: float = 1.0
 
         # strategies
         self.discussionStrategy: Strategy = None

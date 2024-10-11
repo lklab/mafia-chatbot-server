@@ -4,6 +4,108 @@ from typing import Callable
 from mafia_chatbot.game.game_state import GameState
 from mafia_chatbot.game.player import *
 
+def getOneTargetStrategy(publicRole: Role, targetInfo: PlayerInfo, reason: str) -> Strategy :
+    return Strategy(publicRole, [Assumption([Estimation(targetInfo, Role.MAFIA)], reason)])
+
+def evaluateDiscussionStrategy(gameState: GameState, player: Player) -> Strategy :
+    # the police who pointed me of being the mafia
+    for police in gameState.publicPolicePlayers :
+        if player.info in police.estimationsAsPolice and police.estimationsAsPolice[player.info].role == Role.MAFIA :
+            return getOneTargetStrategy(player.publicRole, police.info, 'He pointed me of being the mafia, but I am not.')
+
+    # conformity
+    discussionTargets: dict[PlayerInfo, list[Player]] = {}
+    for other in gameState.players :
+        if other == player :
+            continue
+
+        if other.trustPoint == TRUST_MIN :
+            continue
+
+        strategy: Strategy = other.discussionStrategy
+        if strategy == None :
+            continue
+
+        for estimate in strategy.mafiaEstimations :
+            if estimate.playerInfo not in discussionTargets :
+                discussionTargets[estimate.playerInfo] = [other]
+            else :
+                discussionTargets[estimate.playerInfo].append(other)
+
+    conformityList: list[tuple[float, PlayerInfo]] = []
+    for target, players in discussionTargets.items() :
+        targetPlayer: Player = gameState.getPlayerByInfo(target)
+        if targetPlayer == player :
+            continue
+
+        totalTrust = sum(map(lambda p: max(p.trustPoint, 0), players))
+        prob = ((50.0 - 0.5 * targetPlayer.trustPoint) / 100.0) * \
+            ((100.0 + totalTrust) / 100.0) * \
+            player.conformity
+        conformityList.append((prob, target))
+
+    conformityList.sort()
+
+    for prob, target in conformityList :
+        if prob > random.random() :
+            conformityPlayer: Player = None
+            for p in discussionTargets[target] :
+                if conformityPlayer == None or p.trustPoint > conformityPlayer.trustPoint :
+                    conformityPlayer = p
+
+            return getOneTargetStrategy(player.publicRole, target, f'You agree with {conformityPlayer.info.name}\'s opinion.')
+
+    # two polices
+    if len(gameState.publicPolicePlayers) >= 2 :
+        targetPlayers: list[Player] = []
+        for police in gameState.publicPolicePlayers :
+            if police == player :
+                continue
+
+            if not targetPlayers or police.trustPoint == targetPlayers[0].trustPoint :
+                targetPlayers.append(police)
+            elif police.trustPoint < targetPlayers[0].trustPoint :
+                targetPlayers.clear()
+                targetPlayers.append(police)
+
+        if targetPlayers :
+            targetPlayer: Player = random.choice(targetPlayers)
+
+            reason: str = targetPlayer.trustMainIssue
+            if not reason :
+                if player.publicRole == Role.POLICE :
+                    reason = 'Your role is the police.'
+                else :
+                    reason = 'He seems a bit more suspicious.'
+
+            return getOneTargetStrategy(player.publicRole, targetPlayer.info, reason)
+
+    # trust point
+    playerIndexes: list[int] = range(len(gameState.players))
+    random.shuffle(playerIndexes)
+    playerIndexes.sort(key=lambda i : gameState.players[i].trustPoint)
+
+    for i in playerIndexes :
+        other: Player = gameState.players[i]
+        if other == player :
+            continue
+
+        prob: float = -min(other.trustPoint, 0) / 100.0
+        if prob > random.random() :
+            reason: str = other.trustMainIssue
+            if not reason :
+                reason = 'Due to a lack of information, You will randomly suspect someone as the mafia.'
+            return getOneTargetStrategy(player.publicRole, other.info, reason)
+
+    # random player
+    targetPlayers: list[Player] = list(filter(lambda p : p != player, gameState.players))
+    target = random.choice(targetPlayers)
+    return getOneTargetStrategy(
+        player.publicRole,
+        target.info,
+        'Due to a lack of information, You will randomly suspect someone as the mafia.'
+    )
+
 def pickOne(players: list[Player]) -> PlayerInfo :
     return random.choice(players).info
 
