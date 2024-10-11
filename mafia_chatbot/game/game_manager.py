@@ -120,7 +120,7 @@ class GameManager :
             print('동률로 인해 아무도 처형하지 않았습니다.')
         else :
             print(f'{maxPlayer.name}을 처형합니다. 그의 직업은 {maxPlayer.role.name}이었습니다.')
-            self.gameState.removePlayerByInfo(maxPlayer)
+            self.gameState.removePlayerByInfo(maxPlayer, RemoveReason.VOTE)
 
             # update player.figuredOutMafiasAsPolice
             if maxPlayer.role == Role.MAFIA :
@@ -183,7 +183,7 @@ class GameManager :
                 print(f'마피아는 {killTarget.name}을 암살하려 했지만 의사의 치료로 실패했습니다.')
             else :
                 print(f'{killTarget.name}이 마피아에 의해 암살당했습니다.')
-                self.gameState.removePlayerByInfo(killTarget)
+                self.gameState.removePlayerByInfo(killTarget, RemoveReason.KILL)
 
         # police action: test
         police: Player = self.gameState.policePlayer

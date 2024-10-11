@@ -10,6 +10,22 @@ NAMES = [
     'Charlotte', 'Henry', 'Evelyn', 'Jack', 'Grace'
 ]
 
+class RemoveReason(Enum) :
+    VOTE = 0
+    KILL = 1
+
+class RoundInfo :
+    def __init__(self, round: int, playerCount: int, mafiaCount: int) :
+        self.round = round
+        self.playerCount = playerCount
+        self.mafiaCount = mafiaCount
+
+class PlayerRemoveInfo :
+    def __init__(self, player: Player, reason: RemoveReason, roundInfo: RoundInfo) :
+        self.player = player
+        self.reason = reason
+        self.roundInfo = roundInfo
+
 class GameState :
     def __init__(self, gameInfo: GameInfo) :
         self.gameInfo = gameInfo
@@ -47,21 +63,19 @@ class GameState :
         for player in self.allPlayers :
             self.allPlayerMap[player.info] = player
 
-        # initialize discussion history
+        # history
         self.discussionHistory: list[str] = []
+        self.removedPlayers: dict[Player, PlayerRemoveInfo] = {}
 
         # initialize round
         self.round = 0
-
-        # remove history
-        self.removedPlayers: list[Player] = []
 
         # shortcut data
         self.isPoliceLive = True
         self.publicPolicePlayers: set[Player] = []
         self.onePublicPolicePlayer: Player = None
 
-    def removePlayer(self, player: Player) :
+    def removePlayer(self, player: Player, reason: RemoveReason) :
         if player == None or not player.isLive :
             return
 
@@ -71,7 +85,8 @@ class GameState :
         if player.info.role == Role.MAFIA :
             self.mafiaPlayers.remove(player)
 
-        self.removedPlayers.append(player)
+        # update history
+        self.removedPlayers[player] = PlayerRemoveInfo(player, reason, self.getCurrentRoundInfo())
 
         # update shortcut data
         if player.info.role == Role.POLICE :
@@ -83,14 +98,14 @@ class GameState :
         else :
             self.onePublicPolicePlayer = None
 
-    def removePlayerByInfo(self, playerInfo: PlayerInfo) :
-        self.removePlayer(self.getPlayerByInfo(playerInfo))
+    def removePlayerByInfo(self, playerInfo: PlayerInfo, reason: RemoveReason) :
+        self.removePlayer(self.getPlayerByInfo(playerInfo), reason)
 
-    def getLastRemovedPlayer(self) -> Player :
-        count = len(self.removedPlayers)
-        if count <= 0 :
-            return None
-        return self.removedPlayers[count - 1]
+    def getPlayerRemoveInfo(self, player: Player) -> PlayerRemoveInfo :
+        return self.removedPlayers.get(player)
+
+    def getPlayerRemoveInfoByInfo(self, playerInfo: PlayerInfo) -> PlayerRemoveInfo :
+        return self.getPlayerRemoveInfo(self.getPlayerByInfo(playerInfo))
 
     def getPlayerByInfo(self, playerInfo: PlayerInfo) -> Player :
         return self.allPlayerMap.get(playerInfo)
@@ -110,6 +125,9 @@ class GameState :
 
     def addRound(self) :
         self.round += 1
+
+    def getCurrentRoundInfo(self) -> RoundInfo :
+        return RoundInfo(self.round, len(self.players), len(self.mafiaPlayers))
 
     def appendDiscussionHistory(self, playerInfo: PlayerInfo, discussion: str) :
         self.discussionHistory.append(f'{playerInfo.name}: {discussion}')
