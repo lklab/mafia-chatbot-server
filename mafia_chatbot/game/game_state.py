@@ -125,15 +125,18 @@ class GameState :
         # update history
         self.removedPlayers[player] = PlayerRemoveInfo(player, reason, self.getCurrentRoundInfo())
 
-        # update shortcut data
+        # update police data
+        self.publicPolicePlayers.discard(player)
+
         if player.info.role == Role.POLICE :
             self.isPoliceLive = False
-
-        self.publicPolicePlayers.discard(player)
-        if len(self.publicPolicePlayers) == 1 :
-            self.onePublicPolicePlayer = next(iter(self.publicPolicePlayers))
+            self.onePublicPolicePlayer = player
+            player.isTrustedPolice = True
         else :
-            self.onePublicPolicePlayer = None
+            if len(self.publicPolicePlayers) == 1 :
+                self.onePublicPolicePlayer = next(iter(self.publicPolicePlayers))
+            else :
+                self.onePublicPolicePlayer = None
 
     def removePlayerByInfo(self, playerInfo: PlayerInfo, reason: RemoveReason) :
         self.removePlayer(self.getPlayerByInfo(playerInfo), reason)
@@ -186,10 +189,12 @@ class GameState :
 
     def addPublicPolice(self, player: Player) :
         self.publicPolicePlayers.add(player)
-        if len(self.publicPolicePlayers) == 1 :
-            self.onePublicPolicePlayer = player
-        else :
-            self.onePublicPolicePlayer = None
+
+        if self.isPoliceLive :
+            if len(self.publicPolicePlayers) == 1 :
+                self.onePublicPolicePlayer = player
+            else :
+                self.onePublicPolicePlayer = None
 
     def getPlayerCount(self) -> int :
         return len(self.players)
