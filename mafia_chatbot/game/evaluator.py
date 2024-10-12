@@ -29,7 +29,7 @@ def getConformityTarget(gameState: GameState, player: Player) -> tuple[Player, s
         if other.trustPoint == TRUST_MIN :
             continue
 
-        strategy: Strategy = other.discussionStrategy
+        strategy: Strategy = other.getDiscussionStrategy(gameState.round)
         if strategy == None :
             continue
 
@@ -42,7 +42,7 @@ def getConformityTarget(gameState: GameState, player: Player) -> tuple[Player, s
     conformityList: list[tuple[float, PlayerInfo]] = []
     for target, players in discussionTargets.items() :
         targetPlayer: Player = gameState.getPlayerByInfo(target)
-        if targetPlayer == player :
+        if targetPlayer == player or not targetPlayer.isLive :
             continue
 
         if player.info.role == Role.MAFIA and targetPlayer.info.role == Role.MAFIA :
@@ -171,7 +171,7 @@ defaultEvaluators: list[Callable[[GameState, Player], tuple[Player, str]]] = [
 def getTestResultsForMafia(gameState: GameState, player: Player) -> list[Estimation] :
     estimations: list[Estimation] = []
     estimationCount: int = gameState.round
-    mafiaCount: int = gameState.gameInfo.mafiaCount
+    mafiaCount: int = gameState.getMafiaCount()
 
     minTrustPlayer: Player = getMinTrustPlayer(
         list(gameState.publicPolicePlayers),
@@ -195,13 +195,13 @@ def getTestResultsForMafia(gameState: GameState, player: Player) -> list[Estimat
         if not p.isLive :
             if p.info.role == Role.MAFIA :
                 estimations.append(Estimation(p.info, Role.MAFIA))
-                mafiaCount -= 1
             else :
                 estimations.append(Estimation(p.info, Role.CITIZEN))
 
+    playerCount: int = gameState.gameInfo.playerCount - 1
     for p in estimationTargets :
         if p.isLive :
-            if mafiaCount > 0 :
+            if mafiaCount / max(playerCount - len(estimations), 1) > random.random() :
                 estimations.append(Estimation(p.info, Role.MAFIA))
                 mafiaCount -= 1
             else :
@@ -237,6 +237,9 @@ def getTestResultsForPolice(police: Player) -> list[Estimation] :
     estimations: list[Estimation] = []
     for p, role in police.testResults.items() :
         estimations.append(Estimation(p.info, role))
+
+    random.shuffle(estimations)
+    estimations.sort(key=lambda estimation : estimation.role)
     return estimations
 
 def revealPoliceForPolice(gameState: GameState, player: Player) -> list[Estimation] :
@@ -257,11 +260,47 @@ revealPoliceEvaluators: dict[Role, Callable[[GameState, Player], list[Estimation
     { Role.POLICE : revealPoliceForPolice },
 }
 
+def updatePoliceTestForMafia(gameState: GameState, player: Player) -> Estimation :
+    estimatedMafiaCount: int = 0
+    targets: list[Player] = []
+
+    for p in gameState.players :
+        if p == player :
+            continue
+
+        if p.info in player.estimationsAsPolice and player.estimationsAsPolice[p.info].role == Role.MAFIA :
+            estimatedMafiaCount += 1
+        elif p.info not in player.estimationsAsPolice :
+            targets.append(p)
+
+    target: Player = random.choice(targets)
+    unknownMafia: int = gameState.getMafiaCount() - estimatedMafiaCount
+    unknownPlayer: int = gameState.gameInfo.playerCount - len(player.estimationsAsPolice) - 1
+
+    if unknownMafia / (max(unknownPlayer, 1)) > random.random() :
+        return Estimation(target.info, Role.MAFIA)
+    else :
+        return Estimation(target.info, Role.CITIZEN)
+
+def updatePoliceTestForPolice(_: GameState, player: Player) -> Estimation :
+    target: Player = player.testedTargets[-1]
+    return Estimation(target.info, player.testResults[target])
+
+updatePoliceTestEvaluators: dict[Role, Callable[[GameState, Player], Estimation]] = {
+    { Role.MAFIA : updatePoliceTestForMafia },
+    { Role.POLICE : updatePoliceTestForPolice },
+}
+
 def evaluateDiscussionStrategy(gameState: GameState, player: Player) -> Strategy :
     if player.publicRole == Role.CITIZEN and player.info.role in revealPoliceEvaluators :
         estimations: list[Estimation] = revealPoliceEvaluators[player.info.role](gameState, player)
         if estimations != None :
-            return Strategy(Role.POLICE, [Assumption(estimations, 'You investigated them as the police.')])
+            return Strategy(Role.POLICE, [Assumption(estimations, 'You investigated them.')])
+
+    if player.publicRole == Role.POLICE and player.info.role in updatePoliceTestEvaluators :
+        estimation: Estimation = updatePoliceTestEvaluators[player.info.role](gameState, player)
+        if estimation != None :
+            return Strategy(Role.POLICE, [Assumption([estimation], 'You investigated he')])
 
     for evaluator in defaultEvaluators :
         target, reason = evaluator(gameState, player)

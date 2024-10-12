@@ -58,6 +58,7 @@ class Player :
 
         # police's private data
         self.testResults: dict[Player, Role] = {}
+        self.testedTargets: list[Player] = []
 
     def __str__(self) :
         return self.info.__str__()
@@ -98,6 +99,12 @@ class Player :
         self.expandList(self.voteHistory, round + 1)
         self.voteHistory[round] = strategy.mainTarget
 
+    def getDiscussionStrategy(self, round: int) -> Strategy :
+        if round >= 0 and round < len(self.allDiscussionStrategies) :
+            return self.allDiscussionStrategies[round]
+        else :
+            return None
+
     def getVoteStrategy(self, round: int) -> VoteStrategy :
         if round >= 0 and round < len(self.allVoteStrategies) :
             return self.allVoteStrategies[round]
@@ -109,6 +116,7 @@ class Player :
 
     def addTestResult(self, player: Player, role: Role) :
         self.testResults[player] = role
+        self.testedTargets.append(player)
 
     def setTrustData(self, trustPoint: int, mainIssue: str = '') :
         if isinstance(trustPoint, float) :

@@ -131,7 +131,7 @@ class GameState :
         if player.info.role == Role.POLICE :
             self.isPoliceLive = False
             self.onePublicPolicePlayer = player
-            player.isTrustedPolice = True
+            player.setTrustedPolice()
         else :
             if len(self.publicPolicePlayers) == 1 :
                 self.onePublicPolicePlayer = next(iter(self.publicPolicePlayers))
