@@ -35,6 +35,7 @@ class Player :
         self.isLive = True
         self.info = PlayerInfo(name, isAI)
         self.conformity: float = 1.0
+        self.revealFactor: float = 0.1
 
         # strategies
         self.discussionStrategy: Strategy = None

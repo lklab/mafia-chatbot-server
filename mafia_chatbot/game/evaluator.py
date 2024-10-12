@@ -214,11 +214,10 @@ def getTestResultsForMafia(gameState: GameState, player: Player) -> list[Estimat
 def revealPoliceForMafia(gameState: GameState, player: Player) -> list[Estimation] :
     # check state condition
     if (
-        player.publicRole == Role.CITIZEN and
         gameState.getMafiaCount() >= 2 and
         gameState.isPoliceLive and
-        len(filter(lambda p : p.isTrustedPolice, gameState.publicPolicePlayers)) == 0 and
-        len(filter(lambda p : p.info.role == Role.MAFIA, gameState.publicPolicePlayers)) == 0
+        len(list(filter(lambda p : p.isTrustedPolice, gameState.publicPolicePlayers))) == 0 and
+        len(list(filter(lambda p : p.info.role == Role.MAFIA, gameState.publicPolicePlayers))) == 0
     ) :
         # check trigger condition
         for p in gameState.players :
@@ -234,10 +233,34 @@ def revealPoliceForMafia(gameState: GameState, player: Player) -> list[Estimatio
 
     return None
 
+def getTestResultsForPolice(police: Player) -> list[Estimation] :
+    estimations: list[Estimation] = []
+    for p, role in police.testResults.items() :
+        estimations.append(Estimation(p.info, role))
+    return estimations
+
+def revealPoliceForPolice(gameState: GameState, player: Player) -> list[Estimation] :
+    for p in gameState.publicPolicePlayers :
+        if p not in player.testResults or player.testResults[p] != Role.CITIZEN :
+            return getTestResultsForPolice(player)
+
+    knownMafiaCount: int = len(list(filter(lambda p : player.testResults[p] == Role.MAFIA, player.testResults)))
+    revealProb: float = (knownMafiaCount / gameState.getMafiaCount) * (1.0 - player.revealFactor) + player.revealFactor
+
+    if revealProb > random.random() :
+        return getTestResultsForPolice(player)
+
+    return None
+
+revealPoliceEvaluators: dict[Role, Callable[[GameState, Player], list[Estimation]]] = {
+    { Role.MAFIA : revealPoliceForMafia },
+    { Role.POLICE : revealPoliceForPolice },
+}
+
 def evaluateDiscussionStrategy(gameState: GameState, player: Player) -> Strategy :
-    if player.info.role == Role.MAFIA :
-        estimations: list[Estimation] = revealPoliceForMafia(gameState, player)
-        if estimations :
+    if player.publicRole == Role.CITIZEN and player.info.role in revealPoliceEvaluators :
+        estimations: list[Estimation] = revealPoliceEvaluators[player.info.role](gameState, player)
+        if estimations != None :
             return Strategy(Role.POLICE, [Assumption(estimations, 'You investigated them as the police.')])
 
     for evaluator in defaultEvaluators :
