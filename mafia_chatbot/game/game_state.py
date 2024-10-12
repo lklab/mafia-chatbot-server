@@ -191,6 +191,15 @@ class GameState :
         else :
             self.onePublicPolicePlayer = None
 
+    def getPlayerCount(self) -> int :
+        return len(self.players)
+
+    def getMafiaCount(self) -> int :
+        return len(self.mafiaPlayers)
+
+    def getCitizenCount(self) -> int :
+        return self.getPlayerCount() - self.getMafiaCount()
+
     def expandList(self, l: list, size: int, fillValue = None) :
         for _ in range(len(l), size) :
             l.append(fillValue)
