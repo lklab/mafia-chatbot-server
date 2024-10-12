@@ -47,6 +47,11 @@ def getConformityTarget(gameState: GameState, player: Player) -> tuple[Player, s
 
         if player.info.role == Role.MAFIA and targetPlayer.info.role == Role.MAFIA :
             conformity: float = player.conformity * 0.5 # for mafia
+        elif player.info.role == Role.POLICE and targetPlayer in player.testResults : # for police
+            if player.testResults[targetPlayer] == Role.MAFIA :
+                conformity: float = 10.0
+            else :
+                conformity: float = player.conformity * 0.5
         else :
             conformity: float = player.conformity
 
@@ -96,6 +101,19 @@ def getTargetFormTowPolice(gameState: GameState, player: Player) -> tuple[Player
 
     return None, None
 
+def getTargetFromTestResults(_: GameState, player: Player) -> tuple[Player, str] :
+    if player.info.role != Role.POLICE :
+        return None, None
+
+    target: Player = getMinTrustPlayer(list(player.testResults), lambda p : player.testResults[p] == Role.MAFIA)
+    if target :
+        reason: str = target.trustMainIssue
+        if not reason :
+            reason = 'Due to a lack of information, You will randomly suspect someone as the mafia.'
+        return target, reason
+
+    return None, None
+
 def getTargetByTrust(gameState: GameState, player: Player) -> tuple[Player, str] :
     playerIndexes: list[int] = range(len(gameState.players))
     random.shuffle(playerIndexes)
@@ -109,6 +127,9 @@ def getTargetByTrust(gameState: GameState, player: Player) -> tuple[Player, str]
         # for mafia
         if player.info.role == Role.MAFIA and other.info.role == Role.MAFIA and other.trustPoint > TRUST_MIN :
             continue 
+        # for police
+        if player.info.role == Role.POLICE and other in player.testResults and player.testResults[other] == Role.CITIZEN :
+            continue
 
         prob: float = -min(other.trustPoint, 0) / 100.0
         if prob > random.random() :
@@ -120,10 +141,20 @@ def getTargetByTrust(gameState: GameState, player: Player) -> tuple[Player, str]
     return None, None
 
 def getRandomTarget(gameState: GameState, player: Player) -> tuple[Player, str] :
-    if player.info.role != Role.MAFIA :
-        targetPlayers: list[Player] = list(filter(lambda p : p != player, gameState.players))
-    else : # for mafia
+    if player.info.role == Role.MAFIA : # for mafia
         targetPlayers: list[Player] = list(filter(lambda p : p.info.role != Role.MAFIA, gameState.players))
+
+    elif player.info.role == Role.POLICE : # for police
+        targetPlayers: list[Player] = list(filter(
+            lambda p :
+                p != player and (
+                    p not in player.testResults or player.testResults[p] == Role.MAFIA
+                ),
+            gameState.players
+        ))
+
+    else :
+        targetPlayers: list[Player] = list(filter(lambda p : p != player, gameState.players))
 
     target = random.choice(targetPlayers)
     return target, 'Due to a lack of information, You will randomly suspect someone as the mafia.'
@@ -132,6 +163,7 @@ defaultEvaluators: list[Callable[[GameState, Player], tuple[Player, str]]] = [
     getPolicePoiningMe,
     getConformityTarget,
     getTargetFormTowPolice,
+    getTargetFromTestResults,
     getTargetByTrust,
     getRandomTarget,
 ]
