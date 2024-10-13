@@ -109,6 +109,9 @@ class GameState :
         self.publicPolicePlayers: set[Player] = []
         self.onePublicPolicePlayer: Player = None
 
+        # doctor data
+        self.isDoctorLive = True
+
         # discussion data
         self.firstPointers: dict[Player, Player] = {}
 
@@ -137,6 +140,10 @@ class GameState :
                 self.onePublicPolicePlayer = next(iter(self.publicPolicePlayers))
             else :
                 self.onePublicPolicePlayer = None
+
+        # update doctor data
+        if player.info.role == Role.DOCTOR :
+            self.isDoctorLive = False
 
     def removePlayerByInfo(self, playerInfo: PlayerInfo, reason: RemoveReason) :
         self.removePlayer(self.getPlayerByInfo(playerInfo), reason)

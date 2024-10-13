@@ -36,6 +36,7 @@ class Player :
         self.info = PlayerInfo(name, isAI)
         self.conformity: float = 1.0
         self.revealFactor: float = 0.1
+        self.selfHealFactor: float = 0.9
 
         # strategies
         self.discussionStrategy: Strategy = None
