@@ -43,6 +43,8 @@ class GameManager :
     def processDay(self) :
         print('\n아침이 되었습니다. 토론을 하세요')
 
+        self.gameState.firstPointers.clear()
+
         players = self.gameState.players
         playerCount = len(players)
         for i in range(playerCount) :
@@ -54,27 +56,32 @@ class GameManager :
             player = players[index]
             if player.info.isAI :
                 strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, players[index])
-                player.setDiscussionStrategy(strategy)
+                player.setDiscussionStrategy(self.gameState.round, strategy)
 
                 if self.gameState.gameInfo.useLLM :
                     discussion: str = self.llm.getDiscussion(self.gameState, player)
                 else :
                     discussion: str = str(strategy)
 
+                discussion = f'{player.info.name}: {discussion}'
                 self.gameState.appendDiscussionHistory(player.info, discussion)
-                print(f'{player.info.name}: {discussion}')
-
-                # TODO move it out of the if statement
-                for estimation in strategy.mafiaEstimations :
-                    p: Player = self.gameState.getPlayerByInfo(estimation.playerInfo)
-                    if p not in self.gameState.firstPointers :
-                        self.gameState.firstPointers[p] = player
+                print(discussion)
             else :
                 discussion: str = input('당신의 차례입니다: ')
-                self.gameState.appendDiscussionHistory(player.info, discussion)
+                targetInfo: PlayerInfo = self.gameState.getPlayerInfoByName(discussion)
+                strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, targetInfo, '')
+                player.setDiscussionStrategy(self.gameState.round, strategy)
+                discussion = f'{player.info.name}: {discussion}'
+
+            self.gameState.appendDiscussionHistory(player.info, discussion)
 
             if player.publicRole == Role.POLICE :
                 self.gameState.addPublicPolice(player)
+
+            for estimation in strategy.mafiaEstimations :
+                p: Player = self.gameState.getPlayerByInfo(estimation.playerInfo)
+                if p not in self.gameState.firstPointers :
+                    self.gameState.firstPointers[p] = player
 
         self.discussionIndex += 1
         self.discussionIndex %= playerCount
@@ -87,11 +94,13 @@ class GameManager :
         players = self.gameState.players
         for player in players :
             if player.info.isAI :
-                strategy: VoteStrategy = evaluator.evaluateVoteTarget(self.gameState, player)
-                player.setVoteStrategy(self.gameState.round, strategy)
+                strategy: VoteStrategy = evaluator.evaluateVoteStrategy(self.gameState, player)
             else :
-                # TODO
-                pass
+                targetName = input('투표할 대상을 정하세요: ')
+                targetInfo: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
+                strategy: VoteStrategy = VoteStrategy(targetInfo)
+
+            player.setVoteStrategy(self.gameState.round, strategy)
 
         voteData: VoteData = self.gameState.updateVoteHistory()
         print(f'투표 현황: {voteData.voteCount}')
@@ -118,48 +127,27 @@ class GameManager :
         healTarget: PlayerInfo = None
 
         if doctor.isLive :
+            print()
             if doctor.info.isAI :
-                healTarget = evaluator.evaluateHealTarget(self.gameState, doctor)
-                print()
+                healTarget: PlayerInfo = evaluator.evaluateHealTarget(self.gameState, doctor).info
                 print(f'의사는 {healTarget.name}을 치료합니다.')
             else :
-                print()
                 targetName = input('치료할 대상을 정하세요: ')
                 healTarget: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
 
         # mafia action: kill
         print()
-        killVoteDict: dict[PlayerInfo, int] = {}
 
-        for mafia in self.gameState.mafiaPlayers :
-            if mafia.info.isAI :
-                target: PlayerInfo = evaluator.evaluateKillTarget(self.gameState, mafia)
-            else :
-                targetName = input('암살할 대상을 정하세요: ')
-                target: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
+        killTarget: PlayerInfo = None
+        if self.gameState.humanPlayer.info.role == Role.MAFIA and self.gameState.humanPlayer.isLive :
+            targetName = input('암살할 대상을 정하세요: ')
+            killTarget: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
+        else :
+            killTarget: PlayerInfo = evaluator.evaluateKillTarget(self.gameState).info
 
-            if target is not None :
-                if target not in killVoteDict :
-                    killVoteDict[target] = 0
-                killVoteDict[target] += 1
-
-        print(f'암살 투표 현황: {killVoteDict}')
-
-        maxKillVote = 0
-        maxKillTargets: list[PlayerInfo] = []
-
-        for playerInfo, vote in killVoteDict.items() :
-            if maxKillVote == vote :
-                maxKillTargets.append(playerInfo)
-            elif maxKillVote < vote :
-                maxKillVote = vote
-                maxKillTargets.clear()
-                maxKillTargets.append(playerInfo)
-
-        if len(maxKillTargets) == 0 :
+        if killTarget == None :
             print('마피아의 실수로 암살에 실패했습니다.')
         else :
-            killTarget: PlayerInfo = random.choice(maxKillTargets)
             if killTarget == healTarget :
                 print(f'마피아는 {killTarget.name}을 암살하려 했지만 의사의 치료로 실패했습니다.')
             else :
@@ -169,19 +157,20 @@ class GameManager :
 
         # police action: test
         police: Player = self.gameState.policePlayer
+        testTarget: PlayerInfo = None
+
         if police.isLive :
+            print()
             if police.info.isAI :
-                target: PlayerInfo = evaluator.evaluateTestTarget(self.gameState, police)
-                targetPlayer: Player = self.gameState.getPlayerByInfo(target)
-                police.addTestResult(targetPlayer, targetPlayer.info.role)
-                print()
-                print(f'경찰은 {targetPlayer.info.name}의 직업이 {targetPlayer.info.role}임을 확인했습니다.')
+                testTarget: PlayerInfo = evaluator.evaluateTestTarget(self.gameState, police).info
             else :
-                print()
                 targetName = input('조사할 대상을 정하세요: ')
-                target: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
-                if target != None :
-                    print(f'{target.name}의 직업은 {target.role} 입니다.')
+                testTarget: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
+
+        if testTarget != None :
+            testTargetPlayer: Player = self.gameState.getPlayerByInfo(testTarget)
+            police.addTestResult(testTargetPlayer, testTargetPlayer.info.role)
+            print(f'경찰은 {testTargetPlayer.info.name}의 직업이 {testTargetPlayer.info.role.name}임을 확인했습니다.')
 
     def checkGameEnd(self) :
         mafiaCount = len(self.gameState.mafiaPlayers)
@@ -195,10 +184,6 @@ class GameManager :
             return True
         else :
             return False
-
-    def updateAllTrustPoint(self) :
-        for player in self.gameState.players :
-            self.updateTrustPoint(player)
 
     def updateTrustRecordsForRemovedPlayer(self, playerInfo: PlayerInfo, removeReason: RemoveReason) :
         removeInfo: PlayerRemoveInfo = self.gameState.getPlayerRemoveInfoByInfo(playerInfo)
@@ -240,6 +225,13 @@ class GameManager :
                         type=TrustRecordType.NOT_VOTE_MAFIA,
                         point= - 100 / notVoteTargetCount
                     ))
+
+    def updateAllTrustPoint(self) :
+        for player in self.gameState.players :
+            self.updateTrustPoint(player)
+
+        trustStr: list[str] = list(map(lambda p : f'{p.info.name}={p.trustPoint}({p.trustMainIssue})', self.gameState.players))
+        print(', '.join(trustStr))
 
     def updateTrustPoint(self, player: Player) :
         # surely mafia
@@ -315,20 +307,20 @@ class GameManager :
         # police's estimations
         if self.gameState.onePublicPolicePlayer != None :
             policePlayer = self.gameState.onePublicPolicePlayer
+            if player.info in policePlayer.estimationsAsPolice :
+                # the trusted police pointed me citizen
+                if policePlayer.isTrustedPolice :
+                    if policePlayer.estimationsAsPolice[player.info].role == Role.CITIZEN :
+                        player.setTrustData(TRUST_MAX)
+                        return
 
-            # the trusted police pointed me citizen
-            if policePlayer.isTrustedPolice :
-                if policePlayer.estimationsAsPolice[player.info].role == Role.CITIZEN :
-                    player.setTrustData(TRUST_MAX)
+                # the police pointed me mafia
+                if policePlayer.estimationsAsPolice[player.info].role == Role.MAFIA :
+                    player.setTrustData(
+                        TRUST_MIN,
+                        'The police identified him as a mafia member.',
+                    )
                     return
-
-            # the police pointed me mafia
-            if policePlayer.estimationsAsPolice[player.info].role == Role.MAFIA :
-                player.setTrustData(
-                    TRUST_MIN,
-                    'The police identified him as a mafia member.',
-                )
-                return
 
         # update trust data by record
         player.updateTrustDataByRecord()

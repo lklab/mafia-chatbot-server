@@ -64,8 +64,8 @@ class Strategy :
         return '\n'.join(map(lambda assumption: assumption.getPrompt(), self.assumptions))
 
 class VoteStrategy(Strategy) :
-    def __init__(self, estimation: Estimation) :
-        assumption = Assumption([estimation], '')
+    def __init__(self, playerInfo: PlayerInfo) :
+        assumption = Assumption([Estimation(playerInfo, Role.MAFIA)], '')
         super().__init__(
             publicRole=Role.CITIZEN, # not used
             assumptions=[assumption],

@@ -17,9 +17,12 @@ class VoteData :
         self.voteDict: dict[PlayerInfo, list[Player]] = {}
         self.voteCount: dict[PlayerInfo, int] = {}
         for player in players :
-            if player.getVoteStrategy(round) != None :
-                target = player.voteStrategy.mainTarget
-                if target not in self.voteDict :
+            strategy: Strategy = player.getVoteStrategy(round)
+            if strategy != None :
+                target = strategy.mainTarget
+                if target == None :
+                    continue
+                elif target not in self.voteDict :
                     self.voteDict[target] = [player]
                     self.voteCount[target] = 1
                 else :
@@ -106,7 +109,7 @@ class GameState :
 
         # police data
         self.isPoliceLive = True
-        self.publicPolicePlayers: set[Player] = []
+        self.publicPolicePlayers: set[Player] = set()
         self.onePublicPolicePlayer: Player = None
 
         # doctor data

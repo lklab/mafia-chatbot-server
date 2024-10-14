@@ -5,7 +5,7 @@ if __name__ == "__main__" :
         humanName="Broccoli",
         playerCount=10,
         mafiaCount=3,
-        useLLM=True)
+        useLLM=False)
 
     manager = game_manager.GameManager(gameInfo)
     manager.start()

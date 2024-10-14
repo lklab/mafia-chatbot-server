@@ -36,12 +36,14 @@ def getConformityTarget(gameState: GameState, player: Player) -> tuple[Player, s
             continue
 
         for estimate in strategy.mafiaEstimations :
-            if estimate.playerInfo not in discussionTargets :
+            if estimate.playerInfo == None :
+                continue
+            elif estimate.playerInfo not in discussionTargets :
                 discussionTargets[estimate.playerInfo] = [other]
             else :
                 discussionTargets[estimate.playerInfo].append(other)
 
-    conformityList: list[tuple[float, PlayerInfo]] = []
+    conformityList: list[tuple[float, Player]] = []
     for target, players in discussionTargets.items() :
         targetPlayer: Player = gameState.getPlayerByInfo(target)
         if targetPlayer == player or not targetPlayer.isLive :
@@ -61,18 +63,18 @@ def getConformityTarget(gameState: GameState, player: Player) -> tuple[Player, s
         prob = ((50.0 - 0.5 * targetPlayer.trustPoint) / 100.0) * \
             ((100.0 + totalTrust) / 100.0) * \
             conformity
-        conformityList.append((prob, target))
+        conformityList.append((prob, targetPlayer))
 
-    conformityList.sort()
+    conformityList.sort(key=lambda x : x[0])
 
-    for prob, target in conformityList :
+    for prob, targetPlayer in conformityList :
         if prob > random.random() :
             conformityPlayer: Player = None
-            for p in discussionTargets[target] :
+            for p in discussionTargets[targetPlayer.info] :
                 if conformityPlayer == None or p.trustPoint > conformityPlayer.trustPoint :
                     conformityPlayer = p
 
-            return target, f'You agree with {conformityPlayer.info.name}\'s opinion.'
+            return targetPlayer, f'You agree with {conformityPlayer.info.name}\'s opinion.'
 
     return None, None
 
@@ -117,7 +119,7 @@ def getTargetFromTestResults(_: GameState, player: Player) -> tuple[Player, str]
     return None, None
 
 def getTargetByTrust(gameState: GameState, player: Player) -> tuple[Player, str] :
-    playerIndexes: list[int] = range(len(gameState.players))
+    playerIndexes: list[int] = list(range(len(gameState.players)))
     random.shuffle(playerIndexes)
     playerIndexes.sort(key=lambda i : gameState.players[i].trustPoint)
 
@@ -210,7 +212,7 @@ def getTestResultsForMafia(gameState: GameState, player: Player) -> list[Estimat
                 estimations.append(Estimation(p.info, Role.CITIZEN))
 
     random.shuffle(estimations)
-    estimations.sort(key=lambda estimation : estimation.role)
+    estimations.sort(key=lambda estimation : estimation.role.value)
     return estimations
 
 def revealPoliceForMafia(gameState: GameState, player: Player) -> list[Estimation] :
@@ -241,7 +243,7 @@ def getTestResultsForPolice(police: Player) -> list[Estimation] :
         estimations.append(Estimation(p.info, role))
 
     random.shuffle(estimations)
-    estimations.sort(key=lambda estimation : estimation.role)
+    estimations.sort(key=lambda estimation : estimation.role.value)
     return estimations
 
 def revealPoliceForPolice(gameState: GameState, player: Player) -> list[Estimation] :
@@ -250,7 +252,7 @@ def revealPoliceForPolice(gameState: GameState, player: Player) -> list[Estimati
             return getTestResultsForPolice(player)
 
     knownMafiaCount: int = len(list(filter(lambda p : player.testResults[p] == Role.MAFIA, player.testResults)))
-    revealProb: float = (knownMafiaCount / gameState.getMafiaCount) * (1.0 - player.revealFactor) + player.revealFactor
+    revealProb: float = (knownMafiaCount / gameState.getMafiaCount()) * (1.0 - player.revealFactor) + player.revealFactor
 
     if revealProb > random.random() :
         return getTestResultsForPolice(player)
@@ -258,8 +260,8 @@ def revealPoliceForPolice(gameState: GameState, player: Player) -> list[Estimati
     return None
 
 revealPoliceEvaluators: dict[Role, Callable[[GameState, Player], list[Estimation]]] = {
-    { Role.MAFIA : revealPoliceForMafia },
-    { Role.POLICE : revealPoliceForPolice },
+    Role.MAFIA : revealPoliceForMafia,
+    Role.POLICE : revealPoliceForPolice,
 }
 
 def updatePoliceTestForMafia(gameState: GameState, player: Player) -> Estimation :
@@ -289,8 +291,8 @@ def updatePoliceTestForPolice(_: GameState, player: Player) -> Estimation :
     return Estimation(target.info, player.testResults[target])
 
 updatePoliceTestEvaluators: dict[Role, Callable[[GameState, Player], Estimation]] = {
-    { Role.MAFIA : updatePoliceTestForMafia },
-    { Role.POLICE : updatePoliceTestForPolice },
+    Role.MAFIA : updatePoliceTestForMafia,
+    Role.POLICE : updatePoliceTestForPolice,
 }
 
 def evaluateDiscussionStrategy(gameState: GameState, player: Player) -> Strategy :
@@ -313,7 +315,7 @@ def evaluateVoteStrategy(gameState: GameState, player: Player) -> VoteStrategy :
     for evaluator in defaultEvaluators :
         target, _ = evaluator(gameState, player)
         if target :
-            return VoteStrategy(Estimation(target.info, Role.MAFIA))
+            return VoteStrategy(target.info)
 
 def evaluateKillTarget(gameState: GameState) -> Player :
     if gameState.onePublicPolicePlayer != None and gameState.onePublicPolicePlayer.isLive and not gameState.isDoctorLive :

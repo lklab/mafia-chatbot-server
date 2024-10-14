@@ -16,12 +16,6 @@ class TrustRecordType(Enum) :
     FIRST_POINT_MAFIA = 1
     NOT_VOTE_MAFIA = 2
 
-    toPrompt: dict[TrustRecordType, str] = {
-        { FIRST_POINT_CITIZEN : 'He pointed out the citizen first.' },
-        { FIRST_POINT_MAFIA : '' },
-        { NOT_VOTE_MAFIA : 'He did not vote for the mafia.' },
-    }
-
 class TrustRecord :
     def __init__(self, type: TrustRecordType, point: int) :
         if isinstance(point, float) :
@@ -30,7 +24,14 @@ class TrustRecord :
         self.type = type
         self.point = point
 
+trustRecordTypeToPrompt: dict[TrustRecordType, str] = {
+    TrustRecordType.FIRST_POINT_CITIZEN : 'He pointed out the citizen first.',
+    TrustRecordType.FIRST_POINT_MAFIA : '',
+    TrustRecordType.NOT_VOTE_MAFIA : 'He did not vote for the mafia.',
+}
+
 class Player :
+
     def __init__(self, name, isAI) :
         self.isLive = True
         self.info = PlayerInfo(name, isAI)
@@ -42,7 +43,7 @@ class Player :
         self.discussionStrategy: Strategy = None
         self.voteStrategy: VoteStrategy = None
         self.allDiscussionStrategies: list[Strategy] = []
-        self.allVoteStrategies = list[VoteStrategy] = []
+        self.allVoteStrategies: list[VoteStrategy] = []
 
         # strategy summary
         self.publicRole = Role.CITIZEN
@@ -133,6 +134,7 @@ class Player :
 
     def addTrustRecord(self, trustRecord: TrustRecord) :
         self.trustRecords.append(trustRecord)
+        print(f'[addTrustRecord] {self.info.name}: {trustRecord.type.name}, {trustRecord.point}')
 
     def updateTrustDataByRecord(self) :
         pointDict: dict[TrustRecordType, int] = {}
@@ -152,7 +154,7 @@ class Player :
             total += point
             if point < maxDecreasePoint :
                 maxDecreasePoint = point
-                mainIssue = TrustRecordType.toPrompt[type]
+                mainIssue = trustRecordTypeToPrompt[type]
 
         self.setTrustData(total, mainIssue)
 
