@@ -1,3 +1,5 @@
+import random
+
 from mafia_chatbot.game.player_info import *
 from mafia_chatbot.game.strategy import *
 
@@ -35,9 +37,12 @@ class Player :
     def __init__(self, name, isAI) :
         self.isLive = True
         self.info = PlayerInfo(name, isAI)
-        self.conformity: float = 1.0
-        self.revealFactor: float = 0.1
-        self.selfHealFactor: float = 0.9
+
+        # personal factors
+        self.conformity: float = random.uniform(0.5, 1.5) # 1.0
+        self.revealFactor: float = random.uniform(0.0, 0.3) # 0.1
+        self.selfHealFactor: float = random.uniform(0.7, 1.0) # 0.9
+        self.isFakePolice: bool = False
 
         # strategies
         self.discussionStrategy: Strategy = None

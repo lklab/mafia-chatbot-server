@@ -92,6 +92,9 @@ class GameState :
             self.players[i].info.role = Role.MAFIA
             self.mafiaPlayers.append(self.players[i])
 
+            if 0.2 > random.random() :
+                self.players[i].isFakePolice = True
+
         self.players[gameInfo.mafiaCount+0].info.role = Role.POLICE
         self.players[gameInfo.mafiaCount+1].info.role = Role.DOCTOR
 

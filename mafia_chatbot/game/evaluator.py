@@ -216,19 +216,27 @@ def getTestResultsForMafia(gameState: GameState, player: Player) -> list[Estimat
 def revealPoliceForMafia(gameState: GameState, player: Player) -> list[Estimation] :
     # check state condition
     if (
-        gameState.getMafiaCount() >= 2 and
+        gameState.round > 0 and
+        player.isFakePolice and
+        (gameState.getMafiaCount() >= 2 or gameState.getCitizenCount() <= 2) and
         gameState.isPoliceLive and
         len(list(filter(lambda p : p.isTrustedPolice, gameState.publicPolicePlayers))) == 0 and
         len(list(filter(lambda p : p.info.role == Role.MAFIA, gameState.publicPolicePlayers))) == 0
     ) :
         # check trigger condition
+        if len(gameState.publicPolicePlayers) == 0 :
+            prob: float = player.revealFactor
+            if prob > random.random() :
+                # reveal police
+                return getTestResultsForMafia(gameState, player)
+
         for p in gameState.players :
             if p.info.role == Role.MAFIA or p.publicRole != Role.POLICE :
                 continue
 
             if player.info in p.estimationsAsPolice and (
                 p.estimationsAsPolice[player.info].role == Role.CITIZEN or
-                p.trustPoint < player.trustPoint
+                p.trustPoint <= player.trustPoint
             ) :
                 # reveal police
                 return getTestResultsForMafia(gameState, player)
