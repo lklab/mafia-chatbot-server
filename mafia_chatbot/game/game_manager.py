@@ -1,13 +1,9 @@
 from enum import Enum
 
 from mafia_chatbot.game.game_state import *
+from mafia_chatbot.game.game_result import *
 import mafia_chatbot.game.evaluator as evaluator
 from mafia_chatbot.game.llm import LLM
-
-class Phase(Enum) :
-    DAY = 0
-    EVENING = 1
-    NIGHT = 2
 
 class GameManager :
     def __init__(self, gameInfo: GameInfo) :
@@ -16,27 +12,28 @@ class GameManager :
         print(self.gameState.players)
 
     def start(self) :
-        self.currentPhase = Phase.DAY
         self.discussionIndex = 0
 
         while True :
-            if self.currentPhase == Phase.DAY :
+            if self.gameState.currentPhase == Phase.DAY :
                 self.processDay()
-                self.currentPhase = Phase.EVENING
+                self.gameState.setPhase(Phase.EVENING)
 
-            elif self.currentPhase == Phase.EVENING :
+            elif self.gameState.currentPhase == Phase.EVENING :
                 self.processEvening()
-                self.currentPhase = Phase.NIGHT
+                self.gameState.setPhase(Phase.NIGHT)
 
-                if self.checkGameEnd() :
-                    return
+                gameResult: GameResult = self.checkGameEnd()
+                if gameResult :
+                    return gameResult
 
-            elif self.currentPhase == Phase.NIGHT :
+            elif self.gameState.currentPhase == Phase.NIGHT :
                 self.processNight()
-                self.currentPhase = Phase.DAY
+                self.gameState.setPhase(Phase.DAY)
 
-                if self.checkGameEnd() :
-                    return
+                gameResult: GameResult = self.checkGameEnd()
+                if gameResult :
+                    return gameResult
                 else :
                     self.gameState.addRound()
 
@@ -63,7 +60,7 @@ class GameManager :
                 else :
                     discussion: str = str(strategy)
 
-                discussion = f'{player.info.name}: {discussion}'
+                discussion = f'{player.info.name}({player.info.role}): {discussion}'
                 self.gameState.appendDiscussionHistory(player.info, discussion)
                 print(discussion)
             else :
@@ -71,7 +68,7 @@ class GameManager :
                 targetInfo: PlayerInfo = self.gameState.getPlayerInfoByName(discussion)
                 strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, targetInfo, '')
                 player.setDiscussionStrategy(self.gameState.round, strategy)
-                discussion = f'{player.info.name}: {discussion}'
+                discussion = f'{player.info.name}({player.info.role}): {discussion}'
 
             self.gameState.appendDiscussionHistory(player.info, discussion)
 
@@ -89,18 +86,23 @@ class GameManager :
     def processEvening(self) :
         self.updateAllTrustPoint()
 
+        trustStr: list[str] = list(map(lambda p : f'{p.info.name}={p.trustPoint}({p.trustMainIssue})', self.gameState.players))
+        print('\n' + ', '.join(trustStr))
+
         print()
 
         players = self.gameState.players
-        for player in players :
-            if player.info.isAI :
-                strategy: VoteStrategy = evaluator.evaluateVoteStrategy(self.gameState, player)
-            else :
-                targetName = input('투표할 대상을 정하세요: ')
-                targetInfo: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
-                strategy: VoteStrategy = VoteStrategy(targetInfo)
 
-            player.setVoteStrategy(self.gameState.round, strategy)
+        for _ in range(10) :
+            for player in players :
+                if player.info.isAI :
+                    strategy: VoteStrategy = evaluator.evaluateVoteStrategy(self.gameState, player)
+                else :
+                    targetName = input('투표할 대상을 정하세요: ')
+                    targetInfo: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
+                    strategy: VoteStrategy = VoteStrategy(targetInfo)
+
+                player.setVoteStrategy(self.gameState.round, strategy)
 
         voteData: VoteData = self.gameState.updateVoteHistory()
         print(f'투표 현황: {voteData.voteCount}')
@@ -122,6 +124,8 @@ class GameManager :
                                 break
 
     def processNight(self) :
+        self.updateAllTrustPoint()
+
         # doctor action: Heal
         doctor: Player = self.gameState.doctorPlayer
         healTarget: PlayerInfo = None
@@ -179,13 +183,21 @@ class GameManager :
         civilCount = len(self.gameState.players) - mafiaCount
 
         if mafiaCount == 0 :
-            print('\n시민의 승리입니다.')
-            return True
+            print('\n시민의 승리입니다.\n')
+            return GameResult(
+                isCitizenWin=True,
+                isRealPoliveRevealed=self.gameState.isRealPoliveRevealed,
+                isFakePoliveRevealed=self.gameState.isFakePoliveRevealed,
+            )
         elif civilCount <= mafiaCount :
-            print('\n마피아의 승리입니다.')
-            return True
+            print('\n마피아의 승리입니다.\n')
+            return GameResult(
+                isCitizenWin=False,
+                isRealPoliveRevealed=self.gameState.isRealPoliveRevealed,
+                isFakePoliveRevealed=self.gameState.isFakePoliveRevealed,
+            )
         else :
-            return False
+            return None
 
     def updateTrustRecordsForRemovedPlayer(self, playerInfo: PlayerInfo, removeReason: RemoveReason) :
         removeInfo: PlayerRemoveInfo = self.gameState.getPlayerRemoveInfoByInfo(playerInfo)
@@ -230,13 +242,11 @@ class GameManager :
 
     def updateAllTrustPoint(self) :
         for player in self.gameState.players :
+            self.updateSurelyMafia(player)
+        for player in self.gameState.players :
             self.updateTrustPoint(player)
 
-        trustStr: list[str] = list(map(lambda p : f'{p.info.name}={p.trustPoint}({p.trustMainIssue})', self.gameState.players))
-        print(', '.join(trustStr))
-
-    def updateTrustPoint(self, player: Player) :
-        # surely mafia
+    def updateSurelyMafia(self, player: Player) :
         if player.publicRole == Role.MAFIA :
             player.setTrustData(
                 TRUST_MIN,
@@ -269,7 +279,7 @@ class GameManager :
                         f'He claimed that {p.info.name} is a citizen, but {p.info.name} claims his role is a police.',
                     )
                     return
-                if not p.isLive and p.info.role != estimation.role :
+                if not p.isLive and ((p.info.role == Role.MAFIA) != (estimation.role == Role.MAFIA)) :
                     player.setTrustData(
                         TRUST_MIN,
                         'He incorrectly announced the role of an eliminated player.',
@@ -301,20 +311,25 @@ class GameManager :
                 )
                 return
 
+    def updateTrustPoint(self, player: Player) :
         # trusted police
         if player.publicRole == Role.POLICE and player.isTrustedPolice :
             player.setTrustData(TRUST_MAX)
             return
 
-        # police's estimations
+        # one public police
+        if player == self.gameState.onePublicPolicePlayer :
+            player.setTrustData(TRUST_MAX)
+            return
+
+        # one police's estimations
         if self.gameState.onePublicPolicePlayer != None :
             policePlayer = self.gameState.onePublicPolicePlayer
-            if player.info in policePlayer.estimationsAsPolice :
-                # the trusted police pointed me citizen
-                if policePlayer.isTrustedPolice :
-                    if policePlayer.estimationsAsPolice[player.info].role == Role.CITIZEN :
-                        player.setTrustData(TRUST_MAX)
-                        return
+            if policePlayer.trustPoint > TRUST_MIN and player.info in policePlayer.estimationsAsPolice :
+                # the police pointed me citizen
+                if policePlayer.estimationsAsPolice[player.info].role == Role.CITIZEN :
+                    player.setTrustData(TRUST_MAX)
+                    return
 
                 # the police pointed me mafia
                 if policePlayer.estimationsAsPolice[player.info].role == Role.MAFIA :

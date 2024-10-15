@@ -59,22 +59,17 @@ def getConformityTarget(gameState: GameState, player: Player) -> tuple[Player, s
         else :
             conformity: float = player.conformity
 
-        totalTrust = sum(map(lambda p: max(p.trustPoint, 0), players))
+        totalTrust = sum(map(lambda p: max(p.trustPoint + 100, 100), players))
         prob = ((50.0 - 0.5 * targetPlayer.trustPoint) / 100.0) * \
-            ((100.0 + totalTrust) / 100.0) * \
+            (totalTrust / 100.0) * \
             conformity
         conformityList.append((prob, targetPlayer))
 
-    conformityList.sort(key=lambda x : x[0])
+    conformityList.sort(key=lambda x : -x[0])
 
     for prob, targetPlayer in conformityList :
         if prob > random.random() :
-            conformityPlayer: Player = None
-            for p in discussionTargets[targetPlayer.info] :
-                if conformityPlayer == None or p.trustPoint > conformityPlayer.trustPoint :
-                    conformityPlayer = p
-
-            return targetPlayer, f'You agree with {conformityPlayer.info.name}\'s opinion.'
+            return targetPlayer, f'You agree with other players.'
 
     return None, None
 
@@ -161,7 +156,10 @@ def getRandomTarget(gameState: GameState, player: Player) -> tuple[Player, str] 
         targetPlayers: list[Player] = list(filter(lambda p : p != player, gameState.players))
 
     target = random.choice(targetPlayers)
-    return target, 'Due to a lack of information, You will randomly suspect someone as the mafia.'
+    reason: str = target.trustMainIssue
+    if not reason :
+        reason = 'Due to a lack of information, You will randomly suspect someone as the mafia.'
+    return target, reason
 
 defaultEvaluators: list[Callable[[GameState, Player], tuple[Player, str]]] = [
     getPolicePoiningMe,
@@ -240,7 +238,10 @@ def revealPoliceForMafia(gameState: GameState, player: Player) -> list[Estimatio
 def getTestResultsForPolice(police: Player) -> list[Estimation] :
     estimations: list[Estimation] = []
     for p, role in police.testResults.items() :
-        estimations.append(Estimation(p.info, role))
+        if role == Role.MAFIA :
+            estimations.append(Estimation(p.info, Role.MAFIA))
+        else :
+            estimations.append(Estimation(p.info, Role.CITIZEN))
 
     random.shuffle(estimations)
     estimations.sort(key=lambda estimation : estimation.role.value)
@@ -251,8 +252,13 @@ def revealPoliceForPolice(gameState: GameState, player: Player) -> list[Estimati
         if p not in player.testResults or player.testResults[p] != Role.CITIZEN :
             return getTestResultsForPolice(player)
 
+    if len(player.testResults) == 0 :
+        return None
+
+    knownPlayerCount: int = len(list(filter(lambda p : p.isLive, player.testResults)))
     knownMafiaCount: int = len(list(filter(lambda p : player.testResults[p] == Role.MAFIA, player.testResults)))
-    revealProb: float = (knownMafiaCount / gameState.getMafiaCount()) * (1.0 - player.revealFactor) + player.revealFactor
+    knownRatio: float = max(knownPlayerCount / gameState.getPlayerCount(), knownMafiaCount / gameState.getMafiaCount())
+    revealProb: float = knownRatio * (1.0 - player.revealFactor) + player.revealFactor
 
     if revealProb > random.random() :
         return getTestResultsForPolice(player)

@@ -10,6 +10,11 @@ NAMES = [
     'Charlotte', 'Henry', 'Evelyn', 'Jack', 'Grace'
 ]
 
+class Phase(Enum) :
+    DAY = 0
+    EVENING = 1
+    NIGHT = 2
+
 class VoteData :
     def __init__(self, round: int, players: list[Player]) :
         self.round = round
@@ -112,11 +117,15 @@ class GameState :
 
         # initialize round
         self.round = 0
+        self.currentPhase = Phase.DAY
 
         # police data
         self.isPoliceLive = True
         self.publicPolicePlayers: set[Player] = set()
         self.onePublicPolicePlayer: Player = None
+
+        self.isRealPoliveRevealed = False
+        self.isFakePoliveRevealed = False
 
         # doctor data
         self.isDoctorLive = True
@@ -182,6 +191,9 @@ class GameState :
     def addRound(self) :
         self.round += 1
 
+    def setPhase(self, phase: Phase) :
+        self.currentPhase = phase
+
     def getCurrentRoundInfo(self) -> RoundInfo :
         return RoundInfo(self.round, len(self.players), len(self.mafiaPlayers))
 
@@ -211,6 +223,11 @@ class GameState :
                 self.onePublicPolicePlayer = player
             else :
                 self.onePublicPolicePlayer = None
+
+        if player.info.role == Role.POLICE :
+            self.isRealPoliveRevealed = True
+        else :
+            self.isFakePoliveRevealed = True
 
     def getPlayerCount(self) -> int :
         return len(self.players)
