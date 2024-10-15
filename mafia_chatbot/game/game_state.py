@@ -67,13 +67,19 @@ class GameState :
         self.gameInfo = gameInfo
 
         # create players
-        self.humanPlayer = Player(gameInfo.humanName, False)
+        if gameInfo.humanName != None :
+            self.humanPlayer: Player = Player(gameInfo.humanName, False)
+            aiPlayerCount = gameInfo.playerCount - 1
+        else :
+            self.humanPlayer: Player = None
+            aiPlayerCount = gameInfo.playerCount
 
         names = NAMES.copy()
         random.shuffle(names)
+        self.players = [Player(names[i], True) for i in range(aiPlayerCount)]
 
-        self.players = [Player(names[i], True) for i in range(gameInfo.playerCount-1)]
-        self.players.insert(random.randint(0, gameInfo.playerCount-1), self.humanPlayer)
+        if self.humanPlayer != None :
+            self.players.insert(random.randint(0, aiPlayerCount), self.humanPlayer)
 
         # assign role
         self.mafiaPlayers: list[Player] = []

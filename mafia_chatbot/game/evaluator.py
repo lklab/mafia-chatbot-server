@@ -228,7 +228,7 @@ def revealPoliceForMafia(gameState: GameState, player: Player) -> list[Estimatio
             if p.info.role == Role.MAFIA or p.publicRole != Role.POLICE :
                 continue
 
-            if (
+            if player.info in p.estimationsAsPolice and (
                 p.estimationsAsPolice[player.info].role == Role.CITIZEN or
                 p.trustPoint < player.trustPoint
             ) :

@@ -139,7 +139,7 @@ class GameManager :
         print()
 
         killTarget: PlayerInfo = None
-        if self.gameState.humanPlayer.info.role == Role.MAFIA and self.gameState.humanPlayer.isLive :
+        if self.gameState.humanPlayer != None and self.gameState.humanPlayer.info.role == Role.MAFIA and self.gameState.humanPlayer.isLive :
             targetName = input('암살할 대상을 정하세요: ')
             killTarget: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
         else :
