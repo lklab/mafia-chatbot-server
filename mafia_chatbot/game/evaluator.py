@@ -346,4 +346,7 @@ def evaluateHealTarget(gameState: GameState, doctor: Player) -> Player :
         return doctor
     else :
         targets: list[Player] = list(filter(lambda p : p.trustPoint >= 0, gameState.players))
-        return random.choice(targets)
+        if len(targets) > 0 :
+            return random.choice(targets)
+
+    return doctor

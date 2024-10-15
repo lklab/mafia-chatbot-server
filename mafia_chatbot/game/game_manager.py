@@ -162,7 +162,9 @@ class GameManager :
         if police.isLive :
             print()
             if police.info.isAI :
-                testTarget: PlayerInfo = evaluator.evaluateTestTarget(self.gameState, police).info
+                testTargetPlayer: Player = evaluator.evaluateTestTarget(self.gameState, police)
+                if testTargetPlayer != None :
+                    testTarget: PlayerInfo = testTargetPlayer.info
             else :
                 targetName = input('조사할 대상을 정하세요: ')
                 testTarget: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
