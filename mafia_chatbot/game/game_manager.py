@@ -8,7 +8,7 @@ from mafia_chatbot.game.llm import LLM
 class GameManager :
     def __init__(self, gameInfo: GameInfo) :
         self.gameState = GameState(gameInfo)
-        self.llm = LLM()
+        self.llm = LLM(gameInfo.language)
         print(self.gameState.players)
 
     def start(self) :
@@ -38,7 +38,7 @@ class GameManager :
                     self.gameState.addRound()
 
     def processDay(self) :
-        print('\n아침이 되었습니다. 토론을 하세요')
+        print('\nIt is morning. Please engage in a discussion.')
 
         self.gameState.firstPointers.clear()
 
@@ -64,7 +64,7 @@ class GameManager :
                 self.gameState.appendDiscussionHistory(player.info, discussion)
                 print(discussion)
             else :
-                discussion: str = input('당신의 차례입니다: ')
+                discussion: str = input('It\'s your turn: ')
                 targetInfo: PlayerInfo = self.gameState.getPlayerInfoByName(discussion)
                 strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, targetInfo, '')
                 player.setDiscussionStrategy(self.gameState.round, strategy)
@@ -98,19 +98,19 @@ class GameManager :
                 if player.info.isAI :
                     strategy: VoteStrategy = evaluator.evaluateVoteStrategy(self.gameState, player)
                 else :
-                    targetName = input('투표할 대상을 정하세요: ')
+                    targetName = input('Choose the subject to vote on: ')
                     targetInfo: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
                     strategy: VoteStrategy = VoteStrategy(targetInfo)
 
                 player.setVoteStrategy(self.gameState.round, strategy)
 
         voteData: VoteData = self.gameState.updateVoteHistory()
-        print(f'투표 현황: {voteData.voteCount}')
+        print(f'Voting status: {voteData.voteCount}')
 
         if voteData.isTie :
-            print('동률로 인해 아무도 처형하지 않았습니다.')
+            print('No one was executed due to a tie.')
         else :
-            print(f'{voteData.targetPlayer.name}을 처형합니다. 그의 직업은 {voteData.targetPlayer.role.name}이었습니다.')
+            print(f'{voteData.targetPlayer.name} is executed. Their role was {voteData.targetPlayer.role.name}.')
             self.gameState.removePlayerByInfo(voteData.targetPlayer, RemoveReason.VOTE)
             self.updateTrustRecordsForRemovedPlayer(voteData.targetPlayer, RemoveReason.VOTE)
 
@@ -134,9 +134,9 @@ class GameManager :
             print()
             if doctor.info.isAI :
                 healTarget: PlayerInfo = evaluator.evaluateHealTarget(self.gameState, doctor).info
-                print(f'의사는 {healTarget.name}을 치료합니다.')
+                print(f'The doctor heals {healTarget.name}.')
             else :
-                targetName = input('치료할 대상을 정하세요: ')
+                targetName = input('Choose the target to heal: ')
                 healTarget: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
 
         # mafia action: kill
@@ -144,18 +144,18 @@ class GameManager :
 
         killTarget: PlayerInfo = None
         if self.gameState.humanPlayer != None and self.gameState.humanPlayer.info.role == Role.MAFIA and self.gameState.humanPlayer.isLive :
-            targetName = input('암살할 대상을 정하세요: ')
+            targetName = input('Choose the target to assassinate: ')
             killTarget: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
         else :
             killTarget: PlayerInfo = evaluator.evaluateKillTarget(self.gameState).info
 
         if killTarget == None :
-            print('마피아의 실수로 암살에 실패했습니다.')
+            print('The assassination failed due to the Mafia\'s mistake.')
         else :
             if killTarget == healTarget :
-                print(f'마피아는 {killTarget.name}을 암살하려 했지만 의사의 치료로 실패했습니다.')
+                print(f'The Mafia attempted to assassinate {killTarget.name}, but failed due to the doctor\'s healing.')
             else :
-                print(f'{killTarget.name}이 마피아에 의해 암살당했습니다.')
+                print(f'{killTarget.name} was assassinated by the Mafia.')
                 self.gameState.removePlayerByInfo(killTarget, RemoveReason.KILL)
                 self.updateTrustRecordsForRemovedPlayer(killTarget, RemoveReason.KILL)
 
@@ -170,27 +170,27 @@ class GameManager :
                 if testTargetPlayer != None :
                     testTarget: PlayerInfo = testTargetPlayer.info
             else :
-                targetName = input('조사할 대상을 정하세요: ')
+                targetName = input('Choose the target to investigate: ')
                 testTarget: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
 
         if testTarget != None :
             testTargetPlayer: Player = self.gameState.getPlayerByInfo(testTarget)
             police.addTestResult(testTargetPlayer, testTargetPlayer.info.role)
-            print(f'경찰은 {testTargetPlayer.info.name}의 직업이 {testTargetPlayer.info.role.name}임을 확인했습니다.')
+            print(f'The police confirmed that {testTargetPlayer.info.name}\'s role is {testTargetPlayer.info.role.name}.')
 
     def checkGameEnd(self) :
         mafiaCount = len(self.gameState.mafiaPlayers)
         civilCount = len(self.gameState.players) - mafiaCount
 
         if mafiaCount == 0 :
-            print('\n시민의 승리입니다.\n')
+            print('\nIt is a victory for the Citizens.\n')
             return GameResult(
                 isCitizenWin=True,
                 isRealPoliveRevealed=self.gameState.isRealPoliveRevealed,
                 isFakePoliveRevealed=self.gameState.isFakePoliveRevealed,
             )
         elif civilCount <= mafiaCount :
-            print('\n마피아의 승리입니다.\n')
+            print('\nIt is a victory for the Mafia.\n')
             return GameResult(
                 isCitizenWin=False,
                 isRealPoliveRevealed=self.gameState.isRealPoliveRevealed,

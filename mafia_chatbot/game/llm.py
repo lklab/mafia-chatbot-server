@@ -17,7 +17,7 @@ from mafia_chatbot.game.player import *
 from mafia_chatbot.game.player_info import *
 
 class LLM :
-    def __init__(self) :
+    def __init__(self, language: str) :
         # load API key
         with open('apikeys.json') as f:
             keys = json.load(f)
@@ -33,7 +33,7 @@ class LLM :
         )
 
         # setup prompt
-        prompt = self._setupPrompt()
+        prompt = self._setupPrompt(language)
 
         # setup chain
         self.chain = prompt | model
@@ -45,7 +45,7 @@ class LLM :
         })
         return response.content
 
-    def _setupPrompt(self) :
+    def _setupPrompt(self, language: str) :
         def _preprocessInput(input) :
             gameState: GameState = input['gameState']
             player: Player = input['player']
@@ -56,7 +56,6 @@ class LLM :
                 Role.POLICE: 'Citizen',
                 Role.DOCTOR: 'Citizen',
             }
-            language = 'Korean'
 
             return {
                 'citizen_count': gameState.gameInfo.playerCount - gameState.gameInfo.mafiaCount,

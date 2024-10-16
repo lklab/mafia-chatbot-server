@@ -29,7 +29,11 @@ def balanceTest(times: int) :
         if gameResult.isFakePoliveRevealed :
             fakePoliceCount += 1
 
-    print(f'시민 승률: {citizenWinCount * 100 / times}, 경찰 공개 수: {policeRevealCount}, 경찰 공개 시 승률: {citizenWinPolice * 100 / policeRevealCount}, 거짓 경찰 공개 수: {fakePoliceCount}')
+    print(f'Citizen win rate: {citizenWinCount * 100 / times}, '
+        'Number of police reveals: {policeRevealCount}, '
+        'Win rate when police are revealed: {citizenWinPolice * 100 / policeRevealCount}, '
+        'Number of false police reveals: {fakePoliceCount}'
+    )
 
 def oneGame() :
     gameInfo = game_info.GameInfo(

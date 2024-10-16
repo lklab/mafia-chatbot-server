@@ -4,11 +4,18 @@ from mafia_chatbot.game.game_info import *
 from mafia_chatbot.game.player_info import *
 from mafia_chatbot.game.player import *
 
-NAMES = [
-    'Oliver', 'Emma', 'Noah', 'Ava', 'Liam', 'Sophia', 'Mason', 'Isabella',
-    'James', 'Mia', 'Benjamin', 'Amelia', 'Ethan', 'Harper', 'Lucas',
-    'Charlotte', 'Henry', 'Evelyn', 'Jack', 'Grace'
-]
+NAMES: dict[str, list[str]] = {
+    'english' : [
+        'Oliver', 'Emma', 'Noah', 'Ava', 'Liam', 'Sophia', 'Mason', 'Isabella',
+        'James', 'Mia', 'Benjamin', 'Amelia', 'Ethan', 'Harper', 'Lucas',
+        'Charlotte', 'Henry', 'Evelyn', 'Jack', 'Grace',
+    ],
+    'korean' : [
+        '지민', '수현', '서준', '민서', '도윤', '하늘', '지우',
+        '연우', '소윤', '유진', '성민', '은비', '재현', '예린',
+        '태윤', '민지', '시우', '세영', '아린', '진우',
+    ],
+}
 
 class Phase(Enum) :
     DAY = 0
@@ -79,7 +86,11 @@ class GameState :
             self.humanPlayer: Player = None
             aiPlayerCount = gameInfo.playerCount
 
-        names = NAMES.copy()
+        if gameInfo.language in NAMES :
+            names: list[str] = NAMES[gameInfo.language].copy()
+        else :
+            names: list[str] = NAMES['english'].copy()
+
         random.shuffle(names)
         self.players = [Player(names[i], True) for i in range(aiPlayerCount)]
 
