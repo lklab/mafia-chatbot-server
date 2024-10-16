@@ -303,7 +303,10 @@ def updatePoliceTestForMafia(gameState: GameState, player: Player) -> Estimation
 
 def updatePoliceTestForPolice(_: GameState, player: Player) -> Estimation :
     target: Player = player.testedTargets[-1]
-    return Estimation(target.info, player.testResults[target])
+    role: Role = player.testResults[target]
+    if role != Role.MAFIA :
+        role = Role.CITIZEN
+    return Estimation(target.info, role)
 
 updatePoliceTestEvaluators: dict[Role, Callable[[GameState, Player], Estimation]] = {
     Role.MAFIA : updatePoliceTestForMafia,
