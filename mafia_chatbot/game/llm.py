@@ -17,7 +17,7 @@ from mafia_chatbot.game.player import *
 from mafia_chatbot.game.player_info import *
 
 class LLM :
-    def __init__(self) :
+    def __init__(self, language: str) :
         # load API key
         with open('apikeys.json') as f:
             keys = json.load(f)
@@ -33,7 +33,7 @@ class LLM :
         )
 
         # setup prompt
-        prompt = self._setupPrompt()
+        prompt = self._setupPrompt(language)
 
         # setup chain
         self.chain = prompt | model
@@ -45,7 +45,7 @@ class LLM :
         })
         return response.content
 
-    def _setupPrompt(self) :
+    def _setupPrompt(self, language: str) :
         def _preprocessInput(input) :
             gameState: GameState = input['gameState']
             player: Player = input['player']
@@ -56,22 +56,23 @@ class LLM :
                 Role.POLICE: 'Citizen',
                 Role.DOCTOR: 'Citizen',
             }
-            language = 'Korean'
 
             return {
-                'citizen_count': gameState.gameInfo.playerCount - gameState.gameInfo.mafiaCount,
+                'citizen_count': gameState.gameInfo.citizenCount,
                 'mafia_count': gameState.gameInfo.mafiaCount,
                 'players_list': ','.join(map(lambda p: p.info.name, gameState.allPlayers)),
                 'my_name': player.info.name,
                 'my_team': roleToTeam[player.info.role],
                 'mafias_list': "Unknown" if player.info.role != Role.MAFIA else ','.join(map(lambda p: p.info.name, gameState.allMafiaPlayers)),
                 'language': language,
-                'surviving_citizen_count': len(gameState.players) - len(gameState.mafiaPlayers),
-                'surviving_mafia_count': len(gameState.mafiaPlayers),
+                'tone': player.info.tone,
+                'surviving_citizen_count': gameState.getCitizenCount(),
+                'surviving_mafia_count': gameState.getMafiaCount(),
                 'survivors_list': ','.join(map(lambda p: p.info.name, gameState.players)),
+                'current_step': f'Day {gameState.round + 1}',
                 'discussion_history': '\n'.join(gameState.discussionHistory),
-                'discussion_assumptions': ', '.join(map(lambda asm: f'the role of {asm[0].name} is {asm[1].name.lower()}', player.strategy.assumptions)),
-                'discussion_reason': player.strategy.reason,
+                'discussion_role': player.getRolePrompt(),
+                'discussion_assumptions': player.discussionStrategy.assumptionsToPrompt(),
             }
 
         def _setupInformationPrompt(input) :
@@ -85,7 +86,7 @@ class LLM :
 
         templateText = (
             "## Game Rules"
-            "\nYou are participating in a Mafia game. In the Mafia game, there are two teams: the Citizen team and the Mafia team. Each night, one person is chosen by vote to be executed, and their role is revealed. The Citizens win if all Mafia members are executed, while the Mafia team wins if the number of surviving Citizens becomes equal to or fewer than the number of Mafia. You need to create suitable discussion statements considering the game information and history below, to align with your discussion strategy. Write discussion sentences in a conversational tone, concise, without line breaks or colons, and within two sentences in {language}."
+            "\nYou are participating in a Mafia game. In the Mafia game, there are two teams: the Citizen team and the Mafia team. Each night, one person is chosen by vote to be executed, and their role is revealed. The Citizens win if all Mafia members are executed, while the Mafia team wins if the number of surviving Citizens becomes equal to or fewer than the number of Mafia. You need to create suitable discussion statements considering the game information and history below, to align with your discussion strategy. Write discussion sentences in a conversational tone, concise, without line breaks or colons, and within two sentences in {language}. You should use a {tone} tone and speak differently from others."
             "\n\n## Game Information"
             "\n{information}"
             "\n\n## Game History"
@@ -104,12 +105,13 @@ class LLM :
         historyTemplateText = '\n'.join([
             "Surviving Participants: {surviving_citizen_count} Citizens, {surviving_mafia_count} Mafia",
             "Survivor List: {survivors_list}",
-            "Discussion History:\n{discussion_history}"
+            "Current Step: {current_step}",
+            "Discussion History:\n{discussion_history}",
         ])
-        strategyTemplateText = (
-            "You must argue that {discussion_assumptions}, based on the following evidence."
-            "\n{discussion_reason}"
-        )
+        strategyTemplateText = '\n'.join([
+            "{discussion_role}",
+            "{discussion_assumptions}",
+        ])
 
         template = PromptTemplate.from_template(templateText)
         informationTemplate = PromptTemplate.from_template(informationTemplateText)
