@@ -141,19 +141,20 @@ def getTargetByTrust(gameState: GameState, player: Player) -> tuple[Player, str]
 
 def getRandomTarget(gameState: GameState, player: Player) -> tuple[Player, str] :
     if player.info.role == Role.MAFIA : # for mafia
-        targetPlayers: list[Player] = list(filter(lambda p : p.info.role != Role.MAFIA, gameState.players))
+        targetPlayers: list[Player] = list(filter(lambda p : p.info.role != Role.MAFIA and p.trustPoint < TRUST_MAX, gameState.players))
 
     elif player.info.role == Role.POLICE : # for police
         targetPlayers: list[Player] = list(filter(
             lambda p :
                 p != player and (
                     p not in player.testResults or player.testResults[p] == Role.MAFIA
-                ),
+                ) and
+                p.trustPoint < TRUST_MAX,
             gameState.players
         ))
 
     else :
-        targetPlayers: list[Player] = list(filter(lambda p : p != player, gameState.players))
+        targetPlayers: list[Player] = list(filter(lambda p : p != player and p.trustPoint < TRUST_MAX, gameState.players))
 
     target = random.choice(targetPlayers)
     reason: str = target.trustMainIssue

@@ -60,7 +60,7 @@ class GameManager :
                 else :
                     discussion: str = str(strategy)
 
-                discussion = f'{player.info.name}({player.info.role}): {discussion}'
+                discussion = f'{player.info.name}: {discussion}'
                 self.gameState.appendDiscussionHistory(player.info, discussion)
                 print(discussion)
             else :
@@ -68,7 +68,7 @@ class GameManager :
                 targetInfo: PlayerInfo = self.gameState.getPlayerInfoByName(discussion)
                 strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, targetInfo, '')
                 player.setDiscussionStrategy(self.gameState.round, strategy)
-                discussion = f'{player.info.name}({player.info.role}): {discussion}'
+                discussion = f'{player.info.name}: {discussion}'
 
             self.gameState.appendDiscussionHistory(player.info, discussion)
 

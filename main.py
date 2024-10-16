@@ -40,11 +40,11 @@ def oneGame() :
         playerCount=playerCount,
         mafiaCount=mafiaCount,
         humanName=None,
-        useLLM=False)
+        language='korean',
+        useLLM=True)
 
     manager = game_manager.GameManager(gameInfo)
     manager.start()
 
 if __name__ == "__main__" :
-    balanceTest(100)
-    # oneGame()
+    oneGame()

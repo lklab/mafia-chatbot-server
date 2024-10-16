@@ -61,7 +61,7 @@ class Strategy :
         return str(self.assumptions)
 
     def assumptionsToPrompt(self) :
-        return '\n'.join(map(lambda assumption: assumption.getPrompt(), self.assumptions))
+        return '\n'.join(map(lambda assumption: 'You must argue that ' + assumption.getPrompt(), self.assumptions))
 
 class VoteStrategy(Strategy) :
     def __init__(self, playerInfo: PlayerInfo) :

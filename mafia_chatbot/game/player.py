@@ -33,7 +33,6 @@ trustRecordTypeToPrompt: dict[TrustRecordType, str] = {
 }
 
 class Player :
-
     def __init__(self, name, isAI) :
         self.isLive = True
         self.info = PlayerInfo(name, isAI)
@@ -52,6 +51,7 @@ class Player :
 
         # strategy summary
         self.publicRole = Role.CITIZEN
+        self.isPublicRoleChanged = False
         self.isContradictoryRole: tuple[bool, tuple[Role, Role]] = (False, (None, None))
         self.voteHistory: list[PlayerInfo] = []
         self.estimationsAsPolice: dict[PlayerInfo, Estimation] = {}
@@ -84,11 +84,15 @@ class Player :
         if self.publicRole != strategy.publicRole :
             if strategy.publicRole == Role.MAFIA :
                 self.publicRole = strategy.publicRole
+                self.isPublicRoleChanged = True
                 self.isContradictoryRole = (False, (None, None))
             elif self.publicRole != Role.CITIZEN and strategy.publicRole != Role.CITIZEN :
                 self.isContradictoryRole = (True, (self.publicRole, strategy.publicRole))
             else :
                 self.publicRole = strategy.publicRole
+                self.isPublicRoleChanged = True
+        else :
+            self.isPublicRoleChanged = False
 
         # update estimationsAsPolice
         if strategy.publicRole == Role.POLICE :
@@ -165,6 +169,12 @@ class Player :
 
     def setTrustedPolice(self) :
         self.isTrustedPolice = True
+
+    def getRolePrompt(self) -> str :
+        if self.isPublicRoleChanged :
+            return f'You must claim that your role is {self.info.role.name.lower()}.'
+        else :
+            return ''
 
     def expandList(self, l: list, size: int, fillValue = None) :
         for _ in range(len(l), size) :
