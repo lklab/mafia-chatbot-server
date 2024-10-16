@@ -40,7 +40,7 @@ def oneGame() :
         playerCount=playerCount,
         mafiaCount=mafiaCount,
         humanName=None,
-        language='korean',
+        language='english',
         useLLM=True)
 
     manager = game_manager.GameManager(gameInfo)
