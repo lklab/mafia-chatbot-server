@@ -17,6 +17,13 @@ NAMES: dict[str, list[str]] = {
     ],
 }
 
+TONES: list[str] = [
+    'Affable', 'Amiable', 'Blunt', 'Breezy', 'Casual', 'Charming',
+    'Composed', 'Cordial', 'Distant', 'Eloquent', 'Gracious', 'Irascible',
+    'Laid-back', 'Melancholic', 'Pensive', 'Pleasant', 'Reserved', 'Sarcastic',
+    'Sincere', 'Witty',
+]
+
 class Phase(Enum) :
     DAY = 0
     EVENING = 1
@@ -80,7 +87,7 @@ class GameState :
 
         # create players
         if gameInfo.humanName != None :
-            self.humanPlayer: Player = Player(gameInfo.humanName, False)
+            self.humanPlayer: Player = Player(gameInfo.humanName, False, '')
             aiPlayerCount = gameInfo.playerCount - 1
         else :
             self.humanPlayer: Player = None
@@ -90,9 +97,12 @@ class GameState :
             names: list[str] = NAMES[gameInfo.language].copy()
         else :
             names: list[str] = NAMES['english'].copy()
-
         random.shuffle(names)
-        self.players = [Player(names[i], True) for i in range(aiPlayerCount)]
+
+        tones: list[str] = TONES.copy()
+        random.shuffle(tones)
+
+        self.players = [Player(names[i], True, tones[i]) for i in range(aiPlayerCount)]
 
         if self.humanPlayer != None :
             self.players.insert(random.randint(0, aiPlayerCount), self.humanPlayer)

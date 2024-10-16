@@ -33,9 +33,9 @@ trustRecordTypeToPrompt: dict[TrustRecordType, str] = {
 }
 
 class Player :
-    def __init__(self, name, isAI) :
+    def __init__(self, name, isAI, tone) :
         self.isLive = True
-        self.info = PlayerInfo(name, isAI)
+        self.info = PlayerInfo(name, isAI, tone)
 
         # personal factors
         self.conformity: float = random.uniform(0.5, 1.5) # 1.0
