@@ -125,6 +125,9 @@ class GameState :
         # shuffle player order
         random.shuffle(self.players)
 
+        # setup nameList
+        self.nameList: list[str] = list(map(lambda p: p.info.name, self.players))
+
         # setup allPlayers
         self.allPlayers: list[Player] = self.players.copy()
         self.allMafiaPlayers: list[Player] = self.mafiaPlayers.copy()

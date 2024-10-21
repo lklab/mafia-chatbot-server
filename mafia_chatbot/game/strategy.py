@@ -57,6 +57,9 @@ class Strategy :
     def __str__(self) :
         return f'publicRole={self.publicRole.name.lower()}, assumptions={self.assumptions}'
 
+    def __repr__(self) :
+        return self.__str__()
+
     def assumptionsToStr(self) :
         return str(self.assumptions)
 

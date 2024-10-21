@@ -39,7 +39,7 @@ def oneGame() :
     gameInfo = game_info.GameInfo(
         playerCount=playerCount,
         mafiaCount=mafiaCount,
-        humanName=None,
+        humanName='Broccoli',
         language='english',
         useLLM=True)
 

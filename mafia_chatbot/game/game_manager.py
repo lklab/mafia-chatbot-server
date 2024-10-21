@@ -8,7 +8,7 @@ from mafia_chatbot.game.llm import LLM
 class GameManager :
     def __init__(self, gameInfo: GameInfo) :
         self.gameState = GameState(gameInfo)
-        self.llm = LLM(gameInfo.language)
+        self.llm = LLM(self.gameState, gameInfo.language)
         print(self.gameState.players)
 
     def start(self) :
@@ -65,8 +65,12 @@ class GameManager :
                 print(discussion)
             else :
                 discussion: str = input('It\'s your turn: ')
-                targetInfo: PlayerInfo = self.gameState.getPlayerInfoByName(discussion)
-                strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, targetInfo, '')
+                if self.gameState.gameInfo.useLLM :
+                    strategy: Strategy = self.llm.analyzeHumanMessage(player, discussion)
+                else :
+                    targetInfo: PlayerInfo = self.gameState.getPlayerInfoByName(discussion)
+                    strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, targetInfo, '')
+                print(f'human\'s strategy: {strategy}')
                 player.setDiscussionStrategy(self.gameState.round, strategy)
                 discussion = f'{player.info.name}: {discussion}'
 
@@ -92,15 +96,23 @@ class GameManager :
         print()
 
         players = self.gameState.players
+        isHumanVoted: bool = False
 
         for _ in range(10) :
             for player in players :
                 if player.info.isAI :
                     strategy: VoteStrategy = evaluator.evaluateVoteStrategy(self.gameState, player)
                 else :
-                    targetName = input('Choose the subject to vote on: ')
-                    targetInfo: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
-                    strategy: VoteStrategy = VoteStrategy(targetInfo)
+                    if not isHumanVoted :
+                        targetName = input('Choose the player to vote on: ')
+                        targetInfo: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
+                        if targetInfo != None :
+                            strategy: VoteStrategy = VoteStrategy(targetInfo)
+                            isHumanVoted = True
+                        else :
+                            continue
+                    else :
+                        continue
 
                 player.setVoteStrategy(self.gameState.round, strategy)
 

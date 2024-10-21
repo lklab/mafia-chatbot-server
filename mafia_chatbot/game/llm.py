@@ -7,17 +7,28 @@ if __name__ == "__main__" :
 
 import json
 import os
+from typing import Optional, Type
+from pydantic import BaseModel, Field
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
+from langchain_core.callbacks import (
+    CallbackManagerForToolRun,
+)
+from langchain_core.tools import BaseTool, StructuredTool
+from langchain_core.messages import SystemMessage
+from langchain_core.messages.tool import ToolMessage
+from langgraph.prebuilt import create_react_agent
 
 from mafia_chatbot.game.game_state import *
 from mafia_chatbot.game.player import *
 from mafia_chatbot.game.player_info import *
 
 class LLM :
-    def __init__(self, language: str) :
+    def __init__(self, gameState: GameState, language: str) :
+        self.gameState = gameState
+
         # load API key
         with open('apikeys.json') as f:
             keys = json.load(f)
@@ -32,20 +43,48 @@ class LLM :
             model="gpt-3.5-turbo",
         )
 
-        # setup prompt
-        prompt = self._setupPrompt(language)
+        # setup discussion chain
+        discussionPrompt = self._setupDiscussionPrompt(language)
+        self.discussionChain = discussionPrompt | model
 
-        # setup chain
-        self.chain = prompt | model
+        # setup human message agent
+        self.humanMessageAgent = self._setupHumanMessageAgent(model, self.gameState.nameList)
 
     def getDiscussion(self, gameState: GameState, player: Player) :
-        response = self.chain.invoke({
+        response = self.discussionChain.invoke({
             'gameState': gameState,
             'player': player,
         })
         return response.content
 
-    def _setupPrompt(self, language: str) :
+    def analyzeHumanMessage(self, player: Player, message: str) -> Strategy :
+        response = self.humanMessageAgent.invoke({'messages': [('user', message)]})
+
+        for message in reversed(response['messages']) :
+            if isinstance(message, ToolMessage) :
+                data = json.loads(message.content)
+
+                publicRole: Role = None
+                if 'role' in data :
+                    publicRole = strToRole(data['role'])
+                if publicRole == None :
+                    publicRole = player.publicRole
+
+                estimations: list[Estimation] = []
+                for estimation in data['estimations'] :
+                    playerInfo: PlayerInfo = self.gameState.getPlayerInfoByName(estimation['name'])
+                    role: Role = strToRole(estimation['role'])
+                    if playerInfo != None and role != None :
+                        estimations.append(Estimation(playerInfo, role))
+
+                assumptions: list[Assumption] = [Assumption(estimations, '')]
+
+                strategy: Strategy = Strategy(publicRole, assumptions)
+                return strategy
+
+        return None
+
+    def _setupDiscussionPrompt(self, language: str) :
         def _preprocessInput(input) :
             gameState: GameState = input['gameState']
             player: Player = input['player']
@@ -127,6 +166,76 @@ class LLM :
         )
 
         return prompt
+
+    def _setupHumanMessageAgent(self, model, nameList: list[str]) :
+        class EstimationInput(BaseModel) :
+            name: str = Field(description="The name of the person whose role the speaker is claiming.")
+            role: str = Field(description="The role of the individual with the specified name that the speaker is claiming.")
+
+        class ClaimInput(BaseModel) :
+            role: str = Field(description="It must be the speaker's role, not someone else's role.")
+            estimations: list[EstimationInput] = Field(description="The roles the speaker is claiming for other people.",)
+
+        class ClaimInputWithoutSpeakerRole(BaseModel) :
+            estimations: list[EstimationInput] = Field(description="The roles the speaker is claiming for other people.",)
+
+        class ClaimTool(BaseTool):
+            name: str = "ClaimTool"
+            description: str = "Call this tool to analyze the speaker's message. If the speaker claimed their own role, call this tool. For example, a statement like 'My role is citizen' is considered a claim of their own role."
+            args_schema: Type[BaseModel] = ClaimInput
+            return_direct: bool = True
+
+            def _run(
+                self, role: str, estimations: list[EstimationInput], run_manager: Optional[CallbackManagerForToolRun] = None
+            ) -> dict:
+                data = {}
+                data['role'] = role
+                data['estimations'] = []
+                for estimation in estimations :
+                    data['estimations'].append({
+                        'name': estimation.name,
+                        'role': estimation.role
+                    })
+                return data
+
+        class ClaimToolWithoutSpeakerRole(BaseTool):
+            name: str = "ClaimToolWithoutSpeakerRole"
+            description: str = "Call this tool to analyze the speaker's message. If the speaker did not claim their own role but only asserted the roles of others, call this tool instead of ClaimTool."
+            args_schema: Type[BaseModel] = ClaimInputWithoutSpeakerRole
+            return_direct: bool = True
+
+            def _run(
+                self, estimations: list[EstimationInput], run_manager: Optional[CallbackManagerForToolRun] = None
+            ) -> dict:
+                data = {}
+                data['estimations'] = []
+                for estimation in estimations :
+                    data['estimations'].append({
+                        'name': estimation.name,
+                        'role': estimation.role
+                    })
+                return data
+
+        def fallback() -> str:
+            print('fallback')
+            return 'fallback'
+
+        fallbackTool = StructuredTool.from_function(
+            func=fallback,
+            name="Fallback",
+            description="If the speaker's message is unrelated to the Mafia game, call this tool.",
+            return_direct=True,
+        )
+
+        tools = [ClaimTool(), ClaimToolWithoutSpeakerRole(), fallbackTool]
+
+        system_message = SystemMessage(content=f"The following message is a statement made during a game of Mafia. You need to analyze this message to determine what the speaker is claiming and call the appropriate tool. The names should be the closest match from {', '.join(map(lambda name: f'\'{name}\'', nameList))}. The roles should be the closest match from 'citizen', 'police', 'mafia', 'doctor'. If the names or roles differ significantly from the given strings or are not present in the message, input the string 'none'.")
+
+        agent_executor = create_react_agent(
+            model, tools, state_modifier=system_message
+        )
+
+        return agent_executor
 
 if __name__ == "__main__" :
     class Person :
