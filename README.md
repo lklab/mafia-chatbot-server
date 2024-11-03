@@ -18,9 +18,7 @@ source .venv/bin/activate  # On Windows use `.venv\Scripts\activate`
 2. Install the required Python packages:
 
 ``` bash
-pip install langchain
-pip install -qU langchain-openai
-pip install langgraph
+pip install -U langchain langchain-openai langgraph protobuf
 ```
 
 3. In the root directory of the repository, create a file called `apikeys.json` and configure your API keys:
