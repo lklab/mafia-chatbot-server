@@ -163,3 +163,7 @@ cython_debug/
 
 # Custom
 apikeys.json
+
+# Custom - tls
+server.crt
+server.key
