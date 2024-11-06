@@ -1,28 +1,36 @@
-import socket
-import ssl
+if __name__ == "__main__" :
+    from pathlib import Path
+    import sys
 
-# 서버 설정
-HOST = 'localhost'
-PORT = 8443
+    path_root = Path(__file__).resolve().parent
+    while path_root.name != 'mafia-chatbot-server' :
+        path_root = path_root.parent
 
-# 기본 소켓 생성
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind((HOST, PORT))
-server_socket.listen(5)
+    sys.path.append(str(path_root))
 
-# TLS 설정 추가
-context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-context.load_cert_chain(certfile="server.crt", keyfile="server.key")  # 인증서와 키 파일 필요
+import asyncio
 
-print("서버가 실행 중입니다...")
+from mafia_chatbot.network.tcp_server import TcpServer
+from mafia_chatbot.network.tcp_client_handler import TcpClientHandler
 
-# 클라이언트 연결 처리
-with context.wrap_socket(server_socket, server_side=True) as tls_server_socket:
-    conn, addr = tls_server_socket.accept()
-    print(f"클라이언트 {addr}에 연결됨")
-    
-    data = conn.recv(1024).decode('utf-8')
-    print("클라이언트로부터 받은 데이터:", data)
-    
-    conn.send("안녕하세요, 안전한 연결입니다!".encode('utf-8'))
-    conn.close()
+def onMessage(type: int, data: bytes) :
+    message = data.decode()
+    print(f'@@@ onMessage {type}, {message}')
+
+def onDisconnected() :
+    print('@@@ onDisconnected')
+
+def onConnected(handler: TcpClientHandler) :
+    asyncio.create_task(handler.listen(
+        onMessage=onMessage,
+        onDisconnected=onDisconnected,
+    ))
+
+    asyncio.create_task(handler.sendStr(77, 'Hello, this is test haha.'.encode()))
+
+async def main() :
+    server = TcpServer()
+    await server.start(onConnected=onConnected)
+    await server.serve()
+
+asyncio.run(main())

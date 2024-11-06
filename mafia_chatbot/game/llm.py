@@ -2,7 +2,10 @@ if __name__ == "__main__" :
     from pathlib import Path
     import sys
 
-    path_root = Path(__file__).parents[2]
+    path_root = Path(__file__).resolve().parent
+    while path_root.name != 'mafia-chatbot-server' :
+        path_root = path_root.parent
+
     sys.path.append(str(path_root))
 
 import json
