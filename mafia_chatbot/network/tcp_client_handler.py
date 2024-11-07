@@ -21,6 +21,8 @@ class TcpClientHandler :
                     break
                 buffer += chunk
 
+                # print('buffer: ' + ' '.join(f'0x{byte:02x}' for byte in buffer))
+
                 while True :
                     # check delimiter
                     cursor = buffer.find(delimiter)
