@@ -26,7 +26,7 @@ def onConnected(handler: TcpClientHandler) :
         onDisconnected=onDisconnected,
     ))
 
-    asyncio.create_task(handler.sendStr(77, 'Hello, this is test haha.'.encode()))
+    handler.sendStr(77, 'Hello, this is test haha.')
 
 async def main() :
     server = TcpServer()
