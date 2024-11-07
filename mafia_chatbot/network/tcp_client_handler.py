@@ -90,7 +90,7 @@ class TcpClientHandler :
 
         if not self.isSending :
             self.isSending = True
-            asyncio.create_task(self._send())
+            asyncio.create_task(self._sendQueuedMessages())
 
     async def _close(self) :
         if self.state == TcpClientState.DISCONNECTED :
@@ -101,7 +101,7 @@ class TcpClientHandler :
         await self.writer.wait_closed()
         self.onDisconnected()
 
-    async def _send(self) :
+    async def _sendQueuedMessages(self) :
         try:
             while len(self.sendQueue) > 0 and self.state == TcpClientState.LISTENING :
                 data = self.sendQueue.popleft()
