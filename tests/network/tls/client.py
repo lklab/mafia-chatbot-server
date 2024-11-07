@@ -28,6 +28,7 @@ context = ssl._create_unverified_context()
 with context.wrap_socket(client_socket, server_hostname=HOST) as tls_client_socket:
     tls_client_socket.connect((HOST, PORT))
 
+    # send auth
     auth = auth_pb2.Auth()
     auth.rqid = 555
     type = 0
@@ -60,3 +61,15 @@ with context.wrap_socket(client_socket, server_hostname=HOST) as tls_client_sock
     authResponse.ParseFromString(payload)
 
     print(f"서버로부터 받은 데이터: type={msg_type}, message=<{authResponse}>")
+
+    # send auth response
+    authResponse = auth_pb2.AuthResponse()
+    authResponse.rqid = 777
+    type = 1
+    data = authResponse.SerializeToString()
+
+    tls_client_socket.send(delimiter +
+        type.to_bytes(4, byteorder='big') +
+        len(data).to_bytes(4, byteorder='big') +
+        data
+    )

@@ -17,27 +17,21 @@ from mafia_chatbot.network.data import *
 
 client = None
 
+def onAuth(message) :
+    print(f'@@@ onAuth message=<{message}>')
+    return True
+
 def onMessage(message) :
     print(f'@@@ onMessage message=<{message}>')
 
-    asyncio.create_task(sendMessage())
-
 def onDisconnected() :
     print('@@@ onDisconnected')
-
-async def sendMessage() :
-    global client
-
-    await asyncio.sleep(1)
-
-    authResponse = auth_pb2.AuthResponse()
-    authResponse.rqid = 777
-    client.send(authResponse)
 
 def onConnected(handler: TcpClientHandler) :
     global client
     client = MessageClientHandler(
         tcpHandler=handler,
+        onAuth=onAuth,
         onMessage=onMessage,
         onDisconnected=onDisconnected,
     )

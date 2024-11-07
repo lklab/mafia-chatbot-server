@@ -35,12 +35,14 @@ class MessageClientHandler :
     def __init__(
             self,
             tcpHandler: TcpClientHandler,
+            onAuth: Callable[[Any], bool],
             onMessage: Callable[[Any], None],
             onDisconnected: Callable[[], None],
         ) :
         self.state = MessageClientState.AUTHENTICATING
         self.tcpHandler = tcpHandler
 
+        self.onAuth = onAuth
         self.onMessage = onMessage
         self.onDisconnected = onDisconnected
 
@@ -53,9 +55,11 @@ class MessageClientHandler :
         ))
 
     def send(self, message) :
-        if self.state == MessageClientState.DISCONNECTED :
+        if self.state != MessageClientState.CONNECTED :
             return
+        self._send(message)
 
+    def _send(self, message) :
         if type(message) in messageTypeDict :
             msgType = messageTypeDict[type(message)]
             data = message.SerializeToString()
@@ -63,10 +67,21 @@ class MessageClientHandler :
             asyncio.create_task(self._sendQueuedMessages())
 
     def _onData(self, msgType: int, data: bytes) :
-        if msgType in messageFactoryDict :
-            message = messageFactoryDict[msgType](data)
-            print(f'onMessage msgType={msgType}, message=<{message}>')
-            self.onMessage(message)
+        if self.state == MessageClientState.AUTHENTICATING :
+            if msgType == 0 :
+                message = messageFactoryDict[0](data)
+                print(f'onData msgType={msgType}, message=<{message}>')
+
+                if self.onAuth(message) :
+                    authResponse = auth_pb2.AuthResponse()
+                    authResponse.rqid = message.rqid
+                    self._send(authResponse)
+                    self.state = MessageClientState.CONNECTED
+        else :
+            if msgType in messageFactoryDict :
+                message = messageFactoryDict[msgType](data)
+                print(f'onData msgType={msgType}, message=<{message}>')
+                self.onMessage(message)
 
     def _onDisconnected(self) :
         self.state = MessageClientState.DISCONNECTED
