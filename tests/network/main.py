@@ -12,6 +12,7 @@ print(type(serialized_person))
 
 # 역직렬화
 person_from_serialized = person_pb2.Person()
+print(type(person_from_serialized))
 person_from_serialized.ParseFromString(serialized_person)
 
 print(person_from_serialized)

@@ -1,5 +1,17 @@
+if __name__ == "__main__" :
+    from pathlib import Path
+    import sys
+
+    path_root = Path(__file__).resolve().parent
+    while path_root.name != 'mafia-chatbot-server' :
+        path_root = path_root.parent
+
+    sys.path.append(str(path_root))
+
 import socket
 import ssl
+
+from mafia_chatbot.network.data import *
 
 # 서버 설정
 HOST = 'localhost'
@@ -16,8 +28,10 @@ context = ssl._create_unverified_context()
 with context.wrap_socket(client_socket, server_hostname=HOST) as tls_client_socket:
     tls_client_socket.connect((HOST, PORT))
 
-    type = 55
-    data = "안녕하세요, 서버!".encode('utf-8')
+    auth = auth_pb2.Auth()
+    auth.rqid = 555
+    type = 0
+    data = auth.SerializeToString()
 
     tls_client_socket.send(delimiter +
         type.to_bytes(4, byteorder='big') +
@@ -41,4 +55,8 @@ with context.wrap_socket(client_socket, server_hostname=HOST) as tls_client_sock
     payload = buffer[cursor:cursor+payload_size]
     cursor += payload_size
 
-    print(f"서버로부터 받은 데이터: type={msg_type}, message={payload.decode('utf-8')}")
+    # create message
+    authResponse = auth_pb2.AuthResponse()
+    authResponse.ParseFromString(payload)
+
+    print(f"서버로부터 받은 데이터: type={msg_type}, message=<{authResponse}>")

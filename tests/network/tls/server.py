@@ -12,21 +12,35 @@ import asyncio
 
 from mafia_chatbot.network.tcp_server import TcpServer
 from mafia_chatbot.network.tcp_client_handler import TcpClientHandler
+from mafia_chatbot.network.message_client_handler import MessageClientHandler
+from mafia_chatbot.network.data import *
 
-def onMessage(type: int, data: bytes) :
-    message = data.decode()
-    print(f'@@@ onMessage {type}, {message}')
+client = None
+
+def onMessage(message) :
+    print(f'@@@ onMessage message=<{message}>')
+
+    asyncio.create_task(sendMessage())
 
 def onDisconnected() :
     print('@@@ onDisconnected')
 
+async def sendMessage() :
+    global client
+
+    await asyncio.sleep(1)
+
+    authResponse = auth_pb2.AuthResponse()
+    authResponse.rqid = 777
+    client.send(authResponse)
+
 def onConnected(handler: TcpClientHandler) :
-    asyncio.create_task(handler.listen(
+    global client
+    client = MessageClientHandler(
+        tcpHandler=handler,
         onMessage=onMessage,
         onDisconnected=onDisconnected,
-    ))
-
-    handler.sendStr(77, 'Hello, this is test haha.')
+    )
 
 async def main() :
     server = TcpServer()
