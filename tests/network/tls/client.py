@@ -11,7 +11,7 @@ if __name__ == "__main__" :
 import socket
 import ssl
 
-from mafia_chatbot.network.data import *
+from mafia_chatbot.network.messages import *
 
 # 서버 설정
 HOST = 'localhost'

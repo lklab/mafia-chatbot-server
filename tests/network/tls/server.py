@@ -13,7 +13,7 @@ import asyncio
 from mafia_chatbot.network.tcp_server import TcpServer
 from mafia_chatbot.network.tcp_client_handler import TcpClientHandler
 from mafia_chatbot.network.message_client_handler import MessageClientHandler
-from mafia_chatbot.network.data import *
+from mafia_chatbot.network.messages import *
 
 client = None
 
