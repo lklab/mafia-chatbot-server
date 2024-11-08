@@ -1,9 +1,9 @@
 syntax = "proto3";
 
 message Auth {
-  int32 rqid = 1;
+  string rqid = 1;
 }
 
 message AuthResponse {
-  int32 rqid = 1;
+  string rqid = 1;
 }

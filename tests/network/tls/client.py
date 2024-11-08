@@ -30,7 +30,7 @@ with context.wrap_socket(client_socket, server_hostname=HOST) as tls_client_sock
 
     # send auth
     auth = auth_pb2.Auth()
-    auth.rqid = 555
+    auth.rqid = 'my first auth'
     type = 0
     data = auth.SerializeToString()
 
@@ -64,7 +64,7 @@ with context.wrap_socket(client_socket, server_hostname=HOST) as tls_client_sock
 
     # send auth response
     authResponse = auth_pb2.AuthResponse()
-    authResponse.rqid = 777
+    authResponse.rqid = 'my second auth'
     type = 1
     data = authResponse.SerializeToString()
 

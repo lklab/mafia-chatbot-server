@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nauth.proto\"\x14\n\x04\x41uth\x12\x0c\n\x04rqid\x18\x01 \x01(\x05\"\x1c\n\x0c\x41uthResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\x05\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nauth.proto\"\x14\n\x04\x41uth\x12\x0c\n\x04rqid\x18\x01 \x01(\t\"\x1c\n\x0c\x41uthResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\tb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
