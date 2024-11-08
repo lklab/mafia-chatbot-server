@@ -11,19 +11,19 @@ messageTypeDict: dict[Type, int] = {
     auth_pb2.AuthResponse : 1,
 }
 
-def AuthMessageFactory(data: bytes) -> auth_pb2.Auth :
+def _authMessageFactory(data: bytes) -> auth_pb2.Auth :
     message = auth_pb2.Auth()
     message.ParseFromString(data)
     return message
 
-def AuthResponseMessageFactory(data: bytes) -> auth_pb2.AuthResponse :
+def _authResponseMessageFactory(data: bytes) -> auth_pb2.AuthResponse :
     message = auth_pb2.AuthResponse()
     message.ParseFromString(data)
     return message
 
 messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
-    0 : AuthMessageFactory,
-    1 : AuthResponseMessageFactory,
+    0 : _authMessageFactory,
+    1 : _authResponseMessageFactory,
 }
 
 class MessageClientState(Enum) :
