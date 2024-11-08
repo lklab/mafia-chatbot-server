@@ -4,7 +4,7 @@ from collections import deque
 from typing import Callable, Deque, Type, Any
 
 from mafia_chatbot.network.tcp_client_handler import TcpClientHandler
-from mafia_chatbot.network.data import *
+from mafia_chatbot.network.messages import *
 
 messageTypeDict: dict[Type, int] = {
     auth_pb2.Auth : 0,
