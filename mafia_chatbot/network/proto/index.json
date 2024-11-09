@@ -2,6 +2,13 @@
     "files" :
     [
         {
+            "name" : "error",
+            "messages" :
+            [
+                "Error"
+            ]
+        },
+        {
             "name" : "auth",
             "messages" :
             [
