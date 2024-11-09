@@ -2,13 +2,13 @@ from typing import Callable, Type, Any
 from mafia_chatbot.network.messages import *
 
 messageTypeDict: dict[Type, int] = {
-    error_pb2.Error : 0,
+    error_pb2.RequestError : 0,
     auth_pb2.Auth : 1000,
     auth_pb2.AuthResponse : 1001,
 }
 
-def _ErrorMessageFactory(data: bytes) -> error_pb2.Error :
-    message = error_pb2.Error()
+def _RequestErrorMessageFactory(data: bytes) -> error_pb2.RequestError :
+    message = error_pb2.RequestError()
     message.ParseFromString(data)
     return message
 
@@ -24,7 +24,7 @@ def _AuthResponseMessageFactory(data: bytes) -> auth_pb2.AuthResponse :
 
 
 messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
-    0 : _ErrorMessageFactory,
+    0 : _RequestErrorMessageFactory,
     1000 : _AuthMessageFactory,
     1001 : _AuthResponseMessageFactory,
 }

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-message Error {
+message RequestError {
   string rqid = 1;
   int32 rqtype = 2;
   int32 code = 3;

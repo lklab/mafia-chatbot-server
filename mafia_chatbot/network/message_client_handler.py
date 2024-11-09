@@ -58,6 +58,13 @@ class MessageClientHandler :
                     authResponse.rqid = message.rqid
                     self._send(authResponse)
                     self.state = MessageClientState.CONNECTED
+
+                    # requestError = error_pb2.RequestError()
+                    # requestError.rqid = message.rqid
+                    # requestError.rqtype = msgType
+                    # requestError.code = 123
+                    # requestError.detail = 'test error!'
+                    # self._send(requestError)
         else :
             if msgType in messageFactoryDict :
                 message = messageFactoryDict[msgType](data)
