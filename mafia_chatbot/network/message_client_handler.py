@@ -49,7 +49,7 @@ class MessageClientHandler :
 
     def _onData(self, msgType: int, data: bytes) :
         if self.state == MessageClientState.AUTHENTICATING :
-            if msgType == 0 :
+            if msgType == 1000 :
                 message = messageFactoryDict[0](data)
                 print(f'onData msgType={msgType}, message=<{message}>')
 
