@@ -1,0 +1,12 @@
+from typing import Callable, Type, Any
+from mafia_chatbot.network.messages import *
+
+messageTypeDict: dict[Type, int] = {
+$typeDict
+}
+
+$factories
+
+messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
+$factoryDict
+}

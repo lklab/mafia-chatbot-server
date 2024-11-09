@@ -1,0 +1,13 @@
+{
+    "files" :
+    [
+        {
+            "name" : "auth",
+            "messages" :
+            [
+                "Auth",
+                "AuthResponse"
+            ]
+        }
+    ]
+}

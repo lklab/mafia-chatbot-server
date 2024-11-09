@@ -1,30 +1,11 @@
 import asyncio
 from enum import Enum
 from collections import deque
-from typing import Callable, Deque, Type, Any
+from typing import Callable, Deque, Any
 
 from mafia_chatbot.network.tcp_client_handler import TcpClientHandler
+from mafia_chatbot.network.messages.message_info import *
 from mafia_chatbot.network.messages import *
-
-messageTypeDict: dict[Type, int] = {
-    auth_pb2.Auth : 0,
-    auth_pb2.AuthResponse : 1,
-}
-
-def _authMessageFactory(data: bytes) -> auth_pb2.Auth :
-    message = auth_pb2.Auth()
-    message.ParseFromString(data)
-    return message
-
-def _authResponseMessageFactory(data: bytes) -> auth_pb2.AuthResponse :
-    message = auth_pb2.AuthResponse()
-    message.ParseFromString(data)
-    return message
-
-messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
-    0 : _authMessageFactory,
-    1 : _authResponseMessageFactory,
-}
 
 class MessageClientState(Enum) :
     AUTHENTICATING = 0
