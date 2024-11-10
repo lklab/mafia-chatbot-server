@@ -1,4 +1,5 @@
 import random
+from datetime import datetime, timedelta
 
 from mafia_chatbot.game.game_info import *
 from mafia_chatbot.game.player_info import *
@@ -178,6 +179,7 @@ class GameState :
         ### initialize round
         self.round = 0
         self.currentPhase = Phase.DAY
+        self.timeLimit = None
 
         ### police data
         self.isPoliceLive = True
@@ -251,17 +253,40 @@ class GameState :
     def addRound(self) :
         self.round += 1
 
+    def _switchPhaseDay(self) :
+        self._reloadAllChatingCounts()
+
+        self.timeLimit = datetime.now() + timedelta(minutes=1)
+
+    def _switchPhaseEvening(self) :
+        self._clearAllChatingCounts()
+
+        self.timeLimit = datetime.now() + timedelta(seconds=30)
+
+    def _switchPhaseNight(self) :
+        self._clearAllChatingCounts()
+
+        self.timeLimit = datetime.now() + timedelta(seconds=30)
+
+    _switchPhase = {
+        Phase.DAY : _switchPhaseDay,
+        Phase.EVENING : _switchPhaseEvening,
+        Phase.NIGHT : _switchPhaseNight,
+    }
+
+    def _reloadAllChatingCounts(self) :
+        for player in self.players :
+            if player.info.isHuman :
+                player.reloadChatingCount()
+
+    def _clearAllChatingCounts(self) :
+        for player in self.players :
+            if player.info.isHuman :
+                player.clearChatingCount()
+
     def setPhase(self, phase: Phase) :
         self.currentPhase = phase
-
-        if phase == Phase.DAY :
-            for player in self.players :
-                if player.info.isHuman :
-                    player.reloadChatingCount()
-        else :
-            for player in self.players :
-                if player.info.isHuman :
-                    player.clearChatingCount()
+        GameState._switchPhase[phase](self)
 
     def getCurrentRoundInfo(self) -> RoundInfo :
         return RoundInfo(self.round, len(self.players), len(self.mafiaPlayers))

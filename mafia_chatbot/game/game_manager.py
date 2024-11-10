@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 
 from mafia_chatbot.game.game_state import *
 from mafia_chatbot.game.game_result import *
@@ -105,6 +106,10 @@ class GameManager :
                 p: Player = self.gameState.getPlayerByInfo(estimation.playerInfo)
                 if p not in self.gameState.firstPointers :
                     self.gameState.firstPointers[p] = player
+
+        # await until time limit
+        waitTime: float = (self.gameState.timeLimit - datetime.now()).total_seconds()
+        await asyncio.sleep(waitTime)
 
     async def _processEvening(self) :
         pass
