@@ -70,6 +70,7 @@ class GameManager :
             index += 1
             index %= playerCount
 
+            # for human player
             if player.info.isHuman and self.gameState.gameInfo.isCUI :
                 if self.gameState.gameInfo.useLLM :
                     discussion: str = input('It\'s your turn: ')
@@ -80,6 +81,7 @@ class GameManager :
                     discussion: str = f'I think {targetPlayer.info.name} is a mafia'
                     strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, targetPlayer.info, '')
 
+            # for bot player
             elif not player.info.isHuman :
                 await asyncio.sleep(1)
 
@@ -96,9 +98,11 @@ class GameManager :
             else :
                 continue
 
+            # apply strategy and discussion
             player.setDiscussionStrategy(self.gameState.round, strategy)
             self.gameState.appendChatDiscussion(player.info, discussion)
 
+            # record significant data
             if player.publicRole == Role.POLICE :
                 self.gameState.addPublicPolice(player)
 
