@@ -8,6 +8,7 @@ class TcpClientState(Enum) :
     DISCONNECTED = 2
 
 delimiter = b'\xCA\xFE\xBA\xBE'
+maxPayloadSize = 10 * 1024 * 1024 # 10Mb
 
 class TcpClientHandler :
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) :
@@ -40,6 +41,7 @@ class TcpClientHandler :
                     # check delimiter
                     cursor = buffer.find(delimiter)
                     if cursor == -1 :
+                        buffer = b''
                         break
                     cursor += 4
 
@@ -50,6 +52,11 @@ class TcpClientHandler :
                     cursor += 4
                     payload_size = int.from_bytes(buffer[cursor:cursor+4], byteorder='big')
                     cursor += 4
+
+                    # check payload size
+                    if payload_size > maxPayloadSize :
+                        buffer = buffer[cursor:]
+                        continue
 
                     # get payload
                     if len(buffer) > cursor + payload_size :
