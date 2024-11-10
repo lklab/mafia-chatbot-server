@@ -70,6 +70,10 @@ class Player :
         self.testResults: dict[Player, Role] = {}
         self.testedTargets: list[Player] = []
 
+        # human chating count
+        self.maxChatingCount = 1
+        self.remainChatingCount = 0
+
     def __str__(self) :
         return self.info.__str__()
 
@@ -178,6 +182,12 @@ class Player :
             return f'You must claim that your role is {self.info.role.name.lower()}.'
         else :
             return ''
+
+    def reloadChatingCount(self) :
+        self.remainChatingCount = self.maxChatingCount
+
+    def clearChatingCount(self) :
+        self.remainChatingCount = 0
 
     def expandList(self, l: list, size: int, fillValue = None) :
         for _ in range(len(l), size) :

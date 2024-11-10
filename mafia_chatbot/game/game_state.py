@@ -254,6 +254,15 @@ class GameState :
     def setPhase(self, phase: Phase) :
         self.currentPhase = phase
 
+        if phase == Phase.DAY :
+            for player in self.players :
+                if player.info.isHuman :
+                    player.reloadChatingCount()
+        else :
+            for player in self.players :
+                if player.info.isHuman :
+                    player.clearChatingCount()
+
     def getCurrentRoundInfo(self) -> RoundInfo :
         return RoundInfo(self.round, len(self.players), len(self.mafiaPlayers))
 
