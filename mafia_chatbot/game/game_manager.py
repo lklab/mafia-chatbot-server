@@ -1,3 +1,5 @@
+import asyncio
+
 from mafia_chatbot.game.game_state import *
 from mafia_chatbot.game.game_result import *
 import mafia_chatbot.game.evaluator as evaluator
@@ -7,6 +9,7 @@ from mafia_chatbot.game.client_player import ClientPlayer
 class GameManager :
     def __init__(self, gameInfo: GameInfo) :
         self.gameState = GameState(gameInfo)
+        print(self.gameState.players)
 
         self.clientDict: dict[str, Player] = {}
         for player in self.gameState.players :
@@ -14,7 +17,6 @@ class GameManager :
                 self.clientDict[player.client.id] = player
 
         self.llm = LLM(self.gameState, gameInfo.language)
-        print(self.gameState.players)
 
     def removeClient(self, client: ClientPlayer) :
         player = self.clientDict.get(client.id)
@@ -27,30 +29,101 @@ class GameManager :
             player.client = client
 
     def start(self) :
-        self.discussionIndex = 0
+        self._mainLogic()
+
+    async def _mainLogic(self) :
+        gameResult: GameResult = None
 
         while True :
-            if self.gameState.currentPhase == Phase.DAY :
-                self.processDay()
-                self.gameState.setPhase(Phase.EVENING)
+            self.gameState.setPhase(Phase.DAY)
+            await self._processDay()
 
-            elif self.gameState.currentPhase == Phase.EVENING :
-                self.processEvening()
-                self.gameState.setPhase(Phase.NIGHT)
+            self.gameState.setPhase(Phase.EVENING)
+            await self._processEvening()
 
-                gameResult: GameResult = self.checkGameEnd()
-                if gameResult :
-                    return gameResult
+            gameResult: GameResult = self.checkGameEnd()
+            if gameResult :
+                break
 
-            elif self.gameState.currentPhase == Phase.NIGHT :
-                self.processNight()
-                self.gameState.setPhase(Phase.DAY)
+            self.gameState.setPhase(Phase.NIGHT)
+            await self._processNight()
 
-                gameResult: GameResult = self.checkGameEnd()
-                if gameResult :
-                    return gameResult
+            gameResult: GameResult = self.checkGameEnd()
+            if gameResult :
+                break
+
+            self.gameState.addRound()
+
+    async def _processDay(self) :
+        self._printCUI('\nIt is morning. Please engage in a discussion.')
+
+        self.gameState.firstPointers.clear()
+
+        players = self.gameState.players
+        playerCount = len(players)
+
+        index = self.gameState.round % playerCount
+
+        for _ in range(playerCount) :
+            player: Player = players[index]
+            index += 1
+            index %= playerCount
+
+            if player.info.isHuman and self.gameState.gameInfo.isCUI :
+                if self.gameState.gameInfo.useLLM :
+                    discussion: str = input('It\'s your turn: ')
+                    strategy: Strategy = self.llm.analyzeHumanMessage(player, discussion)
+                    self._printCUI(f'human\'s strategy: {strategy}')
                 else :
-                    self.gameState.addRound()
+                    targetPlayer: Player = self._getTargetFromCUI('It\'s your turn: ')
+                    discussion: str = f'I think {targetPlayer.info.name} is a mafia'
+                    strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, targetPlayer.info, '')
+
+            elif not player.info.isHuman :
+                await asyncio.sleep(1)
+
+                self.updateAllTrustPoint()
+                strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, players[index])
+
+                if self.gameState.gameInfo.useLLM :
+                    discussion: str = self.llm.getDiscussion(self.gameState, player)
+                else :
+                    discussion: str = str(strategy)
+
+                self._printCUI(f'{player.info.name}: {discussion}')
+
+            else :
+                continue
+
+            player.setDiscussionStrategy(self.gameState.round, strategy)
+            self.gameState.appendChatDiscussion(player.info, discussion)
+
+            if player.publicRole == Role.POLICE :
+                self.gameState.addPublicPolice(player)
+
+            for estimation in strategy.mafiaEstimations :
+                p: Player = self.gameState.getPlayerByInfo(estimation.playerInfo)
+                if p not in self.gameState.firstPointers :
+                    self.gameState.firstPointers[p] = player
+
+    async def _processEvening(self) :
+        pass
+
+    async def _processNight(self) :
+        pass
+
+    def _printCUI(self, text) :
+        if self.gameState.gameInfo.isCUI :
+            print(text)
+
+    def _getTargetFromCUI(self, text) -> Player :
+        target: Player = None
+
+        while target == None :
+            name: str = input(text)
+            target = self.gameState.getPlayerByName(name)
+
+        return target
 
     def processDay(self) :
         print('\nIt is morning. Please engage in a discussion.')

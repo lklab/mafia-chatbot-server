@@ -1,4 +1,11 @@
+from enum import Enum
+
 from mafia_chatbot.game.client_player import ClientPlayer
+
+class GameMode(Enum) :
+    CUI = 0
+    CUI_WITH_LLM = 1
+    CLIENT = 2
 
 class GameInfo :
     def __init__(self,
@@ -7,7 +14,7 @@ class GameInfo :
         clients: list[ClientPlayer],
         localPlayerName: str,
         language: str = 'english',
-        useLLM: bool = True) :
+        gameMode: GameMode = GameMode.CUI_WITH_LLM) :
 
         self.playerCount = playerCount
         self.citizenCount = playerCount - mafiaCount
@@ -17,7 +24,10 @@ class GameInfo :
         self.localPlayerName = localPlayerName
 
         self.language = language
-        self.useLLM = useLLM
+
+        self.gameMode = gameMode
+        self.useLLM = gameMode != GameMode.CUI
+        self.isCUI = gameMode != GameMode.CLIENT
 
     def checkValid(self) -> bool :
         if self.playerCount > 10 or self.playerCount < 3 :

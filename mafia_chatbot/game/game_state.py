@@ -3,6 +3,7 @@ import random
 from mafia_chatbot.game.game_info import *
 from mafia_chatbot.game.player_info import *
 from mafia_chatbot.game.player import *
+from mafia_chatbot.game.chat_data import ChatData, ChatType
 
 NAMES: dict[str, list[str]] = {
     'english' : [
@@ -169,7 +170,8 @@ class GameState :
             self.allPlayerMap[player.info] = player
 
         ### history
-        self.discussionHistory: list[str] = []
+        self.chatList: list[ChatData] = []
+        self.discussionHistory: list[str] = [] # TODO delete
         self.voteHistory: list[VoteData] = []
         self.removedPlayers: dict[Player, PlayerRemoveInfo] = {}
 
@@ -257,6 +259,15 @@ class GameState :
 
     def appendDiscussionHistory(self, playerInfo: PlayerInfo, discussion: str) :
         self.discussionHistory.append(f'{playerInfo.name}: {discussion}')
+
+    def appendChatDiscussion(self, sender: PlayerInfo, content: str) :
+        chat: ChatData = ChatData(
+            type=ChatType.DISCUSSION,
+            index=len(self.chatList),
+            content=content,
+            sender=sender,
+        )
+        self.chatList.append(chat)
 
     def updateVoteHistory(self) -> VoteData :
         self.expandList(self.voteHistory, self.round + 1)
