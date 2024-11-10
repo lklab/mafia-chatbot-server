@@ -1,15 +1,30 @@
-from enum import Enum
-
 from mafia_chatbot.game.game_state import *
 from mafia_chatbot.game.game_result import *
 import mafia_chatbot.game.evaluator as evaluator
 from mafia_chatbot.game.llm import LLM
+from mafia_chatbot.game.client_player import ClientPlayer
 
 class GameManager :
     def __init__(self, gameInfo: GameInfo) :
         self.gameState = GameState(gameInfo)
+
+        self.clientDict: dict[str, Player] = {}
+        for player in self.gameState.players :
+            if player.client != None :
+                self.clientDict[player.client.id] = player
+
         self.llm = LLM(self.gameState, gameInfo.language)
         print(self.gameState.players)
+
+    def removeClient(self, client: ClientPlayer) :
+        player = self.clientDict.get(client.id)
+        if player != None :
+            player.client = None
+
+    def assignClient(self, client: ClientPlayer) :
+        player = self.clientDict.get(client.id)
+        if player != None :
+            player.client = client
 
     def start(self) :
         self.discussionIndex = 0

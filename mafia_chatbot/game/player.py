@@ -1,6 +1,7 @@
 import random
 
-from mafia_chatbot.game.player_info import *
+from mafia_chatbot.game.client_player import ClientPlayer
+from mafia_chatbot.game.player_info import PlayerInfo
 from mafia_chatbot.game.strategy import *
 
 class Player :
@@ -33,9 +34,11 @@ trustRecordTypeToPrompt: dict[TrustRecordType, str] = {
 }
 
 class Player :
-    def __init__(self, name, isAI, tone) :
+    def __init__(self, name: str, tone: str, isHuman: bool, client: ClientPlayer) :
+        # player data
+        self.info = PlayerInfo(name, tone, isHuman)
+        self.client = client
         self.isLive = True
-        self.info = PlayerInfo(name, isAI, tone)
 
         # personal factors
         self.conformity: float = random.uniform(0.5, 1.5) # 1.0

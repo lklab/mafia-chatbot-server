@@ -85,14 +85,30 @@ class GameState :
     def __init__(self, gameInfo: GameInfo) :
         self.gameInfo = gameInfo
 
-        # create players
-        if gameInfo.humanName != None :
-            self.humanPlayer: Player = Player(gameInfo.humanName, False, '')
-            aiPlayerCount = gameInfo.playerCount - 1
-        else :
-            self.humanPlayer: Player = None
-            aiPlayerCount = gameInfo.playerCount
+        ### create players
+        self.players: list[Player] = []
+        usedNames = set()
 
+        # create human players
+        for client in gameInfo.clients :
+            self.players.append(Player(
+                name=client.name,
+                tone='',
+                isHuman=True,
+                client=client
+            ))
+            usedNames.add(client.name.lower())
+
+        if gameInfo.localPlayerName != None :
+            self.players.append(Player(
+                name=gameInfo.localPlayerName,
+                tone='',
+                isHuman=True,
+                client=None
+            ))
+            usedNames.add(gameInfo.localPlayerName.lower())
+
+        # prepare names and tones for bot players
         if gameInfo.language in NAMES :
             names: list[str] = NAMES[gameInfo.language].copy()
         else :
@@ -102,13 +118,28 @@ class GameState :
         tones: list[str] = TONES.copy()
         random.shuffle(tones)
 
-        self.players = [Player(names[i], True, tones[i]) for i in range(aiPlayerCount)]
+        # create bot players
+        nameIndex = 0
+        toneIndex = 0
 
-        if self.humanPlayer != None :
-            self.players.insert(random.randint(0, aiPlayerCount), self.humanPlayer)
+        for i in range(len(self.players), gameInfo.playerCount) :
+            while names[nameIndex] in usedNames :
+                nameIndex += 1
+
+            self.players.append(Player(
+                name=names[nameIndex],
+                tone=tones[toneIndex],
+                isHuman=False,
+                client=None
+            ))
+
+            nameIndex += 1
+            toneIndex += 1
 
         # assign role
+        random.shuffle(self.players)
         self.mafiaPlayers: list[Player] = []
+
         for i in range(gameInfo.mafiaCount) :
             self.players[i].info.role = Role.MAFIA
             self.mafiaPlayers.append(self.players[i])
@@ -122,31 +153,31 @@ class GameState :
         self.policePlayer: Player = self.players[gameInfo.mafiaCount+0]
         self.doctorPlayer: Player = self.players[gameInfo.mafiaCount+1]
 
-        # shuffle player order
+        # shuffle players
         random.shuffle(self.players)
 
-        # setup nameList
+        ### setup nameList
         self.nameList: list[str] = list(map(lambda p: p.info.name, self.players))
 
-        # setup allPlayers
+        ### setup allPlayers
         self.allPlayers: list[Player] = self.players.copy()
         self.allMafiaPlayers: list[Player] = self.mafiaPlayers.copy()
 
-        # setup allPlayerMap
+        ### setup allPlayerMap
         self.allPlayerMap: dict[PlayerInfo, Player] = {}
         for player in self.allPlayers :
             self.allPlayerMap[player.info] = player
 
-        # history
+        ### history
         self.discussionHistory: list[str] = []
         self.voteHistory: list[VoteData] = []
         self.removedPlayers: dict[Player, PlayerRemoveInfo] = {}
 
-        # initialize round
+        ### initialize round
         self.round = 0
         self.currentPhase = Phase.DAY
 
-        # police data
+        ### police data
         self.isPoliceLive = True
         self.publicPolicePlayers: set[Player] = set()
         self.onePublicPolicePlayer: Player = None
@@ -154,10 +185,10 @@ class GameState :
         self.isRealPoliveRevealed = False
         self.isFakePoliveRevealed = False
 
-        # doctor data
+        ### doctor data
         self.isDoctorLive = True
 
-        # discussion data
+        ### discussion data
         self.firstPointers: dict[Player, Player] = {}
 
     def removePlayer(self, player: Player, reason: RemoveReason) :

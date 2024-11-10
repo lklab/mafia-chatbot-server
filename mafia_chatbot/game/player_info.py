@@ -1,4 +1,5 @@
 from enum import Enum
+import uuid
 
 class Role :
     pass
@@ -22,10 +23,11 @@ def strToRole(roleStr: str) -> Role :
     return None
 
 class PlayerInfo :
-    def __init__(self, name: str, isAI: bool, tone: str) :
+    def __init__(self, name: str, tone: str, isHuman: bool) :
+        self.id: str = str(uuid.uuid4())
         self.name: str = name
-        self.isAI: bool = isAI
         self.tone: str = tone
+        self.isHuman: bool = isHuman
         self.role: Role = Role.CITIZEN
 
     def __str__(self) :
