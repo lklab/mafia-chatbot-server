@@ -53,10 +53,11 @@ class LLM :
         # setup human message agent
         self.humanMessageAgent = self._setupHumanMessageAgent(model, self.gameState.nameList)
 
-    def getDiscussion(self, gameState: GameState, player: Player) :
+    def getDiscussion(self, gameState: GameState, player: Player, strategy: Strategy) :
         response = self.discussionChain.invoke({
             'gameState': gameState,
             'player': player,
+            'strategy': strategy,
         })
         return response.content
 
@@ -91,6 +92,7 @@ class LLM :
         def _preprocessInput(input) :
             gameState: GameState = input['gameState']
             player: Player = input['player']
+            strategy: Strategy = input['strategy']
 
             roleToTeam = {
                 Role.CITIZEN: 'Citizen',
@@ -114,7 +116,7 @@ class LLM :
                 'current_step': f'Day {gameState.round + 1}',
                 'discussion_history': '\n'.join(gameState.discussionHistory),
                 'discussion_role': player.getRolePrompt(),
-                'discussion_assumptions': player.discussionStrategy.assumptionsToPrompt(),
+                'discussion_assumptions': strategy.assumptionsToPrompt(),
             }
 
         def _setupInformationPrompt(input) :

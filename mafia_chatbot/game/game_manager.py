@@ -89,7 +89,7 @@ class GameManager :
                 strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, players[index])
 
                 if self.gameState.gameInfo.useLLM :
-                    discussion: str = self.llm.getDiscussion(self.gameState, player)
+                    discussion: str = self.llm.getDiscussion(self.gameState, player, strategy)
                 else :
                     discussion: str = str(strategy)
 
