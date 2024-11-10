@@ -1,50 +1,47 @@
+import asyncio
+
 from mafia_chatbot.game import *
 from mafia_chatbot.game.game_result import *
 
-playerCount = 10
-mafiaCount = 2
+from mafia_chatbot.network.tcp_server import TcpServer
+from mafia_chatbot.network.tcp_client_handler import TcpClientHandler
+from mafia_chatbot.network.message_client_handler import MessageClientHandler
 
-def balanceTest(times: int) :
-    citizenWinCount = 0
-    policeRevealCount = 0
-    citizenWinPolice = 0
-    fakePoliceCount = 0
+class GameInstance :
+    def __init__(self, handler: TcpClientHandler) :
+        self.tcp = handler
+        self.client = MessageClientHandler(
+            tcpHandler=handler,
+            onAuth=self._onAuth,
+            onMessage=self._onMessage,
+            onDisconnected=self._onDisconnected,
+        )
 
-    for _ in range(100) :
-        gameInfo = game_info.GameInfo(
-            playerCount=playerCount,
-            mafiaCount=mafiaCount,
-            humanName=None,
-            useLLM=False)
+    def _onAuth(self, message) :
+        self._log(f'onAuth message=<{message}>')
+        return True
 
-        manager = game_manager.GameManager(gameInfo)
-        gameResult: GameResult = manager.start()
+    def _onMessage(self, message) :
+        self._log(f'onMessage message=<{message}>')
 
-        if gameResult.isCitizenWin :
-            citizenWinCount += 1
-        if gameResult.isRealPoliveRevealed :
-            policeRevealCount += 1
-            if gameResult.isCitizenWin :
-                citizenWinPolice += 1
-        if gameResult.isFakePoliveRevealed :
-            fakePoliceCount += 1
+    def _onDisconnected(self) :
+        self._log(f'onDisconnected>')
 
-    print(f'Citizen win rate: {citizenWinCount * 100 / times}, '
-        'Number of police reveals: {policeRevealCount}, '
-        'Win rate when police are revealed: {citizenWinPolice * 100 / policeRevealCount}, '
-        'Number of false police reveals: {fakePoliceCount}'
-    )
+    def _log(self, message) :
+        print(f'[GameInstance] {self.tcp.addr}: {message}')
 
-def oneGame() :
-    gameInfo = game_info.GameInfo(
-        playerCount=playerCount,
-        mafiaCount=mafiaCount,
-        humanName='Broccoli',
-        language='english',
-        useLLM=True)
+class MainProgram :
+    def __init__(self) :
+        pass
 
-    manager = game_manager.GameManager(gameInfo)
-    manager.start()
+    async def run(self) :
+        server = TcpServer()
+        await server.start(onConnected=self._onConnected)
+        await server.serve()
+
+    def _onConnected(self, handler: TcpClientHandler) :
+        GameInstance(handler)
 
 if __name__ == "__main__" :
-    oneGame()
+    program = MainProgram()
+    asyncio.run(program.run())
