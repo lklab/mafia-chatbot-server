@@ -206,13 +206,18 @@ class GameManager :
         if doctor.isLive :
             # local player chooses the heal target
             if doctor.info.isLocalPlayer :
-                pass
+                healTargetPlayer = await self._getTargetFromCUI('Choose the target to heal: ')
+                healTarget = healTargetPlayer.info
 
             # bot chooses the heal target
             elif not doctor.info.isHuman :
                 healTargetPlayer: Player = evaluator.evaluateHealTarget(self.gameState, doctor)
                 if healTargetPlayer != None :
                     healTarget = healTargetPlayer.info
+
+        # await until time limit
+        waitTime: float = (self.gameState.timeLimit - datetime.now()).total_seconds()
+        await asyncio.sleep(waitTime)
 
         ### execute kill
         if killTarget == None :
