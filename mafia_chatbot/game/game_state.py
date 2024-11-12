@@ -297,12 +297,21 @@ class GameState :
     def appendDiscussionHistory(self, playerInfo: PlayerInfo, discussion: str) :
         self.discussionHistory.append(f'{playerInfo.name}: {discussion}')
 
-    def appendChatDiscussion(self, sender: PlayerInfo, content: str) :
+    def appendDiscussionChat(self, sender: PlayerInfo, content: str) :
         chat: ChatData = ChatData(
             type=ChatType.DISCUSSION,
             index=len(self.chatList),
             content=content,
             sender=sender,
+        )
+        self.chatList.append(chat)
+
+    def appendSystemChat(self, content: str, receiver: PlayerInfo = None) :
+        chat: ChatData = ChatData(
+            type=ChatType.SYSTEM,
+            index=len(self.chatList),
+            content=content,
+            receiver=receiver,
         )
         self.chatList.append(chat)
 

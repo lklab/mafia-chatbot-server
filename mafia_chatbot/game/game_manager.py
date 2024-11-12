@@ -54,7 +54,7 @@ class GameManager :
             self.gameState.addRound()
 
     async def _processDay(self) :
-        self._printCUI('\nIt is morning. Please engage in a discussion.')
+        self._addSystemChat('\nIt is morning. Please engage in a discussion.')
 
         self.gameState.firstPointers.clear()
 
@@ -97,7 +97,7 @@ class GameManager :
 
             # apply strategy and discussion
             player.setDiscussionStrategy(self.gameState.round, strategy)
-            self.gameState.appendChatDiscussion(player.info, discussion)
+            self.gameState.appendDiscussionChat(player.info, discussion)
 
             # record significant data
             if player.publicRole == Role.POLICE :
@@ -152,9 +152,9 @@ class GameManager :
         self._printCUI(f'Voting status: {voteData.voteCount}')
 
         if voteData.isTie :
-            self._printCUI('No one was executed due to a tie.')
+            self._addSystemChat('No one was executed due to a tie.')
         else :
-            self._printCUI(f'{voteData.targetPlayer.name} is executed. Their role was {voteData.targetPlayer.role.name}.')
+            self._addSystemChat(f'{voteData.targetPlayer.name} is executed. Their role was {voteData.targetPlayer.role.name}.')
             self.gameState.removePlayerByInfo(voteData.targetPlayer, RemoveReason.VOTE)
             self.updateTrustRecordsForRemovedPlayer(voteData.targetPlayer, RemoveReason.VOTE)
 
@@ -169,6 +169,10 @@ class GameManager :
 
     async def _processNight(self) :
         pass
+
+    def _addSystemChat(self, content) :
+        self.gameState.appendSystemChat(content)
+        self._printCUI(content)
 
     def _printCUI(self, text) :
         if self.gameState.gameInfo.isCUI :
