@@ -68,7 +68,7 @@ class GameManager :
             index %= playerCount
 
             # for human player
-            if player.info.isHuman and self.gameState.gameInfo.isCUI :
+            if player.info.isLocalPlayer :
                 if self.gameState.gameInfo.useLLM :
                     discussion: str = input('It\'s your turn: ')
                     strategy: Strategy = self.llm.analyzeHumanMessage(player, discussion)
@@ -118,8 +118,8 @@ class GameManager :
         trustStr: list[str] = list(map(lambda p : f'{p.info.name}={p.trustPoint}({p.trustMainIssue})', self.gameState.players))
         self._printCUI('\n' + ', '.join(trustStr) + '\n')
 
-        cuiInputTask = None
-        if self.gameState.gameInfo.isCUI :
+        cuiInputTask: asyncio.Task = None
+        if self.gameState.localPlayer != None :
             cuiInputTask = asyncio.create_task(self._getTargetFromCUI('Choose the player to vote on: '))
 
         players = self.gameState.players
@@ -168,7 +168,7 @@ class GameManager :
                                 break
 
     async def _processNight(self) :
-        pass
+        self.updateAllTrustPoint()
 
     def _addSystemChat(self, content) :
         self.gameState.appendSystemChat(content)
@@ -188,7 +188,6 @@ class GameManager :
         return target
 
     def processNight(self) :
-        self.updateAllTrustPoint()
 
         # doctor action: Heal
         doctor: Player = self.gameState.doctorPlayer

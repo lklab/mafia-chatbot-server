@@ -36,7 +36,7 @@ trustRecordTypeToPrompt: dict[TrustRecordType, str] = {
 class Player :
     def __init__(self, name: str, tone: str, isHuman: bool, client: ClientPlayer) :
         # player data
-        self.info = PlayerInfo(name, tone, isHuman)
+        self.info = PlayerInfo(name, tone, isHuman, client == None)
         self.client = client
         self.isLive = True
 
