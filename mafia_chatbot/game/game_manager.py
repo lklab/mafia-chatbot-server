@@ -74,7 +74,7 @@ class GameManager :
                     strategy: Strategy = self.llm.analyzeHumanMessage(player, discussion)
                     self._printCUI(f'human\'s strategy: {strategy}')
                 else :
-                    targetPlayer: Player = self._getTargetFromCUI('It\'s your turn: ')
+                    targetPlayer: Player = await self._getTargetFromCUI('It\'s your turn: ')
                     discussion: str = f'I think {targetPlayer.info.name} is a mafia'
                     strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, targetPlayer.info, '')
 
@@ -119,7 +119,7 @@ class GameManager :
         self._printCUI('\n' + ', '.join(trustStr) + '\n')
 
         cuiInputTask: asyncio.Task = None
-        if self.gameState.localPlayer != None :
+        if self.gameState.localPlayer != None and self.gameState.localPlayer.isLive :
             cuiInputTask = asyncio.create_task(self._getTargetFromCUI('Choose the player to vote on: '))
 
         players = self.gameState.players
@@ -170,8 +170,71 @@ class GameManager :
     async def _processNight(self) :
         self.updateAllTrustPoint()
 
-    def _addSystemChat(self, content) :
-        self.gameState.appendSystemChat(content)
+        ### mafia action: kill
+        killTarget: PlayerInfo = None
+
+        # bot chooses the kill target
+        if len(self.gameState.humanMafiaPlayers) == 0 :
+            killTarget = evaluator.evaluateKillTarget(self.gameState).info
+
+        # local player chooses the kill target
+        elif (
+            self.gameState.localPlayer != None and
+            self.gameState.localPlayer.isLive and
+            self.gameState.localPlayer.info.role == Role.MAFIA
+        ) :
+            killTargetPlayer: Player = await self._getTargetFromCUI('Choose the target to assassinate: ')
+            killTarget = killTargetPlayer.info
+
+        ### police action: test
+        police: Player = self.gameState.policePlayer
+        testTargetPlayer: Player = None
+
+        if police.isLive :
+            # local player chooses the test target
+            if police.info.isLocalPlayer :
+                testTargetPlayer = await self._getTargetFromCUI('Choose the target to investigate: ')
+
+            # bot chooses the test target
+            elif not police.info.isHuman :
+                testTargetPlayer = evaluator.evaluateTestTarget(self.gameState, police)
+
+        ### doctor action: Heal
+        doctor: Player = self.gameState.doctorPlayer
+        healTarget: PlayerInfo = None
+
+        if doctor.isLive :
+            # local player chooses the heal target
+            if doctor.info.isLocalPlayer :
+                pass
+
+            # bot chooses the heal target
+            elif not doctor.info.isHuman :
+                healTargetPlayer: Player = evaluator.evaluateHealTarget(self.gameState, doctor)
+                if healTargetPlayer != None :
+                    healTarget = healTargetPlayer.info
+
+        ### execute kill
+        if killTarget == None :
+            self._addSystemChat('The mafia did not assassinate anyone.')
+        else :
+            if killTarget == healTarget :
+                self._addSystemChat(f'The Mafia attempted to assassinate {killTarget.name}, but failed due to the doctor\'s healing.')
+            else :
+                self.gameState.removePlayerByInfo(killTarget, RemoveReason.KILL)
+                self.updateTrustRecordsForRemovedPlayer(killTarget, RemoveReason.KILL)
+                self._addSystemChat(f'{killTarget.name} was assassinated by the Mafia.')
+
+        ### execute test
+        if testTargetPlayer != None :
+            police.addTestResult(testTargetPlayer, testTargetPlayer.info.role)
+            self._addSystemChat(
+                content=f'The police confirmed that {testTargetPlayer.info.name}\'s role is {testTargetPlayer.info.role.name}.',
+                receiver=police.info,
+            )
+
+    def _addSystemChat(self, content, receiver: PlayerInfo = None) :
+        self.gameState.appendSystemChat(content, receiver=receiver)
         self._printCUI(content)
 
     def _printCUI(self, text) :
@@ -186,60 +249,6 @@ class GameManager :
             target = self.gameState.getPlayerByName(name)
 
         return target
-
-    def processNight(self) :
-
-        # doctor action: Heal
-        doctor: Player = self.gameState.doctorPlayer
-        healTarget: PlayerInfo = None
-
-        if doctor.isLive :
-            print()
-            if doctor.info.isAI :
-                healTarget: PlayerInfo = evaluator.evaluateHealTarget(self.gameState, doctor).info
-                print(f'The doctor heals {healTarget.name}.')
-            else :
-                targetName = input('Choose the target to heal: ')
-                healTarget: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
-
-        # mafia action: kill
-        print()
-
-        killTarget: PlayerInfo = None
-        if self.gameState.humanPlayer != None and self.gameState.humanPlayer.info.role == Role.MAFIA and self.gameState.humanPlayer.isLive :
-            targetName = input('Choose the target to assassinate: ')
-            killTarget: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
-        else :
-            killTarget: PlayerInfo = evaluator.evaluateKillTarget(self.gameState).info
-
-        if killTarget == None :
-            print('The assassination failed due to the Mafia\'s mistake.')
-        else :
-            if killTarget == healTarget :
-                print(f'The Mafia attempted to assassinate {killTarget.name}, but failed due to the doctor\'s healing.')
-            else :
-                print(f'{killTarget.name} was assassinated by the Mafia.')
-                self.gameState.removePlayerByInfo(killTarget, RemoveReason.KILL)
-                self.updateTrustRecordsForRemovedPlayer(killTarget, RemoveReason.KILL)
-
-        # police action: test
-        police: Player = self.gameState.policePlayer
-        testTarget: PlayerInfo = None
-
-        if police.isLive :
-            print()
-            if police.info.isAI :
-                testTargetPlayer: Player = evaluator.evaluateTestTarget(self.gameState, police)
-                if testTargetPlayer != None :
-                    testTarget: PlayerInfo = testTargetPlayer.info
-            else :
-                targetName = input('Choose the target to investigate: ')
-                testTarget: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
-
-        if testTarget != None :
-            testTargetPlayer: Player = self.gameState.getPlayerByInfo(testTarget)
-            police.addTestResult(testTargetPlayer, testTargetPlayer.info.role)
-            print(f'The police confirmed that {testTargetPlayer.info.name}\'s role is {testTargetPlayer.info.role.name}.')
 
     def checkGameEnd(self) :
         mafiaCount = len(self.gameState.mafiaPlayers)

@@ -144,10 +144,14 @@ class GameState :
         # assign role
         random.shuffle(self.players)
         self.mafiaPlayers: list[Player] = []
+        self.humanMafiaPlayers: list[Player] = []
 
         for i in range(gameInfo.mafiaCount) :
             self.players[i].info.role = Role.MAFIA
             self.mafiaPlayers.append(self.players[i])
+
+            if self.players[i].info.isHuman :
+                self.humanMafiaPlayers.append(self.players[i])
 
             if 0.2 > random.random() :
                 self.players[i].isFakePolice = True
@@ -207,6 +211,8 @@ class GameState :
 
         if player.info.role == Role.MAFIA :
             self.mafiaPlayers.remove(player)
+            if player.info.isHuman :
+                self.humanMafiaPlayers.remove(player)
 
         # update history
         self.removedPlayers[player] = PlayerRemoveInfo(player, reason, self.getCurrentRoundInfo())
