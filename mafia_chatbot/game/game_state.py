@@ -102,13 +102,16 @@ class GameState :
             usedNames.add(client.name.lower())
 
         if gameInfo.localPlayerName != None :
-            self.players.append(Player(
+            self.localPlayer: Player = Player(
                 name=gameInfo.localPlayerName,
                 tone='',
                 isHuman=True,
                 client=None
-            ))
+            )
+            self.players.append(self.localPlayer)
             usedNames.add(gameInfo.localPlayerName.lower())
+        else :
+            self.localPlayer = None
 
         # prepare names and tones for bot players
         if gameInfo.language in NAMES :
@@ -179,7 +182,7 @@ class GameState :
         ### initialize round
         self.round = 0
         self.currentPhase = Phase.DAY
-        self.timeLimit = None
+        self.timeLimit: datetime = None
 
         ### police data
         self.isPoliceLive = True
@@ -256,17 +259,17 @@ class GameState :
     def _switchPhaseDay(self) :
         self._reloadAllChatingCounts()
 
-        self.timeLimit = datetime.now() + timedelta(minutes=1)
+        self.timeLimit: datetime = datetime.now() + timedelta(minutes=1)
 
     def _switchPhaseEvening(self) :
         self._clearAllChatingCounts()
 
-        self.timeLimit = datetime.now() + timedelta(seconds=30)
+        self.timeLimit: datetime = datetime.now() + timedelta(seconds=30)
 
     def _switchPhaseNight(self) :
         self._clearAllChatingCounts()
 
-        self.timeLimit = datetime.now() + timedelta(seconds=30)
+        self.timeLimit: datetime = datetime.now() + timedelta(seconds=30)
 
     _switchPhase = {
         Phase.DAY : _switchPhaseDay,

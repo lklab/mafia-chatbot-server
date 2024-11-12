@@ -1,3 +1,5 @@
+import asyncio
+
 class MyClass :
     pass
 
@@ -19,5 +21,20 @@ class MyClass :
     def doSomething(self) :
         MyClass.myDict[self.value](self)
 
-myClass = MyClass(1)
-myClass.doSomething()
+async def asyncInput() :
+    return await asyncio.get_running_loop().run_in_executor(None, input, 'input!')
+
+async def asyncMain() :
+    task = asyncio.create_task(asyncInput())
+
+    for i in range(5) :
+        print(i)
+        await asyncio.sleep(1)
+
+    value = await task
+    print(f'input is {value}')
+
+# myClass = MyClass(1)
+# myClass.doSomething()
+
+asyncio.run(asyncMain())

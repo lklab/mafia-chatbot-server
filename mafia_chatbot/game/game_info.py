@@ -43,6 +43,10 @@ class GameInfo :
         if self.playerCount < humanCount :
             return False
 
+        if self.isCUI :
+            if len(self.clients) > 0 or self.localPlayerName == None :
+                return False
+
         # TODO check language
 
         return True

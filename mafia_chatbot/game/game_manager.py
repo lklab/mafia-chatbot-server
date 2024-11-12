@@ -33,8 +33,6 @@ class GameManager :
         self._mainLogic()
 
     async def _mainLogic(self) :
-        gameResult: GameResult = None
-
         while True :
             self.gameState.setPhase(Phase.DAY)
             await self._processDay()
@@ -62,7 +60,6 @@ class GameManager :
 
         players = self.gameState.players
         playerCount = len(players)
-
         index = self.gameState.round % playerCount
 
         for _ in range(playerCount) :
@@ -116,110 +113,48 @@ class GameManager :
         await asyncio.sleep(waitTime)
 
     async def _processEvening(self) :
-        pass
-
-    async def _processNight(self) :
-        pass
-
-    def _printCUI(self, text) :
-        if self.gameState.gameInfo.isCUI :
-            print(text)
-
-    def _getTargetFromCUI(self, text) -> Player :
-        target: Player = None
-
-        while target == None :
-            name: str = input(text)
-            target = self.gameState.getPlayerByName(name)
-
-        return target
-
-    def processDay(self) :
-        print('\nIt is morning. Please engage in a discussion.')
-
-        self.gameState.firstPointers.clear()
-
-        players = self.gameState.players
-        playerCount = len(players)
-        for i in range(playerCount) :
-            self.updateAllTrustPoint()
-
-            index = self.discussionIndex + i
-            index %= playerCount
-
-            player = players[index]
-            if player.info.isAI :
-                strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, players[index])
-                player.setDiscussionStrategy(self.gameState.round, strategy)
-
-                if self.gameState.gameInfo.useLLM :
-                    discussion: str = self.llm.getDiscussion(self.gameState, player)
-                else :
-                    discussion: str = str(strategy)
-
-                discussion = f'{player.info.name}: {discussion}'
-                self.gameState.appendDiscussionHistory(player.info, discussion)
-                print(discussion)
-            else :
-                discussion: str = input('It\'s your turn: ')
-                if self.gameState.gameInfo.useLLM :
-                    strategy: Strategy = self.llm.analyzeHumanMessage(player, discussion)
-                else :
-                    targetInfo: PlayerInfo = self.gameState.getPlayerInfoByName(discussion)
-                    strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, targetInfo, '')
-                print(f'human\'s strategy: {strategy}')
-                player.setDiscussionStrategy(self.gameState.round, strategy)
-                discussion = f'{player.info.name}: {discussion}'
-
-            self.gameState.appendDiscussionHistory(player.info, discussion)
-
-            if player.publicRole == Role.POLICE :
-                self.gameState.addPublicPolice(player)
-
-            for estimation in strategy.mafiaEstimations :
-                p: Player = self.gameState.getPlayerByInfo(estimation.playerInfo)
-                if p not in self.gameState.firstPointers :
-                    self.gameState.firstPointers[p] = player
-
-        self.discussionIndex += 1
-        self.discussionIndex %= playerCount
-
-    def processEvening(self) :
         self.updateAllTrustPoint()
 
         trustStr: list[str] = list(map(lambda p : f'{p.info.name}={p.trustPoint}({p.trustMainIssue})', self.gameState.players))
-        print('\n' + ', '.join(trustStr))
+        self._printCUI('\n' + ', '.join(trustStr) + '\n')
 
-        print()
+        cuiInputTask = None
+        if self.gameState.gameInfo.isCUI :
+            cuiInputTask = asyncio.create_task(self._getTargetFromCUI('Choose the player to vote on: '))
 
         players = self.gameState.players
-        isHumanVoted: bool = False
+        playerCount = len(players)
+        index = 0
 
-        for _ in range(10) :
-            for player in players :
-                if player.info.isAI :
-                    strategy: VoteStrategy = evaluator.evaluateVoteStrategy(self.gameState, player)
-                else :
-                    if not isHumanVoted :
-                        targetName = input('Choose the player to vote on: ')
-                        targetInfo: PlayerInfo = self.gameState.getPlayerInfoByName(targetName)
-                        if targetInfo != None :
-                            strategy: VoteStrategy = VoteStrategy(targetInfo)
-                            isHumanVoted = True
-                        else :
-                            continue
-                    else :
-                        continue
+        def _setLocalPlayerStrategy(targetPlayer: Player) :
+            strategy: VoteStrategy = VoteStrategy(targetPlayer.info)
+            self.gameState.localPlayer.setVoteStrategy(self.gameState.round, strategy)
 
+        while self.gameState.timeLimit > datetime.now() :
+            player: Player = players[index]
+            index += 1
+            index %= playerCount
+
+            if cuiInputTask != None and cuiInputTask.done() :
+                _setLocalPlayerStrategy(cuiInputTask.result())
+                cuiInputTask = None
+
+            if not player.info.isHuman :
+                strategy: VoteStrategy = evaluator.evaluateVoteStrategy(self.gameState, player)
                 player.setVoteStrategy(self.gameState.round, strategy)
+                await asyncio.sleep(1)
+
+        if cuiInputTask != None :
+            targetPlayer: Player = await cuiInputTask
+            _setLocalPlayerStrategy(targetPlayer)
 
         voteData: VoteData = self.gameState.updateVoteHistory()
-        print(f'Voting status: {voteData.voteCount}')
+        self._printCUI(f'Voting status: {voteData.voteCount}')
 
         if voteData.isTie :
-            print('No one was executed due to a tie.')
+            self._printCUI('No one was executed due to a tie.')
         else :
-            print(f'{voteData.targetPlayer.name} is executed. Their role was {voteData.targetPlayer.role.name}.')
+            self._printCUI(f'{voteData.targetPlayer.name} is executed. Their role was {voteData.targetPlayer.role.name}.')
             self.gameState.removePlayerByInfo(voteData.targetPlayer, RemoveReason.VOTE)
             self.updateTrustRecordsForRemovedPlayer(voteData.targetPlayer, RemoveReason.VOTE)
 
@@ -231,6 +166,22 @@ class GameManager :
                             if estimation.playerInfo == voteData.targetPlayer and estimation.role == Role.MAFIA :
                                 player.setTrustedPolice()
                                 break
+
+    async def _processNight(self) :
+        pass
+
+    def _printCUI(self, text) :
+        if self.gameState.gameInfo.isCUI :
+            print(text)
+
+    async def _getTargetFromCUI(self, text) -> Player :
+        target: Player = None
+
+        while target == None :
+            name: str = await asyncio.get_running_loop().run_in_executor(None, input, text)
+            target = self.gameState.getPlayerByName(name)
+
+        return target
 
     def processNight(self) :
         self.updateAllTrustPoint()
