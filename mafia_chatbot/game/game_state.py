@@ -248,7 +248,7 @@ class GameState :
 
     def getPlayerByName(self, name: str) -> Player :
         for player in self.allPlayers :
-            if name == player.info.name :
+            if name.lower() == player.info.name.lower() :
                 return player
         return None
 

@@ -43,5 +43,5 @@ cd {repository root}
 2. Run the application:
 
 ``` bash
-python main.py
+python tests/game/game_test.py
 ```

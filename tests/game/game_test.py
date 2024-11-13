@@ -8,8 +8,11 @@ if __name__ == "__main__" :
 
     sys.path.append(str(path_root))
 
-from mafia_chatbot.game import *
-from mafia_chatbot.game.game_result import *
+import asyncio
+
+from mafia_chatbot.game.game_info import GameInfo, GameMode
+from mafia_chatbot.game.game_manager import GameManager
+from mafia_chatbot.game.game_result import GameResult
 
 playerCount = 10
 mafiaCount = 2
@@ -21,13 +24,13 @@ def balanceTest(times: int) :
     fakePoliceCount = 0
 
     for _ in range(100) :
-        gameInfo = game_info.GameInfo(
+        gameInfo = GameInfo(
             playerCount=playerCount,
             mafiaCount=mafiaCount,
             humanName=None,
             useLLM=False)
 
-        manager = game_manager.GameManager(gameInfo)
+        manager = GameManager(gameInfo)
         gameResult: GameResult = manager.start()
 
         if gameResult.isCitizenWin :
@@ -46,15 +49,16 @@ def balanceTest(times: int) :
     )
 
 def oneGame() :
-    gameInfo = game_info.GameInfo(
+    gameInfo = GameInfo(
         playerCount=playerCount,
         mafiaCount=mafiaCount,
-        humanName='Broccoli',
+        clients=[],
+        localPlayerName='Broccoli',
         language='english',
-        useLLM=True)
+        gameMode=GameMode.CUI)
 
-    manager = game_manager.GameManager(gameInfo)
-    manager.start()
+    manager = GameManager(gameInfo)
+    asyncio.run(manager.start())
 
 if __name__ == "__main__" :
     oneGame()
