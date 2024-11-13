@@ -2,6 +2,7 @@ syntax = "proto3";
 
 message Auth {
   string rqid = 1;
+  string clientId = 2;
 }
 
 message AuthResponse {

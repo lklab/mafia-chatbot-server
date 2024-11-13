@@ -29,8 +29,8 @@ class GameManager :
         if player != None :
             player.client = client
 
-    def start(self) :
-        self._mainLogic()
+    async def start(self) :
+        await self._mainLogic()
 
     async def _mainLogic(self) :
         while True :

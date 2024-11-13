@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nauth.proto\"\x14\n\x04\x41uth\x12\x0c\n\x04rqid\x18\x01 \x01(\t\"\x1c\n\x0c\x41uthResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\tb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nauth.proto\"&\n\x04\x41uth\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x10\n\x08\x63lientId\x18\x02 \x01(\t\"\x1c\n\x0c\x41uthResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\tb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,7 +32,7 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'auth_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
   _globals['_AUTH']._serialized_start=14
-  _globals['_AUTH']._serialized_end=34
-  _globals['_AUTHRESPONSE']._serialized_start=36
-  _globals['_AUTHRESPONSE']._serialized_end=64
+  _globals['_AUTH']._serialized_end=52
+  _globals['_AUTHRESPONSE']._serialized_start=54
+  _globals['_AUTHRESPONSE']._serialized_end=82
 # @@protoc_insertion_point(module_scope)
