@@ -49,8 +49,8 @@ class MessageClientHandler :
 
     def _onData(self, msgType: int, data: bytes) :
         if self.state == MessageClientState.AUTHENTICATING :
-            if msgType == 1000 :
-                message = messageFactoryDict[0](data)
+            if msgType == messageTypeDict[auth_pb2.Auth] :
+                message = messageFactoryDict[msgType](data)
                 print(f'onData msgType={msgType}, message=<{message}>')
 
                 if self.onAuth(message) :
