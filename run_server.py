@@ -25,8 +25,6 @@ class ClientHandler :
         self.onMessage = onMessage
         self.onDisconnected = onDisconnected
 
-        self.clientId: str = None
-
         self.messageHandler = MessageClientHandler(
             tcpHandler=tcp,
             onAuth=self._onAuth,
@@ -34,18 +32,22 @@ class ClientHandler :
             onDisconnected=self._onDisconnected,
         )
 
-        self.player = ClientPlayer(
-            id=self.clientId,
-            name='test name',
-            client=self.messageHandler,
-        )
+        self.player = None
+        self.clientId = None
 
     def getPlayer(self) :
         return self.player
 
     def _onAuth(self, message) :
         self._log(f'onAuth message=<{message}>')
+
+        self.player = ClientPlayer(
+            id=message.clientId,
+            name=message.name,
+            client=self.messageHandler,
+        )
         self.clientId = message.clientId
+
         return self.onAuth(self, message)
 
     def _onMessage(self, message) :
