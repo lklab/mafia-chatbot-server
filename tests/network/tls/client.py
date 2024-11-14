@@ -31,7 +31,8 @@ with context.wrap_socket(client_socket, server_hostname=HOST) as tls_client_sock
     # send auth
     auth = auth_pb2.Auth()
     auth.rqid = 'my first auth'
-    type = 0
+    auth.clientId = 'asdasd'
+    type = 1000
     data = auth.SerializeToString()
 
     tls_client_socket.send(delimiter +
