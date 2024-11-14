@@ -3,10 +3,12 @@ from typing import Callable, Any
 
 from mafia_chatbot.game.game_manager import GameManager
 from mafia_chatbot.game.client_player import ClientPlayer
+from mafia_chatbot.game.game_info import GameInfo, GameMode
 
 from mafia_chatbot.network.tcp_server import TcpServer
 from mafia_chatbot.network.tcp_client_handler import TcpClientHandler
 from mafia_chatbot.network.message_client_handler import MessageClientHandler
+from mafia_chatbot.network.messages import *
 
 class ClientHandler :
     pass
@@ -87,8 +89,34 @@ class MainProgram :
 
         return True
 
+    def _switchMessageGameStart(self, client: ClientHandler, message) :
+        gameInfo = GameInfo(
+            playerCount=message.playerCount,
+            mafiaCount=message.mafiaCount,
+            clients=[client.getPlayer()],
+            localPlayerName=None,
+            language=message.language,
+            gameMode=GameMode.CLIENT
+        )
+
+        manager = GameManager(gameInfo)
+        self.gameDict[client.clientId] = manager
+
+        asyncio.create_task(manager.start())
+
+        response = game_pb2.GameStartResponse()
+        response.rqid = message.rqid
+        client.messageHandler.send(response)
+
+    _switchMessage = {
+        game_pb2.GameStart : _switchMessageGameStart,
+    }
+
     def _onClientMessage(self, client: ClientHandler, message) :
-        client.getPlayer().forwardMessage(message)
+        if type(message) in MainProgram._switchMessage :
+            MainProgram._switchMessage[type(message)](self, client, message)
+        else :
+            client.getPlayer().forwardMessage(message)
 
     def _onClientDisconnected(self, client: ClientHandler) :
         if client.clientId in self.gameDict :

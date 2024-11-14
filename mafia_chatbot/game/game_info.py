@@ -26,7 +26,7 @@ class GameInfo :
         self.language = language
 
         self.gameMode = gameMode
-        self.useLLM = gameMode != GameMode.CUI
+        self.useLLM = False # gameMode != GameMode.CUI
         self.isCUI = gameMode != GameMode.CLIENT
 
     def checkValid(self) -> bool :

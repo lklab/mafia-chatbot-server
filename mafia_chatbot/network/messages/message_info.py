@@ -7,6 +7,8 @@ messageTypeDict: dict[Type, int] = {
     error_pb2.RequestError : 0,
     auth_pb2.Auth : 1000,
     auth_pb2.AuthResponse : 1001,
+    game_pb2.GameStart : 2000,
+    game_pb2.GameStartResponse : 2001,
 }
 
 def _RequestErrorMessageFactory(data: bytes) -> error_pb2.RequestError :
@@ -24,9 +26,21 @@ def _AuthResponseMessageFactory(data: bytes) -> auth_pb2.AuthResponse :
     message.ParseFromString(data)
     return message
 
+def _GameStartMessageFactory(data: bytes) -> game_pb2.GameStart :
+    message = game_pb2.GameStart()
+    message.ParseFromString(data)
+    return message
+
+def _GameStartResponseMessageFactory(data: bytes) -> game_pb2.GameStartResponse :
+    message = game_pb2.GameStartResponse()
+    message.ParseFromString(data)
+    return message
+
 
 messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     0 : _RequestErrorMessageFactory,
     1000 : _AuthMessageFactory,
     1001 : _AuthResponseMessageFactory,
+    2000 : _GameStartMessageFactory,
+    2001 : _GameStartResponseMessageFactory,
 }

@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+message GameStart {
+  string rqid = 1;
+  int32 playerCount = 2;
+  int32 mafiaCount = 3;
+  string language = 4;
+}
+
+message GameStartResponse {
+  string rqid = 1;
+}
