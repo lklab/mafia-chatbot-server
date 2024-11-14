@@ -20,7 +20,9 @@ for file in index['files'] :
         f'{srcDir}/{name}.proto',
     ], capture_output=True, text=True)
 
-    # print(result)
+    if result.returncode != 0 :
+        print(f'\033[31mfail to compile protoc:\033[0m {result.stderr}')
+        exit()
 
 # generate custom message_info.py
 initFileContents = []
