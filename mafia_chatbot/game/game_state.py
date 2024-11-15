@@ -1,8 +1,9 @@
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from google.protobuf.timestamp_pb2 import Timestamp
 
 from mafia_chatbot.game.game_info import *
-from mafia_chatbot.game.player_info import *
+from mafia_chatbot.game.player_info import PlayerInfo, roleToProtoDict
 from mafia_chatbot.game.player import *
 from mafia_chatbot.game.chat_data import ChatData, ChatType
 
@@ -30,6 +31,12 @@ class Phase(Enum) :
     DAY = 0
     EVENING = 1
     NIGHT = 2
+
+phaseToProtoDict: dict[Phase, game_pb2.Phase] = {
+    Phase.DAY: game_pb2.Phase.Phase_DAY,
+    Phase.EVENING: game_pb2.Phase.Phase_EVENING,
+    Phase.NIGHT: game_pb2.Phase.Phase_NIGHT,
+}
 
 class VoteData :
     def __init__(self, round: int, players: list[Player]) :
@@ -265,17 +272,17 @@ class GameState :
     def _switchPhaseDay(self) :
         self._reloadAllChatingCounts()
 
-        self.timeLimit: datetime = datetime.now() + timedelta(minutes=1)
+        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(minutes=1)
 
     def _switchPhaseEvening(self) :
         self._clearAllChatingCounts()
 
-        self.timeLimit: datetime = datetime.now() + timedelta(seconds=30)
+        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=30)
 
     def _switchPhaseNight(self) :
         self._clearAllChatingCounts()
 
-        self.timeLimit: datetime = datetime.now() + timedelta(seconds=30)
+        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=30)
 
     _switchPhase = {
         Phase.DAY : _switchPhaseDay,
@@ -296,6 +303,7 @@ class GameState :
     def setPhase(self, phase: Phase) :
         self.currentPhase = phase
         GameState._switchPhase[phase](self)
+        self.sendGameStateMessageToAllClient()
 
     def getCurrentRoundInfo(self) -> RoundInfo :
         return RoundInfo(self.round, len(self.players), len(self.mafiaPlayers))
@@ -358,6 +366,31 @@ class GameState :
 
     def getCitizenCount(self) -> int :
         return self.getPlayerCount() - self.getMafiaCount()
+
+    def toProtoGameStateMessage(self, player: Player) -> game_pb2.GameState :
+        message = game_pb2.GameState()
+
+        message.language = self.gameInfo.language
+        message.players.extend(list(map(lambda p : p.toProtoMessage(), self.players)))
+        message.mafiaCount = self.gameInfo.mafiaCount
+        message.remainMafiaCount = self.getMafiaCount()
+
+        message.myId = player.info.id
+        message.myName = player.info.name
+        message.myRole = roleToProtoDict[player.info.role]
+
+        message.round = self.round
+        message.phase = phaseToProtoDict[self.currentPhase]
+        message.phaseEndTime.FromDatetime(self.timeLimit)
+        message.phaseRemainTime = int((self.timeLimit - datetime.now(timezone.utc)).total_seconds() * 1000)
+
+        return message
+
+    def sendGameStateMessageToAllClient(self) :
+        for player in self.players :
+            if player.client != None :
+                message = self.toProtoGameStateMessage(player)
+                player.client.sendMessage(message)
 
     def expandList(self, l: list, size: int, fillValue = None) :
         for _ in range(len(l), size) :

@@ -1,8 +1,10 @@
 import random
 
 from mafia_chatbot.game.client_player import ClientPlayer
-from mafia_chatbot.game.player_info import PlayerInfo
+from mafia_chatbot.game.player_info import PlayerInfo, roleToProtoDict
 from mafia_chatbot.game.strategy import *
+
+from mafia_chatbot.network.messages import *
 
 class Player :
     pass
@@ -188,6 +190,15 @@ class Player :
 
     def clearChatingCount(self) :
         self.remainChatingCount = 0
+
+    def toProtoMessage(self) -> game_pb2.Player :
+        message = game_pb2.Player()
+        message.id = self.info.id
+        message.name = self.info.name
+        message.role = roleToProtoDict[self.info.role]
+        message.isLive = self.isLive
+
+        return message
 
     def expandList(self, l: list, size: int, fillValue = None) :
         for _ in range(len(l), size) :

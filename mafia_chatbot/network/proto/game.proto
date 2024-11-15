@@ -14,10 +14,11 @@ message GameStartResponse {
 }
 
 enum Role {
-  CITIZEN = 0;
-  MAFIA = 1;
-  POLICE = 2;
-  DOCTOR = 3;
+  Role_UNKNOWN = 0;
+  Role_CITIZEN = 1;
+  Role_MAFIA = 2;
+  Role_POLICE = 3;
+  Role_DOCTOR = 4;
 }
 
 message Player {
@@ -28,9 +29,10 @@ message Player {
 }
 
 enum Phase {
-  DAY = 0;
-  EVENING = 1;
-  NIGHT = 2;
+  Phase_UNKNOWN = 0;
+  Phase_DAY = 1;
+  Phase_EVENING = 2;
+  Phase_NIGHT = 3;
 }
 
 message RequestGameState {
@@ -40,14 +42,14 @@ message RequestGameState {
 message GameState {
   string rqid = 1;
 
-  repeated Player players = 2;
-  int32 mafiaCount = 3;
-  int32 remainMafiaCount = 4;
+  string language = 2;
+  repeated Player players = 3;
+  int32 mafiaCount = 4;
+  int32 remainMafiaCount = 5;
 
-  string myId = 5;
-  string myName = 6;
-  Role myRole = 7;
-  string language = 8;
+  string myId = 6;
+  string myName = 7;
+  Role myRole = 8;
 
   int32 round = 9;
   Phase phase = 10;

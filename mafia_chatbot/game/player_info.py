@@ -1,6 +1,8 @@
 from enum import Enum
 import uuid
 
+from mafia_chatbot.network.messages import *
+
 class Role :
     pass
 
@@ -15,6 +17,13 @@ strToRoleDict: dict[str, Role] = {
     'police': Role.POLICE,
     'mafia': Role.MAFIA,
     'doctor': Role.DOCTOR,
+}
+
+roleToProtoDict: dict[Role, game_pb2.Role] = {
+    Role.CITIZEN: game_pb2.Role.Role_CITIZEN,
+    Role.POLICE: game_pb2.Role.Role_POLICE,
+    Role.MAFIA: game_pb2.Role.Role_MAFIA,
+    Role.DOCTOR: game_pb2.Role.Role_DOCTOR,
 }
 
 def strToRole(roleStr: str) -> Role :

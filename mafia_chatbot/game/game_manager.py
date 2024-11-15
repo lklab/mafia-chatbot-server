@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 
 from mafia_chatbot.game.game_state import *
 from mafia_chatbot.game.game_result import *
@@ -109,7 +109,7 @@ class GameManager :
                     self.gameState.firstPointers[p] = player
 
         # await until time limit
-        waitTime: float = (self.gameState.timeLimit - datetime.now()).total_seconds()
+        waitTime: float = (self.gameState.timeLimit - datetime.now(timezone.utc)).total_seconds()
         await asyncio.sleep(waitTime)
 
     async def _processEvening(self) :
@@ -130,7 +130,7 @@ class GameManager :
             strategy: VoteStrategy = VoteStrategy(targetPlayer.info)
             self.gameState.localPlayer.setVoteStrategy(self.gameState.round, strategy)
 
-        while self.gameState.timeLimit > datetime.now() :
+        while self.gameState.timeLimit > datetime.now(timezone.utc) :
             player: Player = players[index]
             index += 1
             index %= playerCount
@@ -216,7 +216,7 @@ class GameManager :
                     healTarget = healTargetPlayer.info
 
         # await until time limit
-        waitTime: float = (self.gameState.timeLimit - datetime.now()).total_seconds()
+        waitTime: float = (self.gameState.timeLimit - datetime.now(timezone.utc)).total_seconds()
         await asyncio.sleep(waitTime)
 
         ### execute kill
