@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "google/protobuf/timestamp.proto";
+
 message GameStart {
   string rqid = 1;
   int32 playerCount = 2;
@@ -9,4 +11,58 @@ message GameStart {
 
 message GameStartResponse {
   string rqid = 1;
+}
+
+enum Role {
+  CITIZEN = 0;
+  MAFIA = 1;
+  POLICE = 2;
+  DOCTOR = 3;
+}
+
+message Player {
+  string id = 1;
+  string name = 2;
+  Role role = 3;
+  bool isLive = 4;
+}
+
+enum Phase {
+  DAY = 0;
+  EVENING = 1;
+  NIGHT = 2;
+}
+
+message RequestGameState {
+  string rqid = 1;
+}
+
+message GameState {
+  string rqid = 1;
+
+  repeated Player players = 2;
+  int32 mafiaCount = 3;
+  int32 remainMafiaCount = 4;
+
+  string myId = 5;
+  string myName = 6;
+  Role myRole = 7;
+  string language = 8;
+
+  int32 round = 9;
+  Phase phase = 10;
+  google.protobuf.Timestamp phaseEndTime = 11;
+  int32 phaseRemainTime = 12;
+}
+
+message RequestGamePhase {
+  string rqid = 1;
+}
+
+message GamePhase {
+  string rqid = 1;
+  int32 round = 2;
+  Phase phase = 3;
+  google.protobuf.Timestamp phaseEndTime = 4;
+  int32 phaseRemainTime = 5;
 }

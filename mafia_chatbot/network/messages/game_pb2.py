@@ -22,17 +22,32 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ngame.proto\"T\n\tGameStart\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x13\n\x0bplayerCount\x18\x02 \x01(\x05\x12\x12\n\nmafiaCount\x18\x03 \x01(\x05\x12\x10\n\x08language\x18\x04 \x01(\t\"!\n\x11GameStartResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\tb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ngame.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"T\n\tGameStart\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x13\n\x0bplayerCount\x18\x02 \x01(\x05\x12\x12\n\nmafiaCount\x18\x03 \x01(\x05\x12\x10\n\x08language\x18\x04 \x01(\t\"!\n\x11GameStartResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\"G\n\x06Player\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x13\n\x04role\x18\x03 \x01(\x0e\x32\x05.Role\x12\x0e\n\x06isLive\x18\x04 \x01(\x08\" \n\x10RequestGameState\x12\x0c\n\x04rqid\x18\x01 \x01(\t\"\x99\x02\n\tGameState\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x18\n\x07players\x18\x02 \x03(\x0b\x32\x07.Player\x12\x12\n\nmafiaCount\x18\x03 \x01(\x05\x12\x18\n\x10remainMafiaCount\x18\x04 \x01(\x05\x12\x0c\n\x04myId\x18\x05 \x01(\t\x12\x0e\n\x06myName\x18\x06 \x01(\t\x12\x15\n\x06myRole\x18\x07 \x01(\x0e\x32\x05.Role\x12\x10\n\x08language\x18\x08 \x01(\t\x12\r\n\x05round\x18\t \x01(\x05\x12\x15\n\x05phase\x18\n \x01(\x0e\x32\x06.Phase\x12\x30\n\x0cphaseEndTime\x18\x0b \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x17\n\x0fphaseRemainTime\x18\x0c \x01(\x05\" \n\x10RequestGamePhase\x12\x0c\n\x04rqid\x18\x01 \x01(\t\"\x8a\x01\n\tGamePhase\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\r\n\x05round\x18\x02 \x01(\x05\x12\x15\n\x05phase\x18\x03 \x01(\x0e\x32\x06.Phase\x12\x30\n\x0cphaseEndTime\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x17\n\x0fphaseRemainTime\x18\x05 \x01(\x05*6\n\x04Role\x12\x0b\n\x07\x43ITIZEN\x10\x00\x12\t\n\x05MAFIA\x10\x01\x12\n\n\x06POLICE\x10\x02\x12\n\n\x06\x44OCTOR\x10\x03*(\n\x05Phase\x12\x07\n\x03\x44\x41Y\x10\x00\x12\x0b\n\x07\x45VENING\x10\x01\x12\t\n\x05NIGHT\x10\x02\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'game_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_GAMESTART']._serialized_start=14
-  _globals['_GAMESTART']._serialized_end=98
-  _globals['_GAMESTARTRESPONSE']._serialized_start=100
-  _globals['_GAMESTARTRESPONSE']._serialized_end=133
+  _globals['_ROLE']._serialized_start=734
+  _globals['_ROLE']._serialized_end=788
+  _globals['_PHASE']._serialized_start=790
+  _globals['_PHASE']._serialized_end=830
+  _globals['_GAMESTART']._serialized_start=47
+  _globals['_GAMESTART']._serialized_end=131
+  _globals['_GAMESTARTRESPONSE']._serialized_start=133
+  _globals['_GAMESTARTRESPONSE']._serialized_end=166
+  _globals['_PLAYER']._serialized_start=168
+  _globals['_PLAYER']._serialized_end=239
+  _globals['_REQUESTGAMESTATE']._serialized_start=241
+  _globals['_REQUESTGAMESTATE']._serialized_end=273
+  _globals['_GAMESTATE']._serialized_start=276
+  _globals['_GAMESTATE']._serialized_end=557
+  _globals['_REQUESTGAMEPHASE']._serialized_start=559
+  _globals['_REQUESTGAMEPHASE']._serialized_end=591
+  _globals['_GAMEPHASE']._serialized_start=594
+  _globals['_GAMEPHASE']._serialized_end=732
 # @@protoc_insertion_point(module_scope)

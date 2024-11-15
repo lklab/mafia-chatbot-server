@@ -21,7 +21,11 @@
             "messages" :
             [
                 "GameStart",
-                "GameStartResponse"
+                "GameStartResponse",
+                "RequestGameState",
+                "GameState",
+                "RequestGamePhase",
+                "GamePhase"
             ]
         }
     ]
