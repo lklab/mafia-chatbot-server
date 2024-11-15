@@ -6,6 +6,7 @@ from mafia_chatbot.game.game_result import *
 import mafia_chatbot.game.evaluator as evaluator
 from mafia_chatbot.game.llm import LLM
 from mafia_chatbot.game.client_player import ClientPlayer
+from mafia_chatbot.game.client_message_processor import ClientMessageProcessor
 
 class GameManager :
     def __init__(self, gameInfo: GameInfo) :
@@ -16,6 +17,7 @@ class GameManager :
         for player in self.gameState.players :
             if player.client != None :
                 self.clientDict[player.client.id] = player
+                self._subscribeClient(player)
 
         self.llm = LLM(self.gameState, gameInfo.language)
 
@@ -28,6 +30,11 @@ class GameManager :
         player = self.clientDict.get(client.id)
         if player != None :
             player.client = client
+            self._subscribeClient(player)
+
+    def _subscribeClient(self, player: Player) :
+        if player.client != None :
+            ClientMessageProcessor(self.gameState, player)
 
     async def start(self) :
         await self._mainLogic()
