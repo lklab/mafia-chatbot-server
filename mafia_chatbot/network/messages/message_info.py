@@ -9,10 +9,10 @@ messageTypeDict: dict[Type, int] = {
     auth_pb2.AuthResponse : 1001,
     game_pb2.GameStart : 2000,
     game_pb2.GameStartResponse : 2001,
-    game_pb2.RequestGameState : 2002,
-    game_pb2.GameState : 2003,
-    game_pb2.RequestGamePhase : 2004,
-    game_pb2.GamePhase : 2005,
+    game_pb2.RequestGamePhase : 2002,
+    game_pb2.GamePhase : 2003,
+    game_pb2.RequestGameState : 2004,
+    game_pb2.GameState : 2005,
 }
 
 def _RequestErrorMessageFactory(data: bytes) -> error_pb2.RequestError :
@@ -40,16 +40,6 @@ def _GameStartResponseMessageFactory(data: bytes) -> game_pb2.GameStartResponse 
     message.ParseFromString(data)
     return message
 
-def _RequestGameStateMessageFactory(data: bytes) -> game_pb2.RequestGameState :
-    message = game_pb2.RequestGameState()
-    message.ParseFromString(data)
-    return message
-
-def _GameStateMessageFactory(data: bytes) -> game_pb2.GameState :
-    message = game_pb2.GameState()
-    message.ParseFromString(data)
-    return message
-
 def _RequestGamePhaseMessageFactory(data: bytes) -> game_pb2.RequestGamePhase :
     message = game_pb2.RequestGamePhase()
     message.ParseFromString(data)
@@ -60,6 +50,16 @@ def _GamePhaseMessageFactory(data: bytes) -> game_pb2.GamePhase :
     message.ParseFromString(data)
     return message
 
+def _RequestGameStateMessageFactory(data: bytes) -> game_pb2.RequestGameState :
+    message = game_pb2.RequestGameState()
+    message.ParseFromString(data)
+    return message
+
+def _GameStateMessageFactory(data: bytes) -> game_pb2.GameState :
+    message = game_pb2.GameState()
+    message.ParseFromString(data)
+    return message
+
 
 messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     0 : _RequestErrorMessageFactory,
@@ -67,8 +67,8 @@ messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     1001 : _AuthResponseMessageFactory,
     2000 : _GameStartMessageFactory,
     2001 : _GameStartResponseMessageFactory,
-    2002 : _RequestGameStateMessageFactory,
-    2003 : _GameStateMessageFactory,
-    2004 : _RequestGamePhaseMessageFactory,
-    2005 : _GamePhaseMessageFactory,
+    2002 : _RequestGamePhaseMessageFactory,
+    2003 : _GamePhaseMessageFactory,
+    2004 : _RequestGameStateMessageFactory,
+    2005 : _GameStateMessageFactory,
 }

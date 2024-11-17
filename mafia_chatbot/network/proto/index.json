@@ -22,10 +22,10 @@
             [
                 "GameStart",
                 "GameStartResponse",
-                "RequestGameState",
-                "GameState",
                 "RequestGamePhase",
-                "GamePhase"
+                "GamePhase",
+                "RequestGameState",
+                "GameState"
             ]
         }
     ]

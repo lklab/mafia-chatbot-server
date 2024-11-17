@@ -35,28 +35,6 @@ enum Phase {
   Phase_NIGHT = 3;
 }
 
-message RequestGameState {
-  string rqid = 1;
-}
-
-message GameState {
-  string rqid = 1;
-
-  string language = 2;
-  repeated Player players = 3;
-  int32 mafiaCount = 4;
-  int32 remainMafiaCount = 5;
-
-  string myId = 6;
-  string myName = 7;
-  Role myRole = 8;
-
-  int32 round = 9;
-  Phase phase = 10;
-  google.protobuf.Timestamp phaseEndTime = 11;
-  int32 phaseRemainTime = 12;
-}
-
 message RequestGamePhase {
   string rqid = 1;
 }
@@ -67,4 +45,21 @@ message GamePhase {
   Phase phase = 3;
   google.protobuf.Timestamp phaseEndTime = 4;
   int32 phaseRemainTime = 5;
+}
+
+message RequestGameState {
+  string rqid = 1;
+}
+
+message GameState {
+  string rqid = 1;
+
+  string language = 2;
+  repeated Player players = 3;
+  Player me = 4;
+
+  int32 mafiaCount = 5;
+  int32 remainMafiaCount = 6;
+
+  GamePhase phase = 7;
 }

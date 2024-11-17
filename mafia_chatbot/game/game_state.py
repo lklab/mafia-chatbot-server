@@ -372,12 +372,17 @@ class GameState :
 
         message.language = self.gameInfo.language
         message.players.extend(list(map(lambda p : p.toProtoMessage(), self.players)))
+        message.me.CopyFrom(player.toProtoMessage())
+
         message.mafiaCount = self.gameInfo.mafiaCount
         message.remainMafiaCount = self.getMafiaCount()
 
-        message.myId = player.info.id
-        message.myName = player.info.name
-        message.myRole = roleToProtoDict[player.info.role]
+        message.phase.CopyFrom(self.toProtoGamePhaseMessage())
+
+        return message
+
+    def toProtoGamePhaseMessage(self) -> game_pb2.GamePhase :
+        message = game_pb2.GamePhase()
 
         message.round = self.round
         message.phase = phaseToProtoDict[self.currentPhase]
