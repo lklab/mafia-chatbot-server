@@ -416,7 +416,9 @@ class GameState :
     def sendAddChatMessageToAllClient(self, chat: ChatData) :
         for player in self.players :
             if player.client != None :
-                message = chat.toProtoMessage(player.info)
+                message = game_pb2.AddChat()
+                message.chat.CopyFrom(chat.toProtoMessage(player.info))
+                message.remainMyChat = player.remainChatingCount
                 player.client.sendMessage(message)
 
     def expandList(self, l: list, size: int, fillValue = None) :

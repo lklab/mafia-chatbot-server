@@ -61,7 +61,7 @@ class GameManager :
             self.gameState.addRound()
 
     async def _processDay(self) :
-        self._addSystemChat('\nIt is morning. Please engage in a discussion.')
+        self._addSystemChat('It is morning. Please engage in a discussion.')
 
         self.gameState.firstPointers.clear()
 
