@@ -73,7 +73,7 @@ class Player :
         self.testedTargets: list[Player] = []
 
         # human chating count
-        self.maxChatingCount = 1
+        self.maxChatingCount = 5
         self.remainChatingCount = 0
 
     def __str__(self) :

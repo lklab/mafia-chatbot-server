@@ -102,4 +102,5 @@ message AddChat {
   string rqid = 1;
   Chat chat = 2;
   int32 remainMyChat = 3;
+  int32 maxMyChat = 4;
 }

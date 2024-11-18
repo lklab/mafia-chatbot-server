@@ -11,10 +11,17 @@ class ClientMessageProcessor :
         self.player = player
         self.client: ClientPlayer = player.client
 
-        for msgType, listener in ClientMessageProcessor._listeners.items() :
+        listeners = {
+            game_pb2.RequestGameState : self._onRequestGameStateMessage,
+            game_pb2.RequestChatList : self._onRequestChatListMessage,
+            game_pb2.RequestAddChat : self._onRequestAddChatMessage,
+            game_pb2.GetChat : self._onGetChatMessage,
+        }
+
+        for msgType, listener in listeners.items() :
             self.client.subscribeMessage(
-                msgType=messageTypeDict[msgType],
-                listener=lambda message : listener(self, message),
+                msgType=msgType,
+                listener=listener,
             )
 
     def _onRequestGameStateMessage(self, message: game_pb2.RequestGameState) :
@@ -40,7 +47,7 @@ class ClientMessageProcessor :
             return
 
         # check sender
-        if self.player.info.id != message.sender :
+        if self.player.info.id != message.chat.sender :
             errorResponse = error_pb2.RequestError()
             errorResponse.rqid = message.rqid
             errorResponse.rqtype = messageTypeDict[type(message)]
@@ -49,11 +56,14 @@ class ClientMessageProcessor :
             self.client.sendMessage(errorResponse)
             return
 
+        self.player.remainChatingCount -= 1
+
         chat: game_pb2.Chat = self.gameState.addHumanChat(self.player.info, message.chat)
         response = game_pb2.AddChat()
         response.rqid = message.rqid
         response.chat.CopyFrom(chat)
         response.remainMyChat = self.player.remainChatingCount
+        response.maxMyChat = self.player.maxChatingCount
         self.client.sendMessage(response)
 
     def _onGetChatMessage(self, message: game_pb2.GetChat) :
@@ -72,11 +82,5 @@ class ClientMessageProcessor :
         response.rqid = message.rqid
         response.chat.CopyFrom(self.gameState.chatList[index].toProtoMessage(self.player.info))
         response.remainMyChat = self.player.remainChatingCount
+        response.maxMyChat = self.player.maxChatingCount
         self.client.sendMessage(response)
-
-    _listeners = {
-        game_pb2.RequestGameState : _onRequestGameStateMessage,
-        game_pb2.RequestChatList : _onRequestChatListMessage,
-        game_pb2.RequestAddChat : _onRequestAddChatMessage,
-        game_pb2.GetChat : _onGetChatMessage,
-    }

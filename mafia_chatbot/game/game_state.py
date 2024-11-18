@@ -419,6 +419,7 @@ class GameState :
                 message = game_pb2.AddChat()
                 message.chat.CopyFrom(chat.toProtoMessage(player.info))
                 message.remainMyChat = player.remainChatingCount
+                message.maxMyChat = player.maxChatingCount
                 player.client.sendMessage(message)
 
     def expandList(self, l: list, size: int, fillValue = None) :
