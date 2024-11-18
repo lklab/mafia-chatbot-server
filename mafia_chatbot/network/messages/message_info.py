@@ -13,6 +13,11 @@ messageTypeDict: dict[Type, int] = {
     game_pb2.GamePhase : 2003,
     game_pb2.RequestGameState : 2004,
     game_pb2.GameState : 2005,
+    game_pb2.RequestChatList : 2006,
+    game_pb2.ChatList : 2007,
+    game_pb2.RequestAddChat : 2008,
+    game_pb2.GetChat : 2009,
+    game_pb2.AddChat : 2010,
 }
 
 def _RequestErrorMessageFactory(data: bytes) -> error_pb2.RequestError :
@@ -60,6 +65,31 @@ def _GameStateMessageFactory(data: bytes) -> game_pb2.GameState :
     message.ParseFromString(data)
     return message
 
+def _RequestChatListMessageFactory(data: bytes) -> game_pb2.RequestChatList :
+    message = game_pb2.RequestChatList()
+    message.ParseFromString(data)
+    return message
+
+def _ChatListMessageFactory(data: bytes) -> game_pb2.ChatList :
+    message = game_pb2.ChatList()
+    message.ParseFromString(data)
+    return message
+
+def _RequestAddChatMessageFactory(data: bytes) -> game_pb2.RequestAddChat :
+    message = game_pb2.RequestAddChat()
+    message.ParseFromString(data)
+    return message
+
+def _GetChatMessageFactory(data: bytes) -> game_pb2.GetChat :
+    message = game_pb2.GetChat()
+    message.ParseFromString(data)
+    return message
+
+def _AddChatMessageFactory(data: bytes) -> game_pb2.AddChat :
+    message = game_pb2.AddChat()
+    message.ParseFromString(data)
+    return message
+
 
 messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     0 : _RequestErrorMessageFactory,
@@ -71,4 +101,9 @@ messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     2003 : _GamePhaseMessageFactory,
     2004 : _RequestGameStateMessageFactory,
     2005 : _GameStateMessageFactory,
+    2006 : _RequestChatListMessageFactory,
+    2007 : _ChatListMessageFactory,
+    2008 : _RequestAddChatMessageFactory,
+    2009 : _GetChatMessageFactory,
+    2010 : _AddChatMessageFactory,
 }

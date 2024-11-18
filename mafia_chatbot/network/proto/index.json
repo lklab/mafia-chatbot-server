@@ -25,7 +25,12 @@
                 "RequestGamePhase",
                 "GamePhase",
                 "RequestGameState",
-                "GameState"
+                "GameState",
+                "RequestChatList",
+                "ChatList",
+                "RequestAddChat",
+                "GetChat",
+                "AddChat"
             ]
         }
     ]

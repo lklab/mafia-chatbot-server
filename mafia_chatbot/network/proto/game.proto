@@ -63,3 +63,43 @@ message GameState {
 
   GamePhase phase = 7;
 }
+
+enum ChatType {
+  CHAT_UNKNOWN = 0;
+  CHAT_SYSTEM = 1;
+  CHAT_DISCUSSION = 2;
+}
+
+message Chat {
+  string id = 1;
+  ChatType type = 2;
+  int32 index = 3;
+
+  string sender = 4;
+  string content = 5;
+}
+
+message RequestChatList {
+  string rqid = 1;
+}
+
+message ChatList {
+  string rqid = 1;
+  repeated Chat chats = 2;
+}
+
+message RequestAddChat {
+  string rqid = 1;
+  Chat chat = 2;
+}
+
+message GetChat {
+  string rqid = 1;
+  int32 index = 2;
+}
+
+message AddChat {
+  string rqid = 1;
+  Chat chat = 2;
+  int32 remainMyChat = 3;
+}

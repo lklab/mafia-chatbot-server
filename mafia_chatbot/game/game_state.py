@@ -1,11 +1,12 @@
 import random
 from datetime import datetime, timedelta, timezone
-from google.protobuf.timestamp_pb2 import Timestamp
 
 from mafia_chatbot.game.game_info import *
-from mafia_chatbot.game.player_info import PlayerInfo, roleToProtoDict
+from mafia_chatbot.game.player_info import PlayerInfo
 from mafia_chatbot.game.player import *
 from mafia_chatbot.game.chat_data import ChatData, ChatType
+
+from mafia_chatbot.network.messages import *
 
 NAMES: dict[str, list[str]] = {
     'english' : [
@@ -319,6 +320,7 @@ class GameState :
             sender=sender,
         )
         self.chatList.append(chat)
+        self.sendAddChatMessageToAllClient(chat)
 
     def appendSystemChat(self, content: str, receiver: PlayerInfo = None) :
         chat: ChatData = ChatData(
@@ -328,6 +330,20 @@ class GameState :
             receiver=receiver,
         )
         self.chatList.append(chat)
+        self.sendAddChatMessageToAllClient(chat)
+
+    def addHumanChat(self, sender: PlayerInfo, chat_pb: game_pb2.Chat) :
+        chat: ChatData = ChatData(
+            type=ChatType.DISCUSSION,
+            index=len(self.chatList),
+            content=chat_pb.content,
+            sender=sender,
+        )
+
+        chat_pb.index = chat.index
+
+        self.chatList.append(chat)
+        return chat_pb
 
     def updateVoteHistory(self) -> VoteData :
         self.expandList(self.voteHistory, self.round + 1)
@@ -395,6 +411,12 @@ class GameState :
         for player in self.players :
             if player.client != None :
                 message = self.toProtoGameStateMessage(player)
+                player.client.sendMessage(message)
+
+    def sendAddChatMessageToAllClient(self, chat: ChatData) :
+        for player in self.players :
+            if player.client != None :
+                message = chat.toProtoMessage(player.info)
                 player.client.sendMessage(message)
 
     def expandList(self, l: list, size: int, fillValue = None) :
