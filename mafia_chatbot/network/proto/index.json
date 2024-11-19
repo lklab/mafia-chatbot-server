@@ -30,7 +30,11 @@
                 "ChatList",
                 "RequestAddChat",
                 "GetChat",
-                "AddChat"
+                "AddChat",
+                "SetTarget",
+                "SetTargetResponse",
+                "GetVoteState",
+                "VoteState"
             ]
         }
     ]

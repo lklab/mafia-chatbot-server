@@ -18,6 +18,10 @@ messageTypeDict: dict[Type, int] = {
     game_pb2.RequestAddChat : 2008,
     game_pb2.GetChat : 2009,
     game_pb2.AddChat : 2010,
+    game_pb2.SetTarget : 2011,
+    game_pb2.SetTargetResponse : 2012,
+    game_pb2.GetVoteState : 2013,
+    game_pb2.VoteState : 2014,
 }
 
 def _RequestErrorMessageFactory(data: bytes) -> error_pb2.RequestError :
@@ -90,6 +94,26 @@ def _AddChatMessageFactory(data: bytes) -> game_pb2.AddChat :
     message.ParseFromString(data)
     return message
 
+def _SetTargetMessageFactory(data: bytes) -> game_pb2.SetTarget :
+    message = game_pb2.SetTarget()
+    message.ParseFromString(data)
+    return message
+
+def _SetTargetResponseMessageFactory(data: bytes) -> game_pb2.SetTargetResponse :
+    message = game_pb2.SetTargetResponse()
+    message.ParseFromString(data)
+    return message
+
+def _GetVoteStateMessageFactory(data: bytes) -> game_pb2.GetVoteState :
+    message = game_pb2.GetVoteState()
+    message.ParseFromString(data)
+    return message
+
+def _VoteStateMessageFactory(data: bytes) -> game_pb2.VoteState :
+    message = game_pb2.VoteState()
+    message.ParseFromString(data)
+    return message
+
 
 messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     0 : _RequestErrorMessageFactory,
@@ -106,4 +130,8 @@ messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     2008 : _RequestAddChatMessageFactory,
     2009 : _GetChatMessageFactory,
     2010 : _AddChatMessageFactory,
+    2011 : _SetTargetMessageFactory,
+    2012 : _SetTargetResponseMessageFactory,
+    2013 : _GetVoteStateMessageFactory,
+    2014 : _VoteStateMessageFactory,
 }
