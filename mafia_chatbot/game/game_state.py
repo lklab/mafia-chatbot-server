@@ -83,7 +83,7 @@ class VoteData :
 
             voter.setVoteStrategy(self.round, strategy)
 
-            message = self._getVoteStateMessage()
+            message = self.getVoteStateMessage()
             for player in self.players :
                 if player.client != None :
                     player.client.sendMessage(message)
@@ -104,7 +104,7 @@ class VoteData :
             if playerInfo != self.targetPlayer :
                 self.notVoteTargetPlayers += votePlayers
 
-    def _getVoteStateMessage(self) -> game_pb2.VoteState :
+    def getVoteStateMessage(self) -> game_pb2.VoteState :
         message = game_pb2.VoteState()
         for target, voters in self.voteDict.items() :
             ids = [voter.info.id for voter in voters]

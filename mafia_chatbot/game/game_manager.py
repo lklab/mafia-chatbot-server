@@ -129,13 +129,14 @@ class GameManager :
         if self.gameState.localPlayer != None and self.gameState.localPlayer.isLive :
             cuiInputTask = asyncio.create_task(self._getTargetFromCUI('Choose the player to vote on: '))
 
+        voteData: VoteData = self.gameState.getCurrentVoteData()
         players = self.gameState.players
         playerCount = len(players)
         index = 0
 
         def _setLocalPlayerStrategy(targetPlayer: Player) :
             strategy: VoteStrategy = VoteStrategy(targetPlayer.info)
-            self.gameState.localPlayer.setVoteStrategy(self.gameState.round, strategy)
+            voteData.setVoteStrategy(self.gameState.localPlayer, strategy)
 
         while self.gameState.timeLimit > datetime.now(timezone.utc) :
             player: Player = players[index]
@@ -148,14 +149,13 @@ class GameManager :
 
             if not player.info.isHuman :
                 strategy: VoteStrategy = evaluator.evaluateVoteStrategy(self.gameState, player)
-                player.setVoteStrategy(self.gameState.round, strategy)
+                voteData.setVoteStrategy(player, strategy)
                 await asyncio.sleep(1)
 
         if cuiInputTask != None :
             targetPlayer: Player = await cuiInputTask
             _setLocalPlayerStrategy(targetPlayer)
 
-        voteData: VoteData = self.gameState.updateVoteHistory()
         self._printCUI(f'Voting status: {voteData.voteCount}')
 
         if voteData.isTie :

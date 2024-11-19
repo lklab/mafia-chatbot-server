@@ -1,4 +1,4 @@
-from mafia_chatbot.game.game_state import GameState, Phase
+from mafia_chatbot.game.game_state import GameState, Phase, VoteData
 from mafia_chatbot.game.player import Player
 from mafia_chatbot.game.player_info import Role
 from mafia_chatbot.game.client_player import ClientPlayer
@@ -19,6 +19,7 @@ class ClientMessageProcessor :
             game_pb2.RequestAddChat : self._onRequestAddChatMessage,
             game_pb2.GetChat : self._onGetChatMessage,
             game_pb2.SetTarget : self._onSetTargetMessage,
+            game_pb2.GetVoteState : self._onGetVoteStateMessage,
         }
 
         for msgType, listener in listeners.items() :
@@ -159,6 +160,19 @@ class ClientMessageProcessor :
 
         # response
         response = game_pb2.SetTargetResponse()
+        response.rqid = message.rqid
+        self.client.sendMessage(response)
+
+    def _onGetVoteStateMessage(self, message: game_pb2.GetVoteState) :
+        # check phase
+        if self.gameState.currentPhase != Phase.EVENING :
+            errorResponse = self._makeErrorResponse(message, 0, 'Not a valid phase.')
+            self.client.sendMessage(errorResponse)
+            return
+
+        # response
+        voteData: VoteData = self.gameState.getCurrentVoteData()
+        response = voteData.getVoteStateMessage()
         response.rqid = message.rqid
         self.client.sendMessage(response)
 
