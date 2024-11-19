@@ -101,13 +101,13 @@ class ClientMessageProcessor :
         self.gameState.getCurrentVoteData().setVoteStrategy(self.player, strategy)
 
     def _switchSetTargetProcessKill(self, target: Player) :
-        pass
+        self.gameState.getCurrentNightTargetData().killTarget = target
 
     def _switchSetTargetProcessTest(self, target: Player) :
-        pass
+        self.gameState.getCurrentNightTargetData().testTarget = target
 
     def _switchSetTargetProcessHeal(self, target: Player) :
-        pass
+        self.gameState.getCurrentNightTargetData().healTarget = target
 
     _switchSetTargetProcess = {
         game_pb2.TargetType.TARGET_VOTE : _switchSetTargetProcessVote,

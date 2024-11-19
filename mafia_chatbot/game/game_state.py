@@ -51,16 +51,6 @@ class VoteData :
             self.voteDict[player.info] = []
             self.voteCount[player.info] = 0
 
-        for player in players :
-            strategy: Strategy = player.getVoteStrategy(round)
-            if strategy != None :
-                target = strategy.mainTarget
-                if target == None :
-                    continue
-                else :
-                    self.voteDict[target].append(player)
-                    self.voteCount[target] += 1
-
         self.isTie = False
         self.targetPlayer: PlayerInfo = None
         self.notVoteTargetPlayers: list[Player] = []
@@ -110,6 +100,13 @@ class VoteData :
             ids = [voter.info.id for voter in voters]
             message.votersMap[target.id].voters.extend(ids)
         return message
+
+class NightTargetData :
+    def __init__(self, round) :
+        self.round = round
+        self.killTarget: Player = None
+        self.testTarget: Player = None
+        self.healTarget: Player = None
 
 class RemoveReason(Enum) :
     VOTE = 0
@@ -230,6 +227,7 @@ class GameState :
         self.chatList: list[ChatData] = []
         self.discussionHistory: list[str] = [] # TODO delete
         self.voteHistory: list[VoteData] = []
+        self.nightTargetHistory: list[NightTargetData] = []
         self.removedPlayers: dict[Player, PlayerRemoveInfo] = {}
 
         ### initialize round
@@ -393,7 +391,7 @@ class GameState :
         if len(self.voteHistory) < round + 1 :
             self.expandList(self.voteHistory, self.round + 1)
 
-        voteData: VoteData
+        voteData: VoteData = None
         if self.voteHistory[self.round] == None :
             voteData = VoteData(self.round, self.players)
             self.voteHistory[self.round] = voteData
@@ -404,6 +402,22 @@ class GameState :
 
     def getCurrentVoteData(self) -> VoteData :
         return self.getVoteData(self.round)
+
+    def getNightTargetData(self, round: int) -> NightTargetData :
+        if len(self.nightTargetHistory) < round + 1 :
+            self.expandList(self.nightTargetHistory, self.round + 1)
+
+        nightTargetData: NightTargetData = None
+        if self.nightTargetHistory[self.round] == None :
+            nightTargetData = NightTargetData(self.round)
+            self.nightTargetHistory[self.round] = nightTargetData
+        else :
+            nightTargetData = self.nightTargetHistory[self.round]
+
+        return nightTargetData
+
+    def getCurrentNightTargetData(self) -> NightTargetData :
+        return self.getNightTargetData(self.round)
 
     def addPublicPolice(self, player: Player) :
         self.publicPolicePlayers.add(player)
