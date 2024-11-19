@@ -137,7 +137,7 @@ class ClientMessageProcessor :
 
         # check role
         if (
-            message.type == game_pb2.TargetType.TARGET_VOTE or
+            message.type != game_pb2.TargetType.TARGET_VOTE and
             self.player.info.role != ClientMessageProcessor._switchSetTargetCheckRole[message.type]
         ) :
             errorResponse = self._makeErrorResponse(message, 0, 'You are not allowed to do that.')
@@ -150,7 +150,7 @@ class ClientMessageProcessor :
             errorResponse = self._makeErrorResponse(message, 0, 'There is no Player corresponding to ID.')
             self.client.sendMessage(errorResponse)
             return
-        if target.isLive :
+        if not target.isLive :
             errorResponse = self._makeErrorResponse(message, 0, 'Not a valid target.')
             self.client.sendMessage(errorResponse)
             return
@@ -177,6 +177,7 @@ class ClientMessageProcessor :
         self.client.sendMessage(response)
 
     def _makeErrorResponse(self, message, code: int, detail: str) :
+        print(f'@@@ error response: {detail}')
         errorResponse = error_pb2.RequestError()
         errorResponse.rqid = message.rqid
         errorResponse.rqtype = messageTypeDict[type(message)]
