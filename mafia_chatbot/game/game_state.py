@@ -66,8 +66,9 @@ class VoteData :
             oldTarget = oldStrategy.mainTarget
 
         if newTarget != oldTarget :
-            self.voteDict[oldTarget].remove(voter)
-            self.voteCount[oldTarget] -= 1
+            if oldTarget != None :
+                self.voteDict[oldTarget].remove(voter)
+                self.voteCount[oldTarget] -= 1
             self.voteDict[newTarget].append(voter)
             self.voteCount[newTarget] += 1
 
