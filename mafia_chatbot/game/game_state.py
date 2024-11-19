@@ -42,38 +42,74 @@ phaseToProtoDict: dict[Phase, game_pb2.Phase] = {
 class VoteData :
     def __init__(self, round: int, players: list[Player]) :
         self.round = round
+        self.players = players
 
         self.voteDict: dict[PlayerInfo, list[Player]] = {}
         self.voteCount: dict[PlayerInfo, int] = {}
+
+        for player in players :
+            self.voteDict[player.info] = []
+            self.voteCount[player.info] = 0
+
         for player in players :
             strategy: Strategy = player.getVoteStrategy(round)
             if strategy != None :
                 target = strategy.mainTarget
                 if target == None :
                     continue
-                elif target not in self.voteDict :
-                    self.voteDict[target] = [player]
-                    self.voteCount[target] = 1
                 else :
                     self.voteDict[target].append(player)
                     self.voteCount[target] += 1
 
         self.isTie = False
-        self.maxVoteCount = 0
         self.targetPlayer: PlayerInfo = None
+        self.notVoteTargetPlayers: list[Player] = []
+
+    def setVoteStrategy(self, voter: Player, strategy: VoteStrategy) :
+        newTarget: PlayerInfo = strategy.mainTarget
+        if newTarget == None :
+            return
+
+        oldTarget: PlayerInfo = None
+        oldStrategy: VoteStrategy = voter.getVoteStrategy(self.round)
+        if oldStrategy != None :
+            oldTarget = oldStrategy.mainTarget
+
+        if newTarget != oldTarget :
+            self.voteDict[oldTarget].remove(voter)
+            self.voteCount[oldTarget] -= 1
+            self.voteDict[newTarget].append(voter)
+            self.voteCount[newTarget] += 1
+
+            voter.setVoteStrategy(self.round, strategy)
+
+            message = self._getVoteStateMessage()
+            for player in self.players :
+                if player.client != None :
+                    player.client.sendMessage(message)
+
+    def evaluate(self) :
+        maxVoteCount = 0
 
         for playerInfo, vote in self.voteCount.items() :
-            if self.maxVoteCount == vote :
+            if maxVoteCount == vote :
                 self.isTie = True
-            elif self.maxVoteCount < vote :
+            elif maxVoteCount < vote :
                 self.isTie = False
-                self.maxVoteCount = vote
+                maxVoteCount = vote
                 self.targetPlayer = playerInfo
 
         self.notVoteTargetPlayers: list[Player] = []
         for playerInfo, votePlayers in self.voteDict.items() :
             if playerInfo != self.targetPlayer :
                 self.notVoteTargetPlayers += votePlayers
+
+    def _getVoteStateMessage(self) -> game_pb2.VoteState :
+        message = game_pb2.VoteState()
+        for target, voters in self.voteDict.items() :
+            ids = [voter.info.id for voter in voters]
+            message.votersMap[target.id].voters.extend(ids)
+        return message
 
 class RemoveReason(Enum) :
     VOTE = 0
@@ -180,10 +216,15 @@ class GameState :
         self.allPlayers: list[Player] = self.players.copy()
         self.allMafiaPlayers: list[Player] = self.mafiaPlayers.copy()
 
-        ### setup allPlayerMap
-        self.allPlayerMap: dict[PlayerInfo, Player] = {}
+        ### setup allPlayerMapByInfo
+        self.allPlayerMapByInfo: dict[PlayerInfo, Player] = {}
         for player in self.allPlayers :
-            self.allPlayerMap[player.info] = player
+            self.allPlayerMapByInfo[player.info] = player
+
+        ### setup allPlayerMapById
+        self.allPlayerMapById: dict[str, Player] = {}
+        for player in self.allPlayers :
+            self.allPlayerMapById[player.info.id] = player
 
         ### history
         self.chatList: list[ChatData] = []
@@ -252,7 +293,10 @@ class GameState :
         return self.getPlayerRemoveInfo(self.getPlayerByInfo(playerInfo))
 
     def getPlayerByInfo(self, playerInfo: PlayerInfo) -> Player :
-        return self.allPlayerMap.get(playerInfo)
+        return self.allPlayerMapByInfo.get(playerInfo)
+
+    def getPlayerById(self, id: str) -> Player :
+        return self.allPlayerMapById.get(id)
 
     def getPlayerByName(self, name: str) -> Player :
         for player in self.allPlayers :
@@ -345,19 +389,20 @@ class GameState :
         self.chatList.append(chat)
         return chat_pb
 
-    def updateVoteHistory(self) -> VoteData :
-        self.expandList(self.voteHistory, self.round + 1)
-        voteData = VoteData(self.round, self.players)
-        self.voteHistory[self.round] = voteData
+    def getVoteData(self, round: int) -> VoteData :
+        if len(self.voteHistory) < round + 1 :
+            self.expandList(self.voteHistory, self.round + 1)
+
+        voteData: VoteData
+        if self.voteHistory[self.round] == None :
+            voteData = VoteData(self.round, self.players)
+            self.voteHistory[self.round] = voteData
+        else :
+            voteData = self.voteHistory[self.round]
+
         return voteData
 
-    def getVoteData(self, round: int) :
-        if round >= 0 and round < len(self.voteHistory) :
-            return self.voteHistory[round]
-        else :
-            return None
-
-    def getCurrentVoteData(self) :
+    def getCurrentVoteData(self) -> VoteData :
         return self.getVoteData(self.round)
 
     def addPublicPolice(self, player: Player) :
