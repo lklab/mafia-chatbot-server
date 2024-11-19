@@ -104,3 +104,34 @@ message AddChat {
   int32 remainMyChat = 3;
   int32 maxMyChat = 4;
 }
+
+enum TargetType {
+  TARGET_UNKNOWN = 0;
+  TARGET_VOTE = 1;
+  TARGET_KILL = 2;
+  TARGET_TEST = 3;
+  TARGET_HEAL = 4;
+}
+
+message SetTarget {
+  string rqid = 1;
+  TargetType type = 2;
+  string target = 3;
+}
+
+message SetTargetResponse {
+  string rqid = 1;
+}
+
+message GetVoteState {
+  string rqid = 1;
+}
+
+message Voters {
+  repeated string voters = 1;
+}
+
+message VoteState {
+  string rqid = 1;
+  map<string, Voters> votersMap = 2;
+}
