@@ -34,7 +34,8 @@
                 "SetTarget",
                 "SetTargetResponse",
                 "GetVoteState",
-                "VoteState"
+                "VoteState",
+                "GameEnd"
             ]
         }
     ]

@@ -316,17 +316,17 @@ class GameState :
     def _switchPhaseDay(self) :
         self._reloadAllChatingCounts()
 
-        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(minutes=1)
+        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=10)
 
     def _switchPhaseEvening(self) :
         self._clearAllChatingCounts()
 
-        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=30)
+        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=10)
 
     def _switchPhaseNight(self) :
         self._clearAllChatingCounts()
 
-        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=30)
+        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=10)
 
     _switchPhase = {
         Phase.DAY : _switchPhaseDay,

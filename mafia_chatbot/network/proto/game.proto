@@ -135,3 +135,16 @@ message VoteState {
   string rqid = 1;
   map<string, Voters> votersMap = 2;
 }
+
+enum GameEndReason {
+  GAME_END_UNKNOWN = 0;
+  GAME_END_CITIZEN_WIN = 1;
+  GAME_END_MAFIA_WIN = 2;
+  GAME_END_EXECUTED = 3;
+  GAME_END_ASSASSINATED = 4;
+}
+
+message GameEnd {
+  string rqid = 1;
+  GameEndReason reason = 2;
+}

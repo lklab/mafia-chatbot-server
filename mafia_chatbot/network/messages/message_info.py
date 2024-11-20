@@ -22,6 +22,7 @@ messageTypeDict: dict[Type, int] = {
     game_pb2.SetTargetResponse : 2012,
     game_pb2.GetVoteState : 2013,
     game_pb2.VoteState : 2014,
+    game_pb2.GameEnd : 2015,
 }
 
 def _RequestErrorMessageFactory(data: bytes) -> error_pb2.RequestError :
@@ -114,6 +115,11 @@ def _VoteStateMessageFactory(data: bytes) -> game_pb2.VoteState :
     message.ParseFromString(data)
     return message
 
+def _GameEndMessageFactory(data: bytes) -> game_pb2.GameEnd :
+    message = game_pb2.GameEnd()
+    message.ParseFromString(data)
+    return message
+
 
 messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     0 : _RequestErrorMessageFactory,
@@ -134,4 +140,5 @@ messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     2012 : _SetTargetResponseMessageFactory,
     2013 : _GetVoteStateMessageFactory,
     2014 : _VoteStateMessageFactory,
+    2015 : _GameEndMessageFactory,
 }
