@@ -20,8 +20,12 @@
             "name" : "game",
             "messages" :
             [
+                "RequestMyGameInfo",
+                "MyGameInfo",
                 "GameStart",
                 "GameStartResponse",
+                "JoinMyGame",
+                "JoinMyGameResponse",
                 "RequestGamePhase",
                 "GamePhase",
                 "RequestGameState",

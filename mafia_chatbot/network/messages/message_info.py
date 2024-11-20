@@ -7,22 +7,26 @@ messageTypeDict: dict[Type, int] = {
     error_pb2.RequestError : 0,
     auth_pb2.Auth : 1000,
     auth_pb2.AuthResponse : 1001,
-    game_pb2.GameStart : 2000,
-    game_pb2.GameStartResponse : 2001,
-    game_pb2.RequestGamePhase : 2002,
-    game_pb2.GamePhase : 2003,
-    game_pb2.RequestGameState : 2004,
-    game_pb2.GameState : 2005,
-    game_pb2.RequestChatList : 2006,
-    game_pb2.ChatList : 2007,
-    game_pb2.RequestAddChat : 2008,
-    game_pb2.GetChat : 2009,
-    game_pb2.AddChat : 2010,
-    game_pb2.SetTarget : 2011,
-    game_pb2.SetTargetResponse : 2012,
-    game_pb2.GetVoteState : 2013,
-    game_pb2.VoteState : 2014,
-    game_pb2.GameEnd : 2015,
+    game_pb2.RequestMyGameInfo : 2000,
+    game_pb2.MyGameInfo : 2001,
+    game_pb2.GameStart : 2002,
+    game_pb2.GameStartResponse : 2003,
+    game_pb2.JoinMyGame : 2004,
+    game_pb2.JoinMyGameResponse : 2005,
+    game_pb2.RequestGamePhase : 2006,
+    game_pb2.GamePhase : 2007,
+    game_pb2.RequestGameState : 2008,
+    game_pb2.GameState : 2009,
+    game_pb2.RequestChatList : 2010,
+    game_pb2.ChatList : 2011,
+    game_pb2.RequestAddChat : 2012,
+    game_pb2.GetChat : 2013,
+    game_pb2.AddChat : 2014,
+    game_pb2.SetTarget : 2015,
+    game_pb2.SetTargetResponse : 2016,
+    game_pb2.GetVoteState : 2017,
+    game_pb2.VoteState : 2018,
+    game_pb2.GameEnd : 2019,
 }
 
 def _RequestErrorMessageFactory(data: bytes) -> error_pb2.RequestError :
@@ -40,6 +44,16 @@ def _AuthResponseMessageFactory(data: bytes) -> auth_pb2.AuthResponse :
     message.ParseFromString(data)
     return message
 
+def _RequestMyGameInfoMessageFactory(data: bytes) -> game_pb2.RequestMyGameInfo :
+    message = game_pb2.RequestMyGameInfo()
+    message.ParseFromString(data)
+    return message
+
+def _MyGameInfoMessageFactory(data: bytes) -> game_pb2.MyGameInfo :
+    message = game_pb2.MyGameInfo()
+    message.ParseFromString(data)
+    return message
+
 def _GameStartMessageFactory(data: bytes) -> game_pb2.GameStart :
     message = game_pb2.GameStart()
     message.ParseFromString(data)
@@ -47,6 +61,16 @@ def _GameStartMessageFactory(data: bytes) -> game_pb2.GameStart :
 
 def _GameStartResponseMessageFactory(data: bytes) -> game_pb2.GameStartResponse :
     message = game_pb2.GameStartResponse()
+    message.ParseFromString(data)
+    return message
+
+def _JoinMyGameMessageFactory(data: bytes) -> game_pb2.JoinMyGame :
+    message = game_pb2.JoinMyGame()
+    message.ParseFromString(data)
+    return message
+
+def _JoinMyGameResponseMessageFactory(data: bytes) -> game_pb2.JoinMyGameResponse :
+    message = game_pb2.JoinMyGameResponse()
     message.ParseFromString(data)
     return message
 
@@ -125,20 +149,24 @@ messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     0 : _RequestErrorMessageFactory,
     1000 : _AuthMessageFactory,
     1001 : _AuthResponseMessageFactory,
-    2000 : _GameStartMessageFactory,
-    2001 : _GameStartResponseMessageFactory,
-    2002 : _RequestGamePhaseMessageFactory,
-    2003 : _GamePhaseMessageFactory,
-    2004 : _RequestGameStateMessageFactory,
-    2005 : _GameStateMessageFactory,
-    2006 : _RequestChatListMessageFactory,
-    2007 : _ChatListMessageFactory,
-    2008 : _RequestAddChatMessageFactory,
-    2009 : _GetChatMessageFactory,
-    2010 : _AddChatMessageFactory,
-    2011 : _SetTargetMessageFactory,
-    2012 : _SetTargetResponseMessageFactory,
-    2013 : _GetVoteStateMessageFactory,
-    2014 : _VoteStateMessageFactory,
-    2015 : _GameEndMessageFactory,
+    2000 : _RequestMyGameInfoMessageFactory,
+    2001 : _MyGameInfoMessageFactory,
+    2002 : _GameStartMessageFactory,
+    2003 : _GameStartResponseMessageFactory,
+    2004 : _JoinMyGameMessageFactory,
+    2005 : _JoinMyGameResponseMessageFactory,
+    2006 : _RequestGamePhaseMessageFactory,
+    2007 : _GamePhaseMessageFactory,
+    2008 : _RequestGameStateMessageFactory,
+    2009 : _GameStateMessageFactory,
+    2010 : _RequestChatListMessageFactory,
+    2011 : _ChatListMessageFactory,
+    2012 : _RequestAddChatMessageFactory,
+    2013 : _GetChatMessageFactory,
+    2014 : _AddChatMessageFactory,
+    2015 : _SetTargetMessageFactory,
+    2016 : _SetTargetResponseMessageFactory,
+    2017 : _GetVoteStateMessageFactory,
+    2018 : _VoteStateMessageFactory,
+    2019 : _GameEndMessageFactory,
 }

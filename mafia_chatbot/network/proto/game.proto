@@ -2,14 +2,36 @@ syntax = "proto3";
 
 import "google/protobuf/timestamp.proto";
 
+message GameInfo {
+  int32 playerCount = 1;
+  int32 mafiaCount = 2;
+  string language = 3;
+}
+
+message RequestMyGameInfo {
+  string rqid = 1;
+}
+
+message MyGameInfo {
+  string rqid = 1;
+  bool isGameExists = 2;
+  GameInfo info = 3;
+}
+
 message GameStart {
   string rqid = 1;
-  int32 playerCount = 2;
-  int32 mafiaCount = 3;
-  string language = 4;
+  GameInfo info = 2;
 }
 
 message GameStartResponse {
+  string rqid = 1;
+}
+
+message JoinMyGame {
+  string rqid = 1;
+}
+
+message JoinMyGameResponse {
   string rqid = 1;
 }
 
