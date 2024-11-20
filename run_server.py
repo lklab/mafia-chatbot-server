@@ -133,6 +133,8 @@ class MainProgram :
             client.messageHandler.send(errorResponse)
             return
 
+        game.setupManager()
+
         response = game_pb2.GameStartResponse()
         response.rqid = message.rqid
         client.messageHandler.send(response)
