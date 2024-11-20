@@ -296,6 +296,12 @@ class GameManager :
             )
         elif humanCount == 0 :
             print('\nThere are no human players\n')
+
+            players: list[Player] = list(self.clientDict.values())
+            for player in players :
+                if not player.isLive :
+                    self._sendGameEndToPlayer(player)
+
             return GameEndInfo(
                 reason=GameEndReason.NO_HUMAN_PLAYER,
             )
