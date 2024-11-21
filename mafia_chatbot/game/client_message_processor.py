@@ -58,6 +58,12 @@ class ClientMessageProcessor :
             self.client.sendMessage(errorResponse)
             return
 
+        # check phase
+        if self.gameState.currentPhase != Phase.DAY :
+            errorResponse = self._makeErrorResponse(message, 0, 'Not a valid phase.')
+            self.client.sendMessage(errorResponse)
+            return
+
         self.player.remainChatingCount -= 1
 
         chat: game_pb2.Chat = self.gameState.addHumanChat(self.player.info, message.chat)

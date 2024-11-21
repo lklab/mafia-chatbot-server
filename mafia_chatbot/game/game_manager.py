@@ -12,6 +12,7 @@ from mafia_chatbot.game.game_end_info import GameEndInfo, GameEndReason
 class GameManager :
     def __init__(self, gameInfo: GameInfo) :
         self.gameState = GameState(gameInfo)
+        self.gameState.setOnHumanChatListener(self._onHumanChat)
 
         self.clientDict: dict[str, Player] = {}
         for player in self.gameState.players :
@@ -124,22 +125,38 @@ class GameManager :
             else :
                 continue
 
-            # apply strategy and discussion
-            player.setDiscussionStrategy(self.gameState.round, strategy)
+            self._updateStrategy(player, strategy)
             self.gameState.appendDiscussionChat(player.info, discussion)
-
-            # record significant data
-            if player.publicRole == Role.POLICE :
-                self.gameState.addPublicPolice(player)
-
-            for estimation in strategy.mafiaEstimations :
-                p: Player = self.gameState.getPlayerByInfo(estimation.playerInfo)
-                if p not in self.gameState.firstPointers :
-                    self.gameState.firstPointers[p] = player
 
         # await until time limit
         waitTime: float = (self.gameState.timeLimit - datetime.now(timezone.utc)).total_seconds()
         await asyncio.sleep(waitTime)
+
+    def _onHumanChat(self, chat: ChatData) :
+        player: Player = self.gameState.getPlayerByInfo(chat.sender)
+
+        if self.gameState.gameInfo.useLLM :
+            strategy: Strategy = self.llm.analyzeHumanMessage(player, chat.content)
+        else :
+            target: Player = self.gameState.getPlayerByName(chat.content)
+            if target == None :
+                return
+            strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, target.info, '')
+
+        self._updateStrategy(player, strategy)
+
+    def _updateStrategy(self, player: Player, strategy: Strategy) :
+        # apply strategy and discussion
+        player.setDiscussionStrategy(self.gameState.round, strategy)
+
+        # record significant data
+        if player.publicRole == Role.POLICE :
+            self.gameState.addPublicPolice(player)
+
+        for estimation in strategy.mafiaEstimations :
+            p: Player = self.gameState.getPlayerByInfo(estimation.playerInfo)
+            if p not in self.gameState.firstPointers :
+                self.gameState.firstPointers[p] = player
 
     async def _processEvening(self) :
         self.updateAllTrustPoint()

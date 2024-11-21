@@ -1,5 +1,6 @@
 import random
 from datetime import datetime, timedelta, timezone
+from typing import Callable
 
 from mafia_chatbot.game.game_info import *
 from mafia_chatbot.game.player_info import PlayerInfo
@@ -231,6 +232,9 @@ class GameState :
         self.nightTargetHistory: list[NightTargetData] = []
         self.removedPlayers: dict[Player, PlayerRemoveInfo] = {}
 
+        ### events
+        self.onHumanChat: Callable[[ChatData], None] = None
+
         ### initialize round
         self.round = 0
         self.currentPhase = Phase.DAY
@@ -382,11 +386,16 @@ class GameState :
             content=chat_pb.content,
             sender=sender,
         )
+        self.chatList.append(chat)
+
+        if self.onHumanChat != None :
+            self.onHumanChat(chat)
 
         chat_pb.index = chat.index
-
-        self.chatList.append(chat)
         return chat_pb
+
+    def setOnHumanChatListener(self, listener: Callable[[ChatData], None]) :
+        self.onHumanChat = listener
 
     def getVoteData(self, round: int) -> VoteData :
         if len(self.voteHistory) < round + 1 :
