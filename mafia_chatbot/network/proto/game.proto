@@ -84,6 +84,9 @@ message GameState {
   int32 remainMafiaCount = 6;
 
   GamePhase phase = 7;
+
+  int32 remainMyChat = 8;
+  int32 maxMyChat = 9;
 }
 
 enum ChatType {

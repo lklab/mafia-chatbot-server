@@ -320,17 +320,17 @@ class GameState :
     def _switchPhaseDay(self) :
         self._reloadAllChatingCounts()
 
-        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=10)
+        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=60)
 
     def _switchPhaseEvening(self) :
         self._clearAllChatingCounts()
 
-        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=10)
+        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=30)
 
     def _switchPhaseNight(self) :
         self._clearAllChatingCounts()
 
-        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=10)
+        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=30)
 
     _switchPhase = {
         Phase.DAY : _switchPhaseDay,
@@ -462,6 +462,9 @@ class GameState :
         message.remainMafiaCount = self.getMafiaCount()
 
         self.toProtoGamePhaseMessage(message.phase)
+
+        message.remainMyChat = player.remainChatingCount
+        message.maxMyChat = player.maxChatingCount
 
         return message
 
