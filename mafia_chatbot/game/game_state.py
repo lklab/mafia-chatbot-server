@@ -379,11 +379,11 @@ class GameState :
         self.chatList.append(chat)
         self.sendAddChatMessageToAllClient(chat)
 
-    def addHumanChat(self, sender: PlayerInfo, chat_pb: game_pb2.Chat) :
+    def addHumanChat(self, sender: PlayerInfo, chat_out: game_pb2.Chat) :
         chat: ChatData = ChatData(
             type=ChatType.DISCUSSION,
             index=len(self.chatList),
-            content=chat_pb.content,
+            content=chat_out.content,
             sender=sender,
         )
         self.chatList.append(chat)
@@ -391,8 +391,7 @@ class GameState :
         if self.onHumanChat != None :
             self.onHumanChat(chat)
 
-        chat_pb.index = chat.index
-        return chat_pb
+        chat_out.index = chat.index
 
     def setOnHumanChatListener(self, listener: Callable[[ChatData], None]) :
         self.onHumanChat = listener
@@ -456,25 +455,21 @@ class GameState :
         message = game_pb2.GameState()
 
         message.language = self.gameInfo.language
-        message.players.extend(list(map(lambda p : p.toProtoMessage(), self.allPlayers)))
-        message.me.CopyFrom(player.toProtoMessage())
+        message.players.extend(list(map(lambda p : p.createProtoMessage(), self.allPlayers)))
+        player.toProtoMessage(message.me)
 
         message.mafiaCount = self.gameInfo.mafiaCount
         message.remainMafiaCount = self.getMafiaCount()
 
-        message.phase.CopyFrom(self.toProtoGamePhaseMessage())
+        self.toProtoGamePhaseMessage(message.phase)
 
         return message
 
-    def toProtoGamePhaseMessage(self) -> game_pb2.GamePhase :
-        message = game_pb2.GamePhase()
-
-        message.round = self.round
-        message.phase = phaseToProtoDict[self.currentPhase]
-        message.phaseEndTime.FromDatetime(self.timeLimit)
-        message.phaseRemainTime = int((self.timeLimit - datetime.now(timezone.utc)).total_seconds() * 1000)
-
-        return message
+    def toProtoGamePhaseMessage(self, message_out: game_pb2.GamePhase) :
+        message_out.round = self.round
+        message_out.phase = phaseToProtoDict[self.currentPhase]
+        message_out.phaseEndTime.FromDatetime(self.timeLimit)
+        message_out.phaseRemainTime = int((self.timeLimit - datetime.now(timezone.utc)).total_seconds() * 1000)
 
     def sendGameStateMessageToAllClient(self) :
         for player in self.players :
@@ -486,7 +481,7 @@ class GameState :
         for player in self.players :
             if player.client != None :
                 message = game_pb2.AddChat()
-                message.chat.CopyFrom(chat.toProtoMessage(player.info))
+                chat.toProtoMessage(player.info, message.chat)
                 message.remainMyChat = player.remainChatingCount
                 message.maxMyChat = player.maxChatingCount
                 player.client.sendMessage(message)

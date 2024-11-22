@@ -24,17 +24,18 @@ class ChatData :
 
         self.id: str = str(uuid.uuid4())
 
-    def toProtoMessage(self, receiver: PlayerInfo) -> game_pb2.Chat :
+    def createProtoMessage(self, receiver: PlayerInfo) -> game_pb2.Chat :
         message = game_pb2.Chat()
+        self.toProtoMessage(receiver, message)
+        return message
 
-        message.id = self.id
-        message.type = chatTypeToProtoDict[self.type]
-        message.index = self.index
-        message.sender = self.sender.id if self.sender != None else ''
+    def toProtoMessage(self, receiver: PlayerInfo, chat_out: game_pb2.Chat) :
+        chat_out.id = self.id
+        chat_out.type = chatTypeToProtoDict[self.type]
+        chat_out.index = self.index
+        chat_out.sender = self.sender.id if self.sender != None else ''
 
         if self.type == ChatType.DISCUSSION or self.receiver == None or self.receiver.id == receiver.id :
-            message.content = self.content
+            chat_out.content = self.content
         else :
-            message.content = ''
-
-        return message
+            chat_out.content = ''

@@ -36,7 +36,7 @@ class ClientMessageProcessor :
     def _onRequestChatListMessage(self, message: game_pb2.RequestChatList) :
         response = game_pb2.ChatList()
         response.rqid = message.rqid
-        response.chats.extend(list(map(lambda chat : chat.toProtoMessage(self.player.info), self.gameState.chatList)))
+        response.chats.extend(list(map(lambda chat : chat.createProtoMessage(self.player.info), self.gameState.chatList)))
         self.client.sendMessage(response)
 
     def _onRequestAddChatMessage(self, message: game_pb2.RequestAddChat) :
@@ -66,12 +66,14 @@ class ClientMessageProcessor :
 
         self.player.remainChatingCount -= 1
 
-        chat: game_pb2.Chat = self.gameState.addHumanChat(self.player.info, message.chat)
         response = game_pb2.AddChat()
         response.rqid = message.rqid
-        response.chat.CopyFrom(chat)
+        response.chat.CopyFrom(message.chat)
         response.remainMyChat = self.player.remainChatingCount
         response.maxMyChat = self.player.maxChatingCount
+
+        self.gameState.addHumanChat(self.player.info, response.chat)
+
         self.client.sendMessage(response)
 
     def _onGetChatMessage(self, message: game_pb2.GetChat) :
@@ -84,7 +86,7 @@ class ClientMessageProcessor :
 
         response = game_pb2.AddChat()
         response.rqid = message.rqid
-        response.chat.CopyFrom(self.gameState.chatList[index].toProtoMessage(self.player.info))
+        self.gameState.chatList[index].toProtoMessage(self.player.info, response.chat)
         response.remainMyChat = self.player.remainChatingCount
         response.maxMyChat = self.player.maxChatingCount
         self.client.sendMessage(response)

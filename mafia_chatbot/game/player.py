@@ -191,14 +191,16 @@ class Player :
     def clearChatingCount(self) :
         self.remainChatingCount = 0
 
-    def toProtoMessage(self) -> game_pb2.Player :
+    def createProtoMessage(self) -> game_pb2.Player :
         message = game_pb2.Player()
-        message.id = self.info.id
-        message.name = self.info.name
-        message.role = roleToProtoDict[self.info.role]
-        message.isLive = self.isLive
-
+        self.toProtoMessage(message)
         return message
+
+    def toProtoMessage(self, message_out: game_pb2.Player) :
+        message_out.id = self.info.id
+        message_out.name = self.info.name
+        message_out.role = roleToProtoDict[self.info.role]
+        message_out.isLive = self.isLive
 
     def expandList(self, l: list, size: int, fillValue = None) :
         for _ in range(len(l), size) :
