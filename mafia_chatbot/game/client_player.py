@@ -23,3 +23,6 @@ class ClientPlayer :
 
     def sendMessage(self, message: Any) :
         self.client.send(message)
+
+    def clearSubscribers(self) :
+        self.subscribers.clear()

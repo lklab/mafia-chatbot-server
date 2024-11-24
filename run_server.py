@@ -168,7 +168,9 @@ class MainProgram :
 
     def _onClientDisconnected(self, client: ClientHandler) :
         if client.clientId in self.gameDict :
-            self.gameDict[client.clientId].manager.removeClient(client.getPlayer())
+            player: ClientPlayer = client.getPlayer()
+            self.gameDict[client.clientId].manager.removeClient(player)
+            player.clearSubscribers()
 
     def _makeErrorResponse(self, message, code: int, detail: str) :
         print(f'@@@ error response: {detail}')
@@ -187,6 +189,7 @@ class MainProgram :
 
         for client in game.clients :
             del self.gameDict[client.clientId]
+            client.getPlayer().clearSubscribers()
 
 if __name__ == "__main__" :
     program = MainProgram()
