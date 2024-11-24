@@ -2,10 +2,23 @@ syntax = "proto3";
 
 import "google/protobuf/timestamp.proto";
 
+message DebugInfo {
+  bool isDebug = 1;
+  Role role = 2;
+  int32 daySeconds = 3;
+  int32 eveningSeconds = 4;
+  int32 nightSeconds = 5;
+  bool useLLM = 6;
+  bool targetable = 7;
+  bool observer = 8;
+  bool ghostMode = 9;
+}
+
 message GameInfo {
   int32 playerCount = 1;
   int32 mafiaCount = 2;
   string language = 3;
+  DebugInfo debugInfo = 4;
 }
 
 message RequestMyGameInfo {

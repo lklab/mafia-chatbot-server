@@ -3,7 +3,7 @@ from typing import Callable, Any
 
 from mafia_chatbot.game.game_manager import GameManager
 from mafia_chatbot.game.client_player import ClientPlayer
-from mafia_chatbot.game.game_info import GameInfo, GameMode
+from mafia_chatbot.game.game_info import GameInfo, DebugInfo
 
 from mafia_chatbot.network.tcp_server import TcpServer
 from mafia_chatbot.network.tcp_client_handler import TcpClientHandler
@@ -75,7 +75,7 @@ class Game :
             clients=list(map(lambda c : c.getPlayer(), clients)),
             localPlayerName=None,
             language=gameInfoMessage.language,
-            gameMode=GameMode.CLIENT
+            debugInfo=DebugInfo(gameInfoMessage.debugInfo),
         )
 
     def checkValid(self) -> bool :

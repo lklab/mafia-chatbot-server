@@ -26,6 +26,14 @@ roleToProtoDict: dict[Role, game_pb2.Role] = {
     Role.DOCTOR: game_pb2.Role.Role_DOCTOR,
 }
 
+protoToRoleDict: dict[game_pb2.Role, Role] = {
+    game_pb2.Role.Role_UNKNOWN: None,
+    game_pb2.Role.Role_CITIZEN: Role.CITIZEN,
+    game_pb2.Role.Role_POLICE: Role.POLICE,
+    game_pb2.Role.Role_MAFIA: Role.MAFIA,
+    game_pb2.Role.Role_DOCTOR: Role.DOCTOR,
+}
+
 def strToRole(roleStr: str) -> Role :
     if roleStr in strToRoleDict :
         return strToRoleDict[roleStr]
