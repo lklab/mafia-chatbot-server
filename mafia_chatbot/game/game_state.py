@@ -184,11 +184,32 @@ class GameState :
             nameIndex += 1
             toneIndex += 1
 
-        # assign role
+        # assign role - prepare
         random.shuffle(self.players)
         self.mafiaPlayers: list[Player] = []
         self.humanMafiaPlayers: list[Player] = []
 
+        # assign debug role
+        if gameInfo.debugInfo != None and gameInfo.debugInfo.fixedRole != None :
+            fixedRolePlayer: Player = None
+            for player in self.players :
+                if player.client != None and player.client.id == gameInfo.debugInfo.fixedRoleClientId :
+                    fixedRolePlayer = player
+                    self.players.remove(fixedRolePlayer)
+                    break
+
+            if fixedRolePlayer == None :
+                pass
+            elif gameInfo.debugInfo.fixedRole == Role.CITIZEN :
+                self.players.insert(gameInfo.mafiaCount+2, fixedRolePlayer)
+            elif gameInfo.debugInfo.fixedRole == Role.MAFIA :
+                self.players.insert(                    0, fixedRolePlayer)
+            elif gameInfo.debugInfo.fixedRole == Role.POLICE :
+                self.players.insert(gameInfo.mafiaCount+0, fixedRolePlayer)
+            elif gameInfo.debugInfo.fixedRole == Role.DOCTOR :
+                self.players.insert(gameInfo.mafiaCount+1, fixedRolePlayer)
+
+        # assign role
         for i in range(gameInfo.mafiaCount) :
             self.players[i].info.role = Role.MAFIA
             self.mafiaPlayers.append(self.players[i])

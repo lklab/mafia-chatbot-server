@@ -4,7 +4,8 @@ from mafia_chatbot.network.messages import *
 
 class DebugInfo :
     def __init__(self, data: game_pb2.DebugInfo) :
-        self.role: Role = protoToRoleDict[data.role]
+        self.fixedRole: Role = protoToRoleDict[data.fixedRole]
+        self.fixedRoleClientId: str = data.fixedRoleClientId
 
         self.daySeconds: int = data.daySeconds
         self.eveningSeconds: int = data.eveningSeconds

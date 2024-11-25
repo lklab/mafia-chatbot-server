@@ -4,14 +4,15 @@ import "google/protobuf/timestamp.proto";
 
 message DebugInfo {
   bool isDebug = 1;
-  Role role = 2;
-  int32 daySeconds = 3;
-  int32 eveningSeconds = 4;
-  int32 nightSeconds = 5;
-  bool useLLM = 6;
-  bool targetable = 7;
-  bool observer = 8;
-  bool ghostMode = 9;
+  Role fixedRole = 2;
+  string fixedRoleClientId = 3;
+  int32 daySeconds = 4;
+  int32 eveningSeconds = 5;
+  int32 nightSeconds = 6;
+  bool useLLM = 7;
+  bool targetable = 8;
+  bool observer = 9;
+  bool ghostMode = 10;
 }
 
 message GameInfo {
