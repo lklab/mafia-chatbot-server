@@ -35,12 +35,26 @@ trustRecordTypeToPrompt: dict[TrustRecordType, str] = {
     TrustRecordType.NOT_VOTE_MAFIA : 'He did not vote for the mafia.',
 }
 
+class RemoveReason(Enum) :
+    LIVE = 0
+    VOTE = 1
+    KILL = 2
+    OBSERVER = 3
+
+removeReasonToProtoDict: dict[RemoveReason, game_pb2.RemoveReason] = {
+    RemoveReason.LIVE: game_pb2.RemoveReason.REMOVE_LIVE,
+    RemoveReason.VOTE: game_pb2.RemoveReason.REMOVE_EXECUTED,
+    RemoveReason.KILL: game_pb2.RemoveReason.REMOVE_ASSASSINATED,
+    RemoveReason.OBSERVER: game_pb2.RemoveReason.REMOVE_OBSERVER,
+}
+
 class Player :
     def __init__(self, name: str, tone: str, isHuman: bool, client: ClientPlayer) :
         # player data
         self.info = PlayerInfo(name, tone, isHuman, isHuman and client == None)
         self.client = client
         self.isLive = True
+        self.removeReason = RemoveReason.LIVE
 
         # personal factors
         self.conformity: float = random.uniform(0.5, 1.5) # 1.0
@@ -134,6 +148,10 @@ class Player :
     def getDiscussion(self) :
         return self.discussionStrategy.assumptionsToStr()
 
+    def setRemoved(self, removeReason: RemoveReason) :
+        self.isLive = False
+        self.removeReason = removeReason
+
     def addTestResult(self, player: Player, role: Role) :
         self.testResults[player] = role
         self.testedTargets.append(player)
@@ -201,6 +219,7 @@ class Player :
         message_out.name = self.info.name
         message_out.role = roleToProtoDict[self.info.role]
         message_out.isLive = self.isLive
+        message_out.removeReason = removeReasonToProtoDict[self.removeReason]
 
     def expandList(self, l: list, size: int, fillValue = None) :
         for _ in range(len(l), size) :

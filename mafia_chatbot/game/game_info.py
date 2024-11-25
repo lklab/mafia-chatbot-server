@@ -12,9 +12,10 @@ class DebugInfo :
         self.nightSeconds: int = data.nightSeconds
 
         self.useLLM: bool = data.useLLM
-        self.targetable: bool = data.targetable
-        self.observer: bool = data.observer
-        self.ghostMode: bool = data.ghostMode
+
+        self.nonTargetableClientId: str = data.nonTargetableClientId
+        self.observerClientId: str = data.observerClientId
+        self.continueOnlyBots: bool = data.continueOnlyBots
 
 class GameInfo :
     def __init__(self,
@@ -41,7 +42,6 @@ class GameInfo :
         if debugInfo != None and debugInfo.isDebug :
             self.debugInfo = debugInfo
             self.isCUI = True
-
             self.useLLM = debugInfo.useLLM
 
     def checkValid(self) -> bool :
@@ -62,5 +62,6 @@ class GameInfo :
             return False
 
         # TODO check language
+        # TODO check duplicated names
 
         return True

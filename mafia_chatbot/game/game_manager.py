@@ -7,7 +7,7 @@ import mafia_chatbot.game.evaluator as evaluator
 from mafia_chatbot.game.llm import LLM
 from mafia_chatbot.game.client_player import ClientPlayer
 from mafia_chatbot.game.client_message_processor import ClientMessageProcessor
-from mafia_chatbot.game.game_end_info import GameEndInfo, GameEndReason
+from mafia_chatbot.game.game_end_info import GameEndInfo, GameEndReason, gameEndReasonToProtoDict
 
 class GameManager :
     def __init__(self, gameInfo: GameInfo) :
@@ -15,7 +15,7 @@ class GameManager :
         self.gameState.setOnHumanChatListener(self._onHumanChat)
 
         self.clientDict: dict[str, Player] = {}
-        for player in self.gameState.players :
+        for player in self.gameState.clientPlayers :
             if player.client != None :
                 self.clientDict[player.client.id] = player
                 self._subscribeClient(player)
@@ -31,15 +31,7 @@ class GameManager :
         player = self.clientDict.get(client.id)
         if player != None :
             player.client = client
-
-            if player.isLive :
-                self._subscribeClient(player)
-                return True
-            else :
-                self._sendGameEndToPlayer(player)
-                return False
-        else :
-            return False
+            self._subscribeClient(player)
 
     def _subscribeClient(self, player: Player) :
         if player.client != None :
@@ -71,17 +63,11 @@ class GameManager :
 
             self.gameState.addRound()
 
-        if gameEndInfo.reason != GameEndReason.NO_HUMAN_PLAYER :
-            for player in self.clientDict.values() :
-                if player.client != None :
-                    message = game_pb2.GameEnd()
-
-                    if gameEndInfo.reason == GameEndReason.CITIZEN_WIN :
-                        message.reason = game_pb2.GameEndReason.GAME_END_CITIZEN_WIN
-                    else :
-                        message.reason = game_pb2.GameEndReason.GAME_END_MAFIA_WIN
-
-                    player.client.sendMessage(message)
+        for player in self.gameState.clientPlayers :
+            if player.client != None :
+                message = game_pb2.GameEnd()
+                message.reason = gameEndReasonToProtoDict[gameEndInfo.reason]
+                player.client.sendMessage(message)
 
     async def _processDay(self) :
         self._addSystemChat('It is morning. Please engage in a discussion.')
@@ -311,39 +297,13 @@ class GameManager :
             return GameEndInfo(
                 reason=GameEndReason.MAFIA_WIN,
             )
-        elif humanCount == 0 :
+        elif humanCount == 0 and not self.gameState.continueOnlyBots :
             print('\nThere are no human players\n')
-
-            players: list[Player] = list(self.clientDict.values())
-            for player in players :
-                if not player.isLive :
-                    self._sendGameEndToPlayer(player)
-
             return GameEndInfo(
                 reason=GameEndReason.NO_HUMAN_PLAYER,
             )
         else :
-            players: list[Player] = list(self.clientDict.values())
-            for player in players :
-                if not player.isLive :
-                    self._sendGameEndToPlayer(player)
             return None
-
-    def _sendGameEndToPlayer(self, player: Player) :
-        if player.isLive or player.client == None or player.client.id not in self.clientDict :
-            return
-
-        del self.clientDict[player.client.id]
-
-        message = game_pb2.GameEnd()
-
-        reason = self.gameState.getPlayerRemoveInfoByInfo(player.info).reason
-        if reason == RemoveReason.VOTE :
-            message.reason = game_pb2.GameEndReason.GAME_END_EXECUTED
-        else :
-            message.reason = game_pb2.GameEndReason.GAME_END_ASSASSINATED
-
-        player.client.sendMessage(message)
 
     def updateTrustRecordsForRemovedPlayer(self, playerInfo: PlayerInfo, removeReason: RemoveReason) :
         removeInfo: PlayerRemoveInfo = self.gameState.getPlayerRemoveInfoByInfo(playerInfo)

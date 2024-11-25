@@ -10,9 +10,9 @@ message DebugInfo {
   int32 eveningSeconds = 5;
   int32 nightSeconds = 6;
   bool useLLM = 7;
-  bool targetable = 8;
-  bool observer = 9;
-  bool ghostMode = 10;
+  string nonTargetableClientId = 8;
+  string observerClientId = 9;
+  bool continueOnlyBots = 10;
 }
 
 message GameInfo {
@@ -57,11 +57,20 @@ enum Role {
   Role_DOCTOR = 4;
 }
 
+enum RemoveReason {
+  REMOVE_UNKNOWN = 0;
+  REMOVE_LIVE = 1;
+  REMOVE_EXECUTED = 2;
+  REMOVE_ASSASSINATED = 3;
+  REMOVE_OBSERVER = 3;
+}
+
 message Player {
   string id = 1;
   string name = 2;
   Role role = 3;
   bool isLive = 4;
+  RemoveReason removeReason = 5;
 }
 
 enum Phase {
@@ -175,15 +184,27 @@ message VoteState {
   map<string, Voters> votersMap = 2;
 }
 
+message Removed {
+  string rqid = 1;
+  RemoveReason reason = 2;
+}
+
 enum GameEndReason {
   GAME_END_UNKNOWN = 0;
   GAME_END_CITIZEN_WIN = 1;
   GAME_END_MAFIA_WIN = 2;
-  GAME_END_EXECUTED = 3;
-  GAME_END_ASSASSINATED = 4;
+  GAME_END_NO_HUMAN_PLAYER = 3;
 }
 
 message GameEnd {
   string rqid = 1;
   GameEndReason reason = 2;
+}
+
+message QuitGame {
+  string rqid = 1;
+}
+
+message QuitGameResponse {
+  string rqid = 1;
 }

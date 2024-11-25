@@ -26,7 +26,10 @@ messageTypeDict: dict[Type, int] = {
     game_pb2.SetTargetResponse : 2016,
     game_pb2.GetVoteState : 2017,
     game_pb2.VoteState : 2018,
-    game_pb2.GameEnd : 2019,
+    game_pb2.Removed : 2019,
+    game_pb2.GameEnd : 2020,
+    game_pb2.QuitGame : 2021,
+    game_pb2.QuitGameResponse : 2022,
 }
 
 def _RequestErrorMessageFactory(data: bytes) -> error_pb2.RequestError :
@@ -139,8 +142,23 @@ def _VoteStateMessageFactory(data: bytes) -> game_pb2.VoteState :
     message.ParseFromString(data)
     return message
 
+def _RemovedMessageFactory(data: bytes) -> game_pb2.Removed :
+    message = game_pb2.Removed()
+    message.ParseFromString(data)
+    return message
+
 def _GameEndMessageFactory(data: bytes) -> game_pb2.GameEnd :
     message = game_pb2.GameEnd()
+    message.ParseFromString(data)
+    return message
+
+def _QuitGameMessageFactory(data: bytes) -> game_pb2.QuitGame :
+    message = game_pb2.QuitGame()
+    message.ParseFromString(data)
+    return message
+
+def _QuitGameResponseMessageFactory(data: bytes) -> game_pb2.QuitGameResponse :
+    message = game_pb2.QuitGameResponse()
     message.ParseFromString(data)
     return message
 
@@ -168,5 +186,8 @@ messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     2016 : _SetTargetResponseMessageFactory,
     2017 : _GetVoteStateMessageFactory,
     2018 : _VoteStateMessageFactory,
-    2019 : _GameEndMessageFactory,
+    2019 : _RemovedMessageFactory,
+    2020 : _GameEndMessageFactory,
+    2021 : _QuitGameMessageFactory,
+    2022 : _QuitGameResponseMessageFactory,
 }

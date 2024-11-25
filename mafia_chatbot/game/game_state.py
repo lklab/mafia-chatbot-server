@@ -41,9 +41,10 @@ phaseToProtoDict: dict[Phase, game_pb2.Phase] = {
 }
 
 class VoteData :
-    def __init__(self, round: int, players: list[Player]) :
+    def __init__(self, round: int, players: list[Player], clientPlayers: list[Player]) :
         self.round = round
         self.players = players
+        self.clientPlayers = clientPlayers
 
         self.voteDict: dict[PlayerInfo, list[Player]] = {}
         self.voteCount: dict[PlayerInfo, int] = {}
@@ -76,7 +77,7 @@ class VoteData :
             voter.setVoteStrategy(self.round, strategy)
 
             message = self.getVoteStateMessage()
-            for player in self.players :
+            for player in self.clientPlayers :
                 if player.client != None :
                     player.client.sendMessage(message)
 
@@ -110,10 +111,6 @@ class NightTargetData :
         self.testTarget: Player = None
         self.healTarget: Player = None
 
-class RemoveReason(Enum) :
-    VOTE = 0
-    KILL = 1
-
 class RoundInfo :
     def __init__(self, round: int, playerCount: int, mafiaCount: int) :
         self.round = round
@@ -132,17 +129,30 @@ class GameState :
 
         ### create players
         self.players: list[Player] = []
+        self.clientPlayers: list[Player] = []
         usedNames = set()
 
         # create human players
+        self.observerPlayer: Player = None
+        observerClientId: str = None
+        if gameInfo.debugInfo != None :
+            observerClientId: str = gameInfo.debugInfo.observerClientId
+
         for client in gameInfo.clients :
-            self.players.append(Player(
+            clientPlayer: Player = Player(
                 name=client.name,
                 tone='',
                 isHuman=True,
                 client=client
-            ))
-            usedNames.add(client.name.lower())
+            )
+            self.clientPlayers.append(clientPlayer)
+
+            if client.id == observerClientId :
+                self.observerPlayer = clientPlayer
+                clientPlayer.setRemoved(RemoveReason.OBSERVER)
+            else :
+                self.players.append(clientPlayer)
+                usedNames.add(client.name.lower())
 
         if gameInfo.localPlayerName != None :
             self.localPlayer: Player = Player(
@@ -284,11 +294,16 @@ class GameState :
         ### discussion data
         self.firstPointers: dict[Player, Player] = {}
 
+        ## debug data
+        self.continueOnlyBots: bool = False
+        if gameInfo.debugInfo != None :
+            self.continueOnlyBots = self.observerPlayer != None or gameInfo.debugInfo.continueOnlyBots
+
     def removePlayer(self, player: Player, reason: RemoveReason) :
         if player == None or not player.isLive :
             return
 
-        player.isLive = False
+        player.setRemoved(reason)
         self.players.remove(player)
 
         if player.info.role == Role.MAFIA :
@@ -315,6 +330,11 @@ class GameState :
         # update doctor data
         if player.info.role == Role.DOCTOR :
             self.isDoctorLive = False
+
+        # send player removed message
+        message = game_pb2.Removed()
+        message.reason = removeReasonToProtoDict[reason]
+        player.client.sendMessage(message)
 
     def removePlayerByInfo(self, playerInfo: PlayerInfo, reason: RemoveReason) :
         self.removePlayer(self.getPlayerByInfo(playerInfo), reason)
@@ -429,7 +449,7 @@ class GameState :
 
         voteData: VoteData = None
         if self.voteHistory[self.round] == None :
-            voteData = VoteData(self.round, self.players)
+            voteData = VoteData(self.round, self.players, self.clientPlayers)
             self.voteHistory[self.round] = voteData
         else :
             voteData = self.voteHistory[self.round]
@@ -502,13 +522,13 @@ class GameState :
         message_out.phaseRemainTime = int((self.timeLimit - datetime.now(timezone.utc)).total_seconds() * 1000)
 
     def sendGameStateMessageToAllClient(self) :
-        for player in self.players :
+        for player in self.clientPlayers :
             if player.client != None :
                 message = self.toProtoGameStateMessage(player)
                 player.client.sendMessage(message)
 
     def sendAddChatMessageToAllClient(self, chat: ChatData) :
-        for player in self.players :
+        for player in self.clientPlayers :
             if player.client != None :
                 message = game_pb2.AddChat()
                 chat.toProtoMessage(player.info, message.chat)
