@@ -62,7 +62,7 @@ enum RemoveReason {
   REMOVE_LIVE = 1;
   REMOVE_EXECUTED = 2;
   REMOVE_ASSASSINATED = 3;
-  REMOVE_OBSERVER = 3;
+  REMOVE_OBSERVER = 4;
 }
 
 message Player {
