@@ -106,7 +106,7 @@ class MainProgram :
         # TODO check auth message
         return True
 
-    def switchMessageRequestMyGameInfo(self, client: ClientHandler, message) :
+    def _switchMessageRequestMyGameInfo(self, client: ClientHandler, message) :
         if client.clientId in self.gameDict :
             response = game_pb2.MyGameInfo()
             response.rqid = message.rqid
@@ -141,7 +141,7 @@ class MainProgram :
 
         asyncio.create_task(self._runGame(game))
 
-    def switchMessageJoinMyGame(self, client: ClientHandler, message) :
+    def _switchMessageJoinMyGame(self, client: ClientHandler, message) :
         if client.clientId in self.gameDict :
             self.gameDict[client.clientId].manager.assignClient(client.getPlayer())
 
@@ -154,10 +154,26 @@ class MainProgram :
             client.messageHandler.send(errorResponse)
             return
 
+    def _switchMessageQuitGame(self, client: ClientHandler, message) :
+        if client.clientId in self.gameDict :
+            self.gameDict[client.clientId].manager.removeClient(client.getPlayer())
+            del self.gameDict[client.clientId]
+            client.getPlayer().clearSubscribers()
+
+            response = game_pb2.QuitGameResponse()
+            response.rqid = message.rqid
+            client.messageHandler.send(response)
+
+        else :
+            errorResponse = self._makeErrorResponse(message, 0, 'There are no participating games.')
+            client.messageHandler.send(errorResponse)
+            return
+
     _switchMessage = {
-        game_pb2.RequestMyGameInfo : switchMessageRequestMyGameInfo,
+        game_pb2.RequestMyGameInfo : _switchMessageRequestMyGameInfo,
         game_pb2.GameStart : _switchMessageGameStart,
-        game_pb2.JoinMyGame : switchMessageJoinMyGame,
+        game_pb2.JoinMyGame : _switchMessageJoinMyGame,
+        game_pb2.QuitGame : _switchMessageQuitGame,
     }
 
     def _onClientMessage(self, client: ClientHandler, message) :
@@ -188,8 +204,9 @@ class MainProgram :
         await game.manager.start()
 
         for client in game.clients :
-            del self.gameDict[client.clientId]
-            client.getPlayer().clearSubscribers()
+            if client.clientId in self.gameDict :
+                del self.gameDict[client.clientId]
+                client.getPlayer().clearSubscribers()
 
 if __name__ == "__main__" :
     program = MainProgram()
