@@ -256,10 +256,19 @@ class GameState :
         ### events
         self.onHumanChat: Callable[[ChatData], None] = None
 
-        ### initialize round
+        ### phase data
         self.round = 0
         self.currentPhase = Phase.DAY
+        self.daySeconds = 60
+        self.eveningSeconds = 30
+        self.nightSeconds = 30
         self.timeLimit: datetime = None
+
+        # phase data - debug
+        if gameInfo.debugInfo != None :
+            self.daySeconds = gameInfo.debugInfo.daySeconds
+            self.eveningSeconds = gameInfo.debugInfo.eveningSeconds
+            self.nightSeconds = gameInfo.debugInfo.nightSeconds
 
         ### police data
         self.isPoliceLive = True
@@ -340,18 +349,15 @@ class GameState :
 
     def _switchPhaseDay(self) :
         self._reloadAllChatingCounts()
-
-        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=60)
+        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=self.daySeconds)
 
     def _switchPhaseEvening(self) :
         self._clearAllChatingCounts()
-
-        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=30)
+        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=self.eveningSeconds)
 
     def _switchPhaseNight(self) :
         self._clearAllChatingCounts()
-
-        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=30)
+        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=self.nightSeconds)
 
     _switchPhase = {
         Phase.DAY : _switchPhaseDay,
