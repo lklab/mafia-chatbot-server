@@ -332,9 +332,10 @@ class GameState :
             self.isDoctorLive = False
 
         # send player removed message
-        message = game_pb2.Removed()
-        message.reason = removeReasonToProtoDict[reason]
-        player.client.sendMessage(message)
+        if player.client != None :
+            message = game_pb2.Removed()
+            message.reason = removeReasonToProtoDict[reason]
+            player.client.sendMessage(message)
 
     def removePlayerByInfo(self, playerInfo: PlayerInfo, reason: RemoveReason) :
         self.removePlayer(self.getPlayerByInfo(playerInfo), reason)

@@ -39,7 +39,7 @@ class GameInfo :
         self.isCUI = localPlayerName != None
 
         self.debugInfo = None
-        if debugInfo != None and debugInfo.isDebug :
+        if debugInfo != None :
             self.debugInfo = debugInfo
             self.isCUI = True
             self.useLLM = debugInfo.useLLM

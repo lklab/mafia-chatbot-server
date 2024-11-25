@@ -75,7 +75,7 @@ class Game :
             clients=list(map(lambda c : c.getPlayer(), clients)),
             localPlayerName=None,
             language=gameInfoMessage.language,
-            debugInfo=DebugInfo(gameInfoMessage.debugInfo),
+            debugInfo=DebugInfo(gameInfoMessage.debugInfo) if gameInfoMessage.debugInfo.isDebug else None,
         )
 
     def checkValid(self) -> bool :
