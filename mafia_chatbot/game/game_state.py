@@ -285,18 +285,18 @@ class GameState :
             self.nightSeconds = gameInfo.debugInfo.nightSeconds
 
         ### police data
-        self.isPoliceLive = True
-        self.publicPolicePlayers: set[Player] = set()
-        self.onePublicPolicePlayer: Player = None
+        self.isPoliceLive = True # TODO delete
+        self.publicPolicePlayers: set[Player] = set() # TODO delete
+        self.onePublicPolicePlayer: Player = None # TODO delete
 
         self.isRealPoliveRevealed = False
         self.isFakePoliveRevealed = False
 
         ### doctor data
-        self.isDoctorLive = True
+        self.isDoctorLive = True # TODO delete
 
         ### discussion data
-        self.firstPointers: dict[Player, Player] = {}
+        self.firstPointers: dict[Player, Player] = {} # TODO delete
 
         ## debug data
         self.continueOnlyBots: bool = False

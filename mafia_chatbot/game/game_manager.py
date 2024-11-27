@@ -346,13 +346,13 @@ class GameManager :
                         point= - 100 / notVoteTargetCount
                     ))
 
-    def updateAllTrustPoint(self) :
+    def updateAllTrustPoint(self) : # TODO delete
         for player in self.gameState.players :
             self.updateSurelyMafia(player)
         for player in self.gameState.players :
             self.updateTrustPoint(player)
 
-    def updateSurelyMafia(self, player: Player) :
+    def updateSurelyMafia(self, player: Player) : # TODO delete
         if player.publicRole == Role.MAFIA :
             player.setTrustData(
                 TRUST_MIN,
@@ -417,7 +417,7 @@ class GameManager :
                 )
                 return
 
-    def updateTrustPoint(self, player: Player) :
+    def updateTrustPoint(self, player: Player) : # TODO delete
         # trusted police
         if player.publicRole == Role.POLICE and player.isTrustedPolice :
             player.setTrustData(TRUST_MAX)

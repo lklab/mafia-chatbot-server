@@ -74,6 +74,7 @@ class Player :
         self.isContradictoryRole: tuple[bool, tuple[Role, Role]] = (False, (None, None))
         self.voteHistory: list[PlayerInfo] = []
         self.estimationsAsPolice: dict[PlayerInfo, Estimation] = {}
+        self.estimationsAsDoctor: dict[PlayerInfo, Estimation] = {}
 
         # trust data
         self.trustRecords: list[TrustRecord] = []
@@ -117,10 +118,15 @@ class Player :
         else :
             self.isPublicRoleChanged = False
 
-        # update estimationsAsPolice
-        if strategy.publicRole == Role.POLICE :
-            for estimation in strategy.estimations :
-                self.estimationsAsPolice[estimation.playerInfo] = estimation
+        for assumption in strategy.assumptions :
+            # update estimationsAsPolice
+            if assumption.assumptionType == AssumptionType.TEST_RESULT :
+                for estimation in assumption.estimations :
+                    self.estimationsAsPolice[estimation.playerInfo] = estimation
+            # update estimationsAsDoctor
+            if assumption.assumptionType == AssumptionType.HEAL_SUCCESS :
+                for estimation in assumption.estimations :
+                    self.estimationsAsDoctor[estimation.playerInfo] = estimation
 
     def setVoteStrategy(self, round: int, strategy: VoteStrategy) :
         self.voteStrategy = strategy
@@ -194,7 +200,7 @@ class Player :
 
         self.setTrustData(total, mainIssue)
 
-    def setTrustedPolice(self) :
+    def setTrustedPolice(self) : # TODO remove
         self.isTrustedPolice = True
 
     def getRolePrompt(self) -> str :

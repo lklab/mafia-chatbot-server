@@ -1,3 +1,5 @@
+from enum import Enum
+
 from mafia_chatbot.game.player_info import *
 
 class Estimation :
@@ -17,10 +19,16 @@ class Estimation :
     def getPrompt(self) :
         return f'{self.playerInfo.name}\'s role is {self.role.name.lower()}'
 
+class AssumptionType(Enum) :
+    NORMAL = 0
+    TEST_RESULT = 1
+    HEAL_SUCCESS = 2
+
 class Assumption :
-    def __init__(self, estimations: list[Estimation], reason: str) :
+    def __init__(self, estimations: list[Estimation], reason: str, assumptionType: AssumptionType) :
         self.estimations = estimations
         self.reason = reason
+        self.assumptionType = assumptionType
 
     def __str__(self) :
         estimations = ','.join(map(lambda estimation: str(estimation), self.estimations))

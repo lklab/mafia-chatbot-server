@@ -23,10 +23,11 @@ recordsByTrustStateDict: dict[TrustState, TrustRecord] = {
     TrustState.CLAIMED_POLICE    : TrustRecord( 100.0, 'He claimed to be the police.'),
     TrustState.CLAIMED_DOCTOR    : TrustRecord( 100.0, 'He claimed to be the doctor.'),
     TrustState.VERIFIED_POLICE   : TrustRecord( 100.0, 'He is definitely the police.'),
-    TrustState.TARGETED_TRUSTED  : TrustRecord(-100.0, 'He pointed to someone who wasn\'t a mafia.'),
+    TrustState.TARGETED_TRUSTED  : TrustRecord(-100.0, 'He accused a player who seemed trustworthy as a citizen of being a mafia.'),
 }
 
 targetablesByTrustStateDict: dict[TrustState, bool] = {
+    TrustState.NORMAL            : True,
     TrustState.CONFIRMED_MAFIA   : True,
     TrustState.CONFIRMED_CITIZEN : False,
     TrustState.CLAIMED_POLICE    : False,
@@ -36,6 +37,7 @@ targetablesByTrustStateDict: dict[TrustState, bool] = {
 }
 
 mustTargetingsByTrustStateDict: dict[TrustState, bool] = {
+    TrustState.NORMAL            : False,
     TrustState.CONFIRMED_MAFIA   : True,
     TrustState.CONFIRMED_CITIZEN : False,
     TrustState.CLAIMED_POLICE    : False,
