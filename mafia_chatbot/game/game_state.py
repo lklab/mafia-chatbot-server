@@ -92,10 +92,14 @@ class VoteData :
                 maxVoteCount = vote
                 self.targetPlayer = playerInfo
 
+        targetVotersSet: set[Player] = set()
+        for voter in self.voteDict[self.targetPlayer] :
+            targetVotersSet.add(voter)
+
         self.notVoteTargetPlayers: list[Player] = []
-        for playerInfo, votePlayers in self.voteDict.items() :
-            if playerInfo != self.targetPlayer :
-                self.notVoteTargetPlayers += votePlayers
+        for player in self.players :
+            if player not in targetVotersSet and player.info != self.targetPlayer :
+                self.notVoteTargetPlayers.append(player)
 
     def getVoteStateMessage(self) -> game_pb2.VoteState :
         message = game_pb2.VoteState()
