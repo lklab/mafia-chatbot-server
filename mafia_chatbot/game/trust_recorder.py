@@ -27,7 +27,7 @@ class TrustRecorder :
         self.healSucceededList: list[PlayerInfo] = []
 
         # etc data
-        self.pointedTrustedTarget: list[tuple[PlayerInfo, PlayerInfo]] = []
+        self.pointedTrustedTarget: list[tuple[PlayerInfo, PlayerInfo]] = [] # tuple[pointer, target]
 
     def startNewRound(self) :
         self.pointerInfosByTargetInfo: dict[PlayerInfo, list[PlayerInfo]] = {}
@@ -60,6 +60,9 @@ class TrustRecorder :
                 self.pointerInfoSetByTargetInfo[targetInfo].add(playerInfo)
 
             # update pointedTrustedTarget
+            # 현재 신뢰받는 상태인 플레이어를 지목한 경우 신뢰도를 낮게 설정하는데,
+            # 나중에 해당 플레이어가 신뢰 상태가 아닐 수 있으므로
+            # _checkAndUpdateTrustStateStep2()에서 타겟의 신뢰 상태를 다시 검사함
             targetProfile: TrustProfile = self.profileByPlayerInfo[targetInfo]
             if not targetProfile.isTargetable() :
                 self.pointedTrustedTarget.append((playerInfo, targetInfo))
