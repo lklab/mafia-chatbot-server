@@ -37,13 +37,15 @@ class TrustRecorder :
         self.mafiaPointingData: dict[PlayerInfo, dict[PlayerInfo, float]] = {}
 
     def discussionStrategyUpdated(self, playerInfo: PlayerInfo, strategy: Strategy) :
+        player: Player = self.gameState.getPlayerByInfo(playerInfo)
+
         # update police
-        if strategy.publicRole == Role.POLICE :
+        if player.publicRole == Role.POLICE :
             self.publicPolicePlayerInfos.add(playerInfo)
         self._updateOnePublicPolicePlayerInfo()
 
         # update doctor
-        if strategy.publicRole == Role.DOCTOR :
+        if player.publicRole == Role.DOCTOR :
             self.publicDoctorPlayerInfos.add(playerInfo)
         self._updateOnePublicDoctorPlayerInfo()
 
@@ -188,11 +190,11 @@ class TrustRecorder :
             )
             return
 
-        if player.isContradictoryRole[0] : # TODO refactor
-            roles = player.isContradictoryRole[1]
+        if player.isContradictoryRole[0] :
+            roleBefore, roleAfter = player.isContradictoryRole[1]
             profile.setState(
                 state=TrustState.CONFIRMED_MAFIA,
-                reason=f'He initially claimed his role was {roles[0].name.lower()}, but now he claims to be {roles[1].name.lower()}.',
+                reason=f'He initially claimed his role was {roleBefore.name.lower()}, but now he claims to be {roleAfter.name.lower()}.',
             )
             return
 

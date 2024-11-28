@@ -45,6 +45,7 @@ class Player :
         # strategy summary
         self.publicRole = Role.CITIZEN
         self.isPublicRoleChanged = False
+        # 모순되는 역할 변경을 한 이력이 있는지 여부, tuple[모순여부, tuple[기존 역할, 주장하는 역할]]
         self.isContradictoryRole: tuple[bool, tuple[Role, Role]] = (False, (None, None))
         self.voteHistory: list[PlayerInfo] = []
         self.estimationsAsPolice: dict[PlayerInfo, Estimation] = {}
@@ -76,15 +77,24 @@ class Player :
 
         # update publicRole
         if self.publicRole != strategy.publicRole :
-            if strategy.publicRole == Role.MAFIA :
+            # 시민에서 다른 역할로의 변경 허용
+            if self.publicRole == Role.CITIZEN :
                 self.publicRole = strategy.publicRole
                 self.isPublicRoleChanged = True
-                self.isContradictoryRole = (False, (None, None))
-            elif self.publicRole != Role.CITIZEN and strategy.publicRole != Role.CITIZEN :
-                self.isContradictoryRole = (True, (self.publicRole, strategy.publicRole))
+
+            # 다른 역할에서 시민으로의 역할 변경 무시
+            elif strategy.publicRole == Role.CITIZEN :
+                self.isPublicRoleChanged = False
+
+            # 마피아로 주장한 적이 있는 경우 무시
+            elif self.publicRole == Role.MAFIA :
+                self.isPublicRoleChanged = False
+
+            # 그 외의 경우(경찰 <-> 의사) 모순적인 역할 변경으로 처리
             else :
-                self.publicRole = strategy.publicRole
-                self.isPublicRoleChanged = True
+                self.isPublicRoleChanged = False
+                self.isContradictoryRole = (True, (self.publicRole, strategy.publicRole))
+
         else :
             self.isPublicRoleChanged = False
 
