@@ -262,7 +262,6 @@ class GameState :
 
         ### history
         self.chatList: list[ChatData] = []
-        self.discussionHistory: list[str] = [] # TODO delete
         self.voteHistory: list[VoteData] = []
         self.nightTargetHistory: list[NightTargetData] = []
         self.removedPlayers: dict[Player, PlayerRemoveInfo] = {}
@@ -284,20 +283,6 @@ class GameState :
             self.eveningSeconds = gameInfo.debugInfo.eveningSeconds
             self.nightSeconds = gameInfo.debugInfo.nightSeconds
 
-        ### police data
-        self.isPoliceLive = True # TODO delete
-        self.publicPolicePlayers: set[Player] = set() # TODO delete
-        self.onePublicPolicePlayer: Player = None # TODO delete
-
-        self.isRealPoliveRevealed = False
-        self.isFakePoliveRevealed = False
-
-        ### doctor data
-        self.isDoctorLive = True # TODO delete
-
-        ### discussion data
-        self.firstPointers: dict[Player, Player] = {} # TODO delete
-
         ## debug data
         self.continueOnlyBots: bool = False
         if gameInfo.debugInfo != None :
@@ -317,23 +302,6 @@ class GameState :
 
         # update history
         self.removedPlayers[player] = PlayerRemoveInfo(player, reason, self.getCurrentRoundInfo())
-
-        # update police data
-        self.publicPolicePlayers.discard(player)
-
-        if player.info.role == Role.POLICE :
-            self.isPoliceLive = False
-            self.onePublicPolicePlayer = player
-            player.setTrustedPolice()
-        else :
-            if len(self.publicPolicePlayers) == 1 :
-                self.onePublicPolicePlayer = next(iter(self.publicPolicePlayers))
-            else :
-                self.onePublicPolicePlayer = None
-
-        # update doctor data
-        if player.info.role == Role.DOCTOR :
-            self.isDoctorLive = False
 
         # send player removed message
         if player.client != None :
@@ -408,9 +376,6 @@ class GameState :
     def getCurrentRoundInfo(self) -> RoundInfo :
         return RoundInfo(self.round, len(self.players), len(self.mafiaPlayers))
 
-    def appendDiscussionHistory(self, playerInfo: PlayerInfo, discussion: str) :
-        self.discussionHistory.append(f'{playerInfo.name}: {discussion}')
-
     def appendDiscussionChat(self, sender: PlayerInfo, content: str) :
         chat: ChatData = ChatData(
             type=ChatType.DISCUSSION,
@@ -479,20 +444,6 @@ class GameState :
 
     def getCurrentNightTargetData(self) -> NightTargetData :
         return self.getNightTargetData(self.round)
-
-    def addPublicPolice(self, player: Player) :
-        self.publicPolicePlayers.add(player)
-
-        if self.isPoliceLive :
-            if len(self.publicPolicePlayers) == 1 :
-                self.onePublicPolicePlayer = player
-            else :
-                self.onePublicPolicePlayer = None
-
-        if player.info.role == Role.POLICE :
-            self.isRealPoliveRevealed = True
-        else :
-            self.isFakePoliveRevealed = True
 
     def getPlayerCount(self) -> int :
         return len(self.players)

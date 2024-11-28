@@ -9,32 +9,6 @@ from mafia_chatbot.network.messages import *
 class Player :
     pass
 
-class TrustRecordType:
-    pass
-
-TRUST_MIN: int = -100
-TRUST_DEFAULT: int = 0
-TRUST_MAX: int = 100
-
-class TrustRecordType(Enum) :
-    FIRST_POINT_CITIZEN = 0
-    FIRST_POINT_MAFIA = 1
-    NOT_VOTE_MAFIA = 2
-
-class TrustRecord :
-    def __init__(self, type: TrustRecordType, point: int) :
-        if isinstance(point, float) :
-            point = round(point)
-
-        self.type = type
-        self.point = point
-
-trustRecordTypeToPrompt: dict[TrustRecordType, str] = {
-    TrustRecordType.FIRST_POINT_CITIZEN : 'He pointed out the citizen first.',
-    TrustRecordType.FIRST_POINT_MAFIA : '',
-    TrustRecordType.NOT_VOTE_MAFIA : 'He did not vote for the mafia.',
-}
-
 class RemoveReason(Enum) :
     LIVE = 0
     VOTE = 1
@@ -76,16 +50,12 @@ class Player :
         self.estimationsAsPolice: dict[PlayerInfo, Estimation] = {}
         self.estimationsAsDoctor: dict[PlayerInfo, Estimation] = {}
 
-        # trust data
-        self.trustRecords: list[TrustRecord] = []
-        self.trustPoint: int = 0
-        self.trustMainIssue: str = ''
-
-        self.isTrustedPolice: bool = False
-
         # police's private data
         self.testResults: dict[Player, Role] = {}
         self.testedTargets: list[Player] = []
+
+        # doctor's private data
+        self.healSuccesses: set[Player] = set()
 
         # human chating count
         self.maxChatingCount = 5
@@ -162,46 +132,8 @@ class Player :
         self.testResults[player] = role
         self.testedTargets.append(player)
 
-    def setTrustData(self, trustPoint: int, mainIssue: str = '') :
-        if isinstance(trustPoint, float) :
-            trustPoint = round(trustPoint)
-
-        if trustPoint > TRUST_MAX :
-            trustPoint = TRUST_MAX
-        elif trustPoint < TRUST_MIN :
-            trustPoint = TRUST_MIN
-
-        self.trustPoint = trustPoint
-        self.trustMainIssue = mainIssue
-
-    def addTrustRecord(self, trustRecord: TrustRecord) :
-        self.trustRecords.append(trustRecord)
-        print(f'[addTrustRecord] {self.info.name}: {trustRecord.type.name}, {trustRecord.point}')
-
-    def updateTrustDataByRecord(self) :
-        pointDict: dict[TrustRecordType, int] = {}
-
-        for record in self.trustRecords :
-            if record.type in pointDict :
-                pointDict[record.type] += record.point
-            else :
-                pointDict[record.type] = record.point
-        
-        total = 0
-        maxDecreasePoint = 0
-        mainIssue = ''
-
-        for type in pointDict :
-            point = pointDict[type]
-            total += point
-            if point < maxDecreasePoint :
-                maxDecreasePoint = point
-                mainIssue = trustRecordTypeToPrompt[type]
-
-        self.setTrustData(total, mainIssue)
-
-    def setTrustedPolice(self) : # TODO remove
-        self.isTrustedPolice = True
+    def addHealSuccess(self, player: Player) :
+        self.healSuccesses.add(player)
 
     def getRolePrompt(self) -> str :
         if self.isPublicRoleChanged :

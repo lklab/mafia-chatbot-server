@@ -8,11 +8,14 @@ from mafia_chatbot.game.llm import LLM
 from mafia_chatbot.game.client_player import ClientPlayer
 from mafia_chatbot.game.client_message_processor import ClientMessageProcessor
 from mafia_chatbot.game.game_end_info import GameEndInfo, GameEndReason, gameEndReasonToProtoDict
+from mafia_chatbot.game.trust_recorder import TrustRecorder
 
 class GameManager :
     def __init__(self, gameInfo: GameInfo) :
         self.gameState = GameState(gameInfo)
         self.gameState.setOnHumanChatListener(self._onHumanChat)
+
+        self.trustRecorder: TrustRecorder = TrustRecorder(self.gameState)
 
         self.clientDict: dict[str, Player] = {}
         for player in self.gameState.clientPlayers :
@@ -44,6 +47,8 @@ class GameManager :
         gameEndInfo: GameEndInfo = None
 
         while True :
+            self.trustRecorder.startNewRound()
+
             self.gameState.setPhase(Phase.DAY)
             await self._processDay()
 
@@ -72,8 +77,6 @@ class GameManager :
     async def _processDay(self) :
         self._addSystemChat('It is morning. Please engage in a discussion.')
 
-        self.gameState.firstPointers.clear()
-
         players = self.gameState.players
         playerCount = len(players)
         index = self.gameState.round % playerCount
@@ -98,7 +101,7 @@ class GameManager :
             elif not player.info.isHuman :
                 await asyncio.sleep(1)
 
-                self.updateAllTrustPoint()
+                self.trustRecorder.updateTrustRecords()
                 strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, players[index])
 
                 if self.gameState.gameInfo.useLLM :
@@ -135,20 +138,11 @@ class GameManager :
         # apply strategy and discussion
         player.setDiscussionStrategy(self.gameState.round, strategy)
 
-        # record significant data
-        if player.publicRole == Role.POLICE :
-            self.gameState.addPublicPolice(player)
-
-        for estimation in strategy.mafiaEstimations :
-            p: Player = self.gameState.getPlayerByInfo(estimation.playerInfo)
-            if p not in self.gameState.firstPointers :
-                self.gameState.firstPointers[p] = player
+        # record trust info
+        self.trustRecorder.discussionStrategyUpdated(player.info, strategy)
 
     async def _processEvening(self) :
-        self.updateAllTrustPoint()
-
-        trustStr: list[str] = list(map(lambda p : f'{p.info.name}={p.trustPoint}({p.trustMainIssue})', self.gameState.players))
-        self._printCUI('\n' + ', '.join(trustStr) + '\n')
+        self.trustRecorder.updateTrustRecords()
 
         cuiInputTask: asyncio.Task = None
         if self.gameState.localPlayer != None and self.gameState.localPlayer.isLive :
@@ -189,19 +183,10 @@ class GameManager :
         else :
             self._addSystemChat(f'{voteData.targetPlayer.name} is executed. Their role was {voteData.targetPlayer.role.name}.')
             self.gameState.removePlayerByInfo(voteData.targetPlayer, RemoveReason.VOTE)
-            self.updateTrustRecordsForRemovedPlayer(voteData.targetPlayer, RemoveReason.VOTE)
-
-            # update player.setTrustedPolice
-            if voteData.targetPlayer.role == Role.MAFIA :
-                for player in players :
-                    if player.publicRole == Role.POLICE :
-                        for estimation in player.estimationsAsPolice.values() :
-                            if estimation.playerInfo == voteData.targetPlayer and estimation.role == Role.MAFIA :
-                                player.setTrustedPolice()
-                                break
+            self.trustRecorder.playerRemoved(voteData.targetPlayer, RemoveReason.VOTE)
 
     async def _processNight(self) :
-        self.updateAllTrustPoint()
+        self.trustRecorder.updateTrustRecords()
 
         nightTargetData: NightTargetData = self.gameState.getCurrentNightTargetData()
 
@@ -251,10 +236,12 @@ class GameManager :
             self._addSystemChat('The mafia did not assassinate anyone.')
         else :
             if nightTargetData.killTarget == nightTargetData.healTarget :
+                doctor.addHealSuccess(nightTargetData.healTarget)
+                self.trustRecorder.healSucceeded(nightTargetData.healTarget.info)
                 self._addSystemChat(f'The Mafia attempted to assassinate {nightTargetData.killTarget.info.name}, but failed due to the doctor\'s healing.')
             else :
                 self.gameState.removePlayerByInfo(nightTargetData.killTarget.info, RemoveReason.KILL)
-                self.updateTrustRecordsForRemovedPlayer(nightTargetData.killTarget.info, RemoveReason.KILL)
+                self.trustRecorder.playerRemoved(nightTargetData.killTarget.info, RemoveReason.KILL)
                 self._addSystemChat(f'{nightTargetData.killTarget.info.name} was assassinated by the Mafia.')
 
         ### execute test
@@ -304,146 +291,3 @@ class GameManager :
             )
         else :
             return None
-
-    def updateTrustRecordsForRemovedPlayer(self, playerInfo: PlayerInfo, removeReason: RemoveReason) :
-        removeInfo: PlayerRemoveInfo = self.gameState.getPlayerRemoveInfoByInfo(playerInfo)
-        roundInfo: RoundInfo = removeInfo.roundInfo
-        removedPlayer: Player = removeInfo.player
-
-        playerCount = roundInfo.playerCount
-        mafiaCount = roundInfo.mafiaCount
-        civilCount = playerCount - mafiaCount
-
-        if mafiaCount == 0 or civilCount <= mafiaCount :
-            return
-
-        if removedPlayer in self.gameState.firstPointers :
-            player: Player = self.gameState.firstPointers[removedPlayer]
-
-            # FIRST_POINT_CITIZEN
-            if removedPlayer.info.role != Role.MAFIA :
-                player.addTrustRecord(TrustRecord(
-                    type=TrustRecordType.FIRST_POINT_CITIZEN,
-                    point= -(removedPlayer.trustPoint + 100) / (playerCount - 2 * mafiaCount),
-                ))
-
-            # FIRST_POINT_MAFIA
-            else :
-                player.addTrustRecord(TrustRecord(
-                    type=TrustRecordType.FIRST_POINT_MAFIA,
-                    point= 100 / mafiaCount,
-                ))
-
-        # NOT_VOTE_MAFIA
-        if removedPlayer.info.role == Role.MAFIA and removeReason == RemoveReason.VOTE :
-            voteData: VoteData = self.gameState.getCurrentVoteData()
-            notVoteTargetCount = len(voteData.notVoteTargetPlayers)
-
-            for player in voteData.notVoteTargetPlayers :
-                if player.isLive :
-                    player.addTrustRecord(TrustRecord(
-                        type=TrustRecordType.NOT_VOTE_MAFIA,
-                        point= - 100 / notVoteTargetCount
-                    ))
-
-    def updateAllTrustPoint(self) : # TODO delete
-        for player in self.gameState.players :
-            self.updateSurelyMafia(player)
-        for player in self.gameState.players :
-            self.updateTrustPoint(player)
-
-    def updateSurelyMafia(self, player: Player) : # TODO delete
-        if player.publicRole == Role.MAFIA :
-            player.setTrustData(
-                TRUST_MIN,
-                'He revealed that he is a mafia.',
-            )
-            return
-        elif player.isContradictoryRole[0] :
-            roles = player.isContradictoryRole[1]
-            player.setTrustData(
-                TRUST_MIN,
-                f'He initially claimed his role was {roles[0].name.lower()}, but now he claims to be {roles[1].name.lower()}.',
-            )
-            return
-        elif player.publicRole == Role.POLICE :
-            if not self.gameState.isPoliceLive :
-                player.setTrustData(
-                    TRUST_MIN,
-                    'Despite the police being already eliminated, he claims his role is a police.',
-                )
-                return
-
-            mafiaEstimationCount = 0
-            citizenEstimationCount = 0
-
-            for estimation in player.estimationsAsPolice.values() :
-                p = self.gameState.getPlayerByInfo(estimation.playerInfo)
-                if p.publicRole == Role.POLICE :
-                    player.setTrustData(
-                        TRUST_MIN,
-                        f'He claimed that {p.info.name} is a citizen, but {p.info.name} claims his role is a police.',
-                    )
-                    return
-                if not p.isLive and ((p.info.role == Role.MAFIA) != (estimation.role == Role.MAFIA)) :
-                    player.setTrustData(
-                        TRUST_MIN,
-                        'He incorrectly announced the role of an eliminated player.',
-                    )
-                    return
-
-                if estimation.role == Role.MAFIA :
-                    mafiaEstimationCount += 1
-                else :
-                    citizenEstimationCount += 1
-
-            if self.gameState.gameInfo.mafiaCount < mafiaEstimationCount :
-                player.setTrustData(
-                    TRUST_MIN,
-                    'There are too many mafia in his investigation results.',
-                )
-                return
-            elif self.gameState.gameInfo.citizenCount < citizenEstimationCount :
-                player.setTrustData(
-                    TRUST_MIN,
-                    'There are too many citizens in his investigation results.',
-                )
-                return
-
-            if self.gameState.round < len(player.estimationsAsPolice) :
-                player.setTrustData(
-                    TRUST_MIN,
-                    'There are contradictions in his investigation results. He has presented more investigation results than what is possible in the current round.',
-                )
-                return
-
-    def updateTrustPoint(self, player: Player) : # TODO delete
-        # trusted police
-        if player.publicRole == Role.POLICE and player.isTrustedPolice :
-            player.setTrustData(TRUST_MAX)
-            return
-
-        # one public police
-        if player == self.gameState.onePublicPolicePlayer :
-            player.setTrustData(TRUST_MAX)
-            return
-
-        # one police's estimations
-        if self.gameState.onePublicPolicePlayer != None :
-            policePlayer = self.gameState.onePublicPolicePlayer
-            if policePlayer.trustPoint > TRUST_MIN and player.info in policePlayer.estimationsAsPolice :
-                # the police pointed me citizen
-                if policePlayer.estimationsAsPolice[player.info].role == Role.CITIZEN :
-                    player.setTrustData(TRUST_MAX)
-                    return
-
-                # the police pointed me mafia
-                if policePlayer.estimationsAsPolice[player.info].role == Role.MAFIA :
-                    player.setTrustData(
-                        TRUST_MIN,
-                        'The police identified him as a mafia member.',
-                    )
-                    return
-
-        # update trust data by record
-        player.updateTrustDataByRecord()
