@@ -3,13 +3,15 @@ from mafia_chatbot.game.player import Player
 from mafia_chatbot.game.player_info import Role
 from mafia_chatbot.game.client_player import ClientPlayer
 from mafia_chatbot.game.strategy import VoteStrategy
+from mafia_chatbot.game.trust_recorder import TrustRecorder
 
 from mafia_chatbot.network.messages import *
 from mafia_chatbot.network.messages.message_info import messageTypeDict
 
 class ClientMessageProcessor :
-    def __init__(self, gameState: GameState, player: Player) :
+    def __init__(self, gameState: GameState, trustRecorder: TrustRecorder, player: Player) :
         self.gameState = gameState
+        self.trustRecorder = trustRecorder
         self.player = player
         self.client: ClientPlayer = player.client
 
@@ -107,6 +109,7 @@ class ClientMessageProcessor :
     def _switchSetTargetProcessVote(self, target: Player) :
         strategy: VoteStrategy = VoteStrategy(target.info)
         self.gameState.getCurrentVoteData().setVoteStrategy(self.player, strategy)
+        self.trustRecorder.voteStrategyUpdated(self.player.info, strategy)
 
     def _switchSetTargetProcessKill(self, target: Player) :
         self.gameState.getCurrentNightTargetData().killTarget = target

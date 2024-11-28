@@ -1,8 +1,8 @@
 from mafia_chatbot.game.game_state import GameState, VoteData, RemoveReason
-from mafia_chatbot.game.trust_profile import TrustProfile, TrustRecord, TrustState
+from mafia_chatbot.game.trust_profile import TrustProfile, TrustRecord, TrustState, defaultReason
 from mafia_chatbot.game.player import Player
 from mafia_chatbot.game.player_info import PlayerInfo, Role
-from mafia_chatbot.game.strategy import Strategy
+from mafia_chatbot.game.strategy import Strategy, VoteStrategy
 
 class TrustRecorder :
     def __init__(self, gameState: GameState) :
@@ -30,10 +30,18 @@ class TrustRecorder :
         self.pointedTrustedTarget: list[tuple[PlayerInfo, PlayerInfo]] = [] # tuple[pointer, target]
 
     def startNewRound(self) :
-        self.pointerInfosByTargetInfo: dict[PlayerInfo, list[PlayerInfo]] = {}
-        self.pointerInfoSetByTargetInfo: dict[PlayerInfo, set[PlayerInfo]] = {}
+        # 특정 플레이어를 지목한 플레이어 리스트: 지목한 적이 있으면 나중에 번복해도 계속 쌓임
+        self.everPointerInfosByTargetInfo: dict[PlayerInfo, list[PlayerInfo]] = {}
+        self.everPointerInfoSetByTargetInfo: dict[PlayerInfo, set[PlayerInfo]] = {}
 
+        # 특정 플레이어를 지목하거나 투표한 플레이어 리스트: 가장 최근에 지목하거나 투표한 것만 반영됨
+        self.pointerOrVoterInfosByTargetInfo: dict[PlayerInfo, set[PlayerInfo]] = {}
+        self.targetInfoByPointerOrVoterInfo: dict[PlayerInfo, PlayerInfo] = {}
+
+        # 누군가를 지목한 적이 있는 플레이어
         self.everPointerPlayerInfos: set[PlayerInfo] = set()
+
+        # 마피아 플레이어가 지목한 플레이어와 그 당시의 상황을 반영한 지목당한 플레이어의 신뢰도 값
         self.mafiaPointingData: dict[PlayerInfo, dict[PlayerInfo, float]] = {}
 
     def discussionStrategyUpdated(self, playerInfo: PlayerInfo, strategy: Strategy) :
@@ -49,17 +57,17 @@ class TrustRecorder :
             self.publicDoctorPlayerInfos.add(playerInfo)
         self._updateOnePublicDoctorPlayerInfo()
 
-        # update pointerInfosByTargetInfo
         for estimation in strategy.mafiaEstimations :
             targetInfo: PlayerInfo = estimation.playerInfo
 
-            if targetInfo not in self.pointerInfosByTargetInfo :
-                self.pointerInfosByTargetInfo[targetInfo] = []
-                self.pointerInfoSetByTargetInfo[targetInfo] = set()
+            # update everPointerInfosByTargetInfo
+            if targetInfo not in self.everPointerInfosByTargetInfo :
+                self.everPointerInfosByTargetInfo[targetInfo] = []
+                self.everPointerInfoSetByTargetInfo[targetInfo] = set()
 
-            if playerInfo not in self.pointerInfosByTargetInfo[targetInfo] :
-                self.pointerInfosByTargetInfo[targetInfo].append(playerInfo)
-                self.pointerInfoSetByTargetInfo[targetInfo].add(playerInfo)
+            if playerInfo not in self.everPointerInfosByTargetInfo[targetInfo] :
+                self.everPointerInfosByTargetInfo[targetInfo].append(playerInfo)
+                self.everPointerInfoSetByTargetInfo[targetInfo].add(playerInfo)
 
             # update pointedTrustedTarget
             # 현재 신뢰받는 상태인 플레이어를 지목한 경우 신뢰도를 낮게 설정하는데,
@@ -68,6 +76,17 @@ class TrustRecorder :
             targetProfile: TrustProfile = self.profileByPlayerInfo[targetInfo]
             if not targetProfile.isTargetable() :
                 self.pointedTrustedTarget.append((playerInfo, targetInfo))
+
+            # update pointerOrVoterInfosByTargetInfo
+            beforeTargetInfo: PlayerInfo = self.targetInfoByPointerOrVoterInfo.get(playerInfo)
+            if beforeTargetInfo != None :
+                self.pointerOrVoterInfosByTargetInfo[beforeTargetInfo].discard(playerInfo)
+
+            if targetInfo not in self.pointerOrVoterInfosByTargetInfo :
+                self.pointerOrVoterInfosByTargetInfo[targetInfo] = set()
+
+            self.pointerOrVoterInfosByTargetInfo[targetInfo].add(playerInfo)
+            self.targetInfoByPointerOrVoterInfo[playerInfo] = targetInfo
 
         # update mafiaPointingData
         self.everPointerPlayerInfos.add(playerInfo)
@@ -79,9 +98,24 @@ class TrustRecorder :
 
             for estimation in strategy.mafiaEstimations :
                 targetInfo: PlayerInfo = estimation.playerInfo
-                point: float = basePoint * (self._getTrustPoint(targetInfo) + 100) / 200.0
+                point: float = basePoint * (self.getTrustPoint(targetInfo) + 100) / 200.0
                 point = min(point, 80.0)
                 self.mafiaPointingData[playerInfo][targetInfo] = point
+
+    def voteStrategyUpdated(self, playerInfo: PlayerInfo, strategy: VoteStrategy) :
+        for estimation in strategy.mafiaEstimations :
+            targetInfo: PlayerInfo = estimation.playerInfo
+
+            # update pointerOrVoterInfosByTargetInfo
+            beforeTargetInfo: PlayerInfo = self.targetInfoByPointerOrVoterInfo.get(playerInfo)
+            if beforeTargetInfo != None :
+                self.pointerOrVoterInfosByTargetInfo[beforeTargetInfo].discard(playerInfo)
+
+            if targetInfo not in self.pointerOrVoterInfosByTargetInfo :
+                self.pointerOrVoterInfosByTargetInfo[targetInfo] = set()
+
+            self.pointerOrVoterInfosByTargetInfo[targetInfo].add(playerInfo)
+            self.targetInfoByPointerOrVoterInfo[playerInfo] = targetInfo
 
     def playerRemoved(self, removedPlayerInfo: PlayerInfo, removeReason: RemoveReason) :
         self._updateTrustRecordsByPlayerRemoved(removedPlayerInfo, removeReason)
@@ -120,8 +154,32 @@ class TrustRecorder :
 
         self._checkAndUpdateTrustStateStep2()
 
+    def getTrustProfile(self, playerInfo: PlayerInfo) -> TrustProfile :
+        return self.profileByPlayerInfo[playerInfo]
+
+    def getTrustPoint(self, playerInfo: PlayerInfo) -> float :
+        return self.profileByPlayerInfo[playerInfo].mainRecord.point
+
+    def getTrustReason(self, playerInfo: PlayerInfo) -> str :
+        return self.profileByPlayerInfo[playerInfo].mainRecord.reason
+
+    def getNegativeTrustReason(self, playerInfo: PlayerInfo, negativeReason: str = None) -> str :
+        record: TrustRecord = self.profileByPlayerInfo[playerInfo].mainRecord
+        if record.point < 0.0 :
+            return record.reason
+        elif negativeReason != None :
+            return negativeReason
+        else :
+            return defaultReason
+
+    def getPointerOrVoters(self, targetInfo: PlayerInfo) -> set[PlayerInfo] :
+        if targetInfo in self.pointerOrVoterInfosByTargetInfo :
+            return self.pointerOrVoterInfosByTargetInfo[targetInfo]
+        else :
+            return set()
+
     def _updateTrustRecordsByPlayerRemoved(self, removedPlayerInfo: PlayerInfo, removeReason: RemoveReason) :
-        if removedPlayerInfo not in self.pointerInfosByTargetInfo :
+        if removedPlayerInfo not in self.everPointerInfosByTargetInfo :
             return
 
         effectiveCitizenCount: int = self._getEffectiveCitizenCount()
@@ -133,7 +191,7 @@ class TrustRecorder :
             if removedPlayerPoint < -50.0 :
                 point *= (100.0 + removedPlayerPoint) / 50.0
 
-            for playerInfo in self.pointerInfosByTargetInfo[removedPlayerInfo] :
+            for playerInfo in self.everPointerInfosByTargetInfo[removedPlayerInfo] :
                 self.profileByPlayerInfo[playerInfo].addRecord(TrustRecord(
                     point=point,
                     reason='He pointed out the citizen.',
@@ -155,7 +213,7 @@ class TrustRecorder :
         else :
             # He pointed out the mafia
             point: float = 80.0 / self.gameState.getMafiaCount()
-            for playerInfo in self.pointerInfosByTargetInfo[removedPlayerInfo] :
+            for playerInfo in self.everPointerInfosByTargetInfo[removedPlayerInfo] :
                 self.profileByPlayerInfo[playerInfo].addRecord(TrustRecord(
                     point=point,
                     reason='He pointed out the mafia.',
@@ -358,6 +416,3 @@ class TrustRecorder :
 
     def _getEffectiveCitizenCount(self) :
         return self.gameState.getPlayerCount() - 2 * self.gameState.getMafiaCount() + 1
-
-    def _getTrustPoint(self, playerInfo: PlayerInfo) -> float :
-        return self.profileByPlayerInfo[playerInfo].mainRecord.point

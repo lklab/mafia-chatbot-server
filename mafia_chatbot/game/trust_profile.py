@@ -11,8 +11,16 @@ class TrustState(Enum) :
     VERIFIED_POLICE = 5
     TARGETED_TRUSTED = 6
 
+def normalizePoint(point: float) :
+    return (point + 100.0) / 200.0
+
 class TrustRecord :
     def __init__(self, point: float, reason: str = None) :
+        if point < -100.0 :
+            point = -100.0
+        elif point > 100.0 :
+            point = 100.0
+
         self.point: float = point
         self.reason: str = reason if reason != None else defaultReason
         self.negativeReason: str = self.reason if self.point < 0 else defaultReason

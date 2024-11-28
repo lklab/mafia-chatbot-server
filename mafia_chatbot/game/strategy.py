@@ -25,7 +25,7 @@ class AssumptionType(Enum) :
     HEAL_SUCCESS = 2
 
 class Assumption :
-    def __init__(self, estimations: list[Estimation], reason: str, assumptionType: AssumptionType) :
+    def __init__(self, estimations: list[Estimation], reason: str, assumptionType: AssumptionType = AssumptionType.NORMAL) :
         self.estimations = estimations
         self.reason = reason
         self.assumptionType = assumptionType

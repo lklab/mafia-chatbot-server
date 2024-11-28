@@ -1,4 +1,5 @@
 import random
+import numpy as np
 
 from mafia_chatbot.game.client_player import ClientPlayer
 from mafia_chatbot.game.player_info import PlayerInfo, roleToProtoDict
@@ -31,7 +32,8 @@ class Player :
         self.removeReason = RemoveReason.LIVE
 
         # personal factors
-        self.conformity: float = random.uniform(0.5, 1.5) # 1.0
+        self.trustSensitivity: float = random.uniform(0.0, 2.0) # 값이 클수록 타겟을 정할 때 신뢰도 값을 많이 반영함
+        self.conformity: float = random.uniform(0.5, 1.5) # 값이 클수록 더 적은 수의 플레이어에게 지목되더라도 그 플레이어를 지목함
         self.revealFactor: float = random.uniform(0.0, 0.3) # 0.1
         self.selfHealFactor: float = random.uniform(0.7, 1.0) # 0.9
         self.isFakePolice: bool = False
@@ -172,3 +174,8 @@ class Player :
     def expandList(self, l: list, size: int, fillValue = None) :
         for _ in range(len(l), size) :
             l.append(fillValue)
+
+    def _getRandom(minValue: float, maxValue: float, mean: float, stdDev: float) -> float :
+        value = np.random.normal(loc=mean, scale=stdDev)
+        value = np.clip(value, minValue, maxValue)
+        return value

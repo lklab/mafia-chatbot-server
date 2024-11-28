@@ -1,11 +1,170 @@
 import random
 from typing import Callable
 
-from mafia_chatbot.game.game_state import GameState
-from mafia_chatbot.game.player import *
+from mafia_chatbot.game.game_state import GameState, VoteData
+from mafia_chatbot.game.player import Player
+from mafia_chatbot.game.player_info import PlayerInfo, Role
+from mafia_chatbot.game.strategy import Strategy, VoteStrategy, Assumption, Estimation
+from mafia_chatbot.game.trust_recorder import TrustRecorder
+from mafia_chatbot.game.trust_profile import TrustProfile, normalizePoint
+from mafia_chatbot.game.game_logger import GameLogger, FakeGameLogger
+
+logger: GameLogger = FakeGameLogger()
 
 def getOneTargetStrategy(publicRole: Role, targetInfo: PlayerInfo, reason: str) -> Strategy :
     return Strategy(publicRole, [Assumption([Estimation(targetInfo, Role.MAFIA)], reason)])
+
+def _getPolicePoiningMe(gameState: GameState, recorder: TrustRecorder, me: Player) -> tuple[Player, str] :
+    for policeInfo in recorder.publicPolicePlayerInfos :
+        police: Player = gameState.getPlayerByInfo(policeInfo)
+        if me.info in police.estimationsAsPolice and police.estimationsAsPolice[me.info].role == Role.MAFIA :
+            logger.log('apply method: _getPolicePoiningMe')
+            logger.log(f'set target: {policeInfo.name}')
+            return police, 'He pointed me of being the mafia, but I am not.'
+    return None, None
+
+def _getTargetFormTowPolice(gameState: GameState, recorder: TrustRecorder, me: Player) -> tuple[Player, str] :
+    if len(recorder.publicPolicePlayerInfos) >= 2 :
+        logger.log('apply method: _getTargetFormTowPolice')
+        candidates: list[PlayerInfo] = []
+        for policeInfo in recorder.publicPolicePlayerInfos :
+            if policeInfo == me.info :
+                continue
+            candidates.append(policeInfo)
+        logger.logCandidates(candidates)
+
+        targetInfo: PlayerInfo = _choiceFromCandidates(recorder, me, candidates)
+        targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
+        logger.log(f'set target: {targetInfo.name}')
+        return targetPlayer, recorder.getNegativeTrustReason(
+            playerInfo=targetInfo,
+            negativeReason='You claim that among those pretending to be the police, this person seems most like a mafia member.',
+        )
+
+    return None, None
+
+def _getTargetConfirmedMafia(gameState: GameState, recorder: TrustRecorder, me: Player) -> tuple[Player, str] :
+    candidates: list[PlayerInfo] = []
+    for player in gameState.players :
+        profile: TrustProfile = recorder.getTrustProfile(player.info)
+        if profile.isMustTargeting() :
+            candidates.append(player.info)
+
+    if len(candidates) > 0 :
+        logger.log('apply method: _getTargetConfirmedMafia')
+        logger.logCandidates(candidates)
+
+        targetInfo: PlayerInfo = _choiceFromCandidates(recorder, me, candidates)
+        targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
+        reason: str = recorder.getTrustReason(targetInfo)
+        logger.log(f'set target: {targetInfo.name}')
+        return targetPlayer, reason
+
+    return None, None
+
+def _getTargetFormTowDoctor(gameState: GameState, recorder: TrustRecorder, me: Player) -> tuple[Player, str] :
+    if len(recorder.publicDoctorPlayerInfos) >= 2 :
+        logger.log('apply method: _getTargetFormTowDoctor')
+        candidates: list[PlayerInfo] = []
+        for doctorInfo in recorder.publicDoctorPlayerInfos :
+            if doctorInfo == me.info :
+                continue
+            candidates.append(doctorInfo)
+        logger.logCandidates(candidates)
+
+        targetInfo: PlayerInfo = _choiceFromCandidates(recorder, me, candidates)
+        targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
+        logger.log(f'set target: {targetInfo.name}')
+        return targetPlayer, recorder.getNegativeTrustReason(
+            playerInfo=targetInfo,
+            negativeReason='You claim that among those pretending to be the doctor, this person seems most like a mafia member.',
+        )
+
+    return None, None
+
+def _getTargetByTrustConformityRandom(gameState: GameState, recorder: TrustRecorder, me: Player) -> tuple[Player, str] :
+    logger.log('apply method: _getTargetByTrustConformityRandom')
+
+    candidates: list[PlayerInfo] = []
+    for player in gameState.players :
+        if player == me :
+            continue
+        candidates.append(player.info)
+    logger.logCandidates(candidates)
+
+    targetInfo: PlayerInfo = _choiceFromCandidates(recorder, me, candidates)
+    targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
+    logger.log(f'set target: {targetInfo.name}')
+    return targetPlayer, recorder.getNegativeTrustReason(targetInfo)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def _choiceFromCandidates(recorder: TrustRecorder, me: Player, candidates: list[PlayerInfo]) -> PlayerInfo :
+    n: int = len(candidates)
+    if n <= 0 :
+        return None
+    if n == 1 :
+        return candidates[0]
+
+    weights: list[float] = []
+
+    a: float = 0.95 # 다른 모든 플레이어의 신뢰도가 0일 때 신뢰도가 -100인 플레이어가 지목될 확률
+    b: float = 0.99 # 다른 모든 플레이어가 해당 플레이어를 지목할 때 그 플레이어를 지목할 확률
+    c: float = 0.5 # 0 ~ 1 사이의 값으로 이 값이 0에 가까울수록 더 적은 수의 플레이어가 지목했을 때 지목할 확률이 올라감
+
+    d: float = 2.0 * a * n - 2.0
+    e: float = 0.5 / (a * n - 1.0)
+    f: float = 1.0 / n
+    g: float = b - 1.0 / n
+    h: float = 1.0 / (n - 1.0)
+
+    for candidate in candidates :
+        # calculate weights using trust
+        point: float = normalizePoint(recorder.getTrustPoint(candidate))
+        tp: float = a / (d * (point + e)) # 다른 모든 플레이어의 신뢰도가 0일 때 현재 플레이어가 지목될 확률
+        tw: float = (n - 1.0) * tp / (1.0 - tp)
+        tw = pow(tw, me.trustSensitivity)
+
+        # update weights using conformity
+        sumOfPoint: float = 0.0
+        for pointer in recorder.getPointerOrVoters(candidate) :
+            sumOfPoint += normalizePoint(recorder.getTrustPoint(pointer)) * 2.0
+        cp: float = f + g * pow(sumOfPoint * h, c)
+        cp = min(cp, b)
+        cw: float = (n - 1.0) * cp / (1.0 - cp)
+        cw = pow(cw, me.conformity)
+
+        # apply weight
+        weights.append(tw * cw)
+
+    # choice
+    return random.choices(candidates, weights=weights, k=1)[0]
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def getMinTrustPlayer(players: list[Player], condition: Callable[[Player], bool]) -> Player :
     minPlayer: Player = None

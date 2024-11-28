@@ -38,7 +38,7 @@ class GameManager :
 
     def _subscribeClient(self, player: Player) :
         if player.client != None :
-            ClientMessageProcessor(self.gameState, player)
+            ClientMessageProcessor(self.gameState, self.trustRecorder, player)
 
     async def start(self) :
         await self._mainLogic()
@@ -156,6 +156,7 @@ class GameManager :
         def _setLocalPlayerStrategy(targetPlayer: Player) :
             strategy: VoteStrategy = VoteStrategy(targetPlayer.info)
             voteData.setVoteStrategy(self.gameState.localPlayer, strategy)
+            self.trustRecorder.voteStrategyUpdated(self.gameState.localPlayer.info, strategy)
 
         while self.gameState.timeLimit > datetime.now(timezone.utc) :
             player: Player = players[index]
@@ -169,6 +170,7 @@ class GameManager :
             if not player.info.isHuman :
                 strategy: VoteStrategy = evaluator.evaluateVoteStrategy(self.gameState, player)
                 voteData.setVoteStrategy(player, strategy)
+                self.trustRecorder.voteStrategyUpdated(player.info, strategy)
                 await asyncio.sleep(1)
 
         if cuiInputTask != None :
