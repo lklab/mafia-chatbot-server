@@ -178,11 +178,14 @@ class TrustRecorder :
         else :
             return set()
 
+    def getEffectiveCitizenCount(self) :
+        return self.gameState.getPlayerCount() - 2 * self.gameState.getMafiaCount() + 1
+
     def _updateTrustRecordsByPlayerRemoved(self, removedPlayerInfo: PlayerInfo, removeReason: RemoveReason) :
         if removedPlayerInfo not in self.everPointerInfosByTargetInfo :
             return
 
-        effectiveCitizenCount: int = self._getEffectiveCitizenCount()
+        effectiveCitizenCount: int = self.getEffectiveCitizenCount()
 
         if removedPlayerInfo.role != Role.MAFIA :
             # He pointed out the citizen
@@ -413,6 +416,3 @@ class TrustRecorder :
             self.onePublicDoctorPlayerInfo = next(iter(self.publicDoctorPlayerInfos))
         else :
             self.onePublicDoctorPlayerInfo = None
-
-    def _getEffectiveCitizenCount(self) :
-        return self.gameState.getPlayerCount() - 2 * self.gameState.getMafiaCount() + 1
