@@ -2,6 +2,7 @@ import logging
 import datetime
 import os
 
+from mafia_chatbot.game.player import Player
 from mafia_chatbot.game.player_info import PlayerInfo
 
 class GameLogger :
@@ -26,8 +27,13 @@ class GameLogger :
     def logCandidates(self, playerInfos: list[PlayerInfo]) :
         self.log(f'candidates: {', '.join(map(lambda info : info.name, playerInfos))}')
 
+    def logCandidatesPlayer(self, player: list[Player]) :
+        self.log(f'candidates: {', '.join(map(lambda p : p.info.name, player))}')
+
 class FakeGameLogger :
     def log(self, message: str) :
         pass
     def logCandidates(self, playerInfos: list[PlayerInfo]) :
+        pass
+    def logCandidatesPlayer(self, player: list[Player]) :
         pass

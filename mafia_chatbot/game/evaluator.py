@@ -1,10 +1,10 @@
 import random
 from typing import Callable
 
-from mafia_chatbot.game.game_state import GameState, VoteData
+from mafia_chatbot.game.game_state import GameState
 from mafia_chatbot.game.player import Player
 from mafia_chatbot.game.player_info import PlayerInfo, Role
-from mafia_chatbot.game.strategy import Strategy, VoteStrategy, Assumption, Estimation
+from mafia_chatbot.game.strategy import Strategy, VoteStrategy, Assumption, Estimation, AssumptionType
 from mafia_chatbot.game.trust_recorder import TrustRecorder
 from mafia_chatbot.game.trust_profile import TrustProfile, normalizePoint
 from mafia_chatbot.game.game_logger import GameLogger, FakeGameLogger
@@ -18,6 +18,13 @@ def evaluateDiscussionStrategy(gameState: GameState, recorder: TrustRecorder, me
     if me.publicRole == Role.CITIZEN and me.info.role in _claimePoliceSelectors :
         assumption: Assumption = _claimePoliceSelectors[me.info.role](gameState, recorder, me)
         if assumption != None :
+            logger.log(f'evaluateDiscussionStrategy result (claime police): publicRole={me.publicRole}, assumption={assumption}')
+            return Strategy(Role.POLICE, [assumption])
+
+    if me.publicRole == Role.POLICE and me.info.role in _updatePoliceSelectors :
+        assumption: Assumption = _updatePoliceSelectors[me.info.role](gameState, recorder, me)
+        if assumption != None :
+            logger.log(f'evaluateDiscussionStrategy result (update police): publicRole={me.publicRole}, assumption={assumption}')
             return Strategy(Role.POLICE, [assumption])
 
     for selector in _targetSelecters :
@@ -138,25 +145,23 @@ def _claimePoliceForMafia(gameState: GameState, recorder: TrustRecorder, me: Pla
         # check trigger conditions
         # 경찰 주장 플레이어가 없을 때 확률에 따라 경찰 주장
         if len(recorder.publicPolicePlayerInfos) == 0 and me.claimeFactor > random.random() :
+            logger.log('claime police: random')
             return _getTestResultsForMafia(gameState, recorder, me)
 
         myTrustPoint: float = recorder.getTrustPoint(me.info)
         for otherPublicPoliceInfo in recorder.publicPolicePlayerInfos :
             # 경찰 주장 플레이어의 신뢰도가 나보다 낮을 때 높은 확률로 경찰 주장
             if recorder.getTrustPoint(otherPublicPoliceInfo) < myTrustPoint and me.claimeFactor * 3.0 > random.random() :
+                logger.log('claime police: trust')
                 return _getTestResultsForMafia(gameState, recorder, me, mainTargetInfo=otherPublicPoliceInfo)
 
             # 경찰이 나를 시민 또는 마피아로 지목했을 때 경찰 주장
             otherPublicPolice: Player = gameState.getPlayerByInfo(otherPublicPoliceInfo)
             if me.info in otherPublicPolice.estimationsAsPolice :
+                logger.log('claime police: I\'m targeted')
                 return _getTestResultsForMafia(gameState, recorder, me, mainTargetInfo=otherPublicPoliceInfo)
 
     return None
-
-_claimePoliceSelectors: dict[Role, Callable[[GameState, TrustRecorder, Player], Assumption]] = {
-    Role.POLICE : _claimePoliceForPolice,
-    Role.MAFIA : _claimePoliceForMafia,
-}
 
 def _getTestResultsForMafia(gameState: GameState, recorder: TrustRecorder, me: Player, mainTargetInfo: PlayerInfo = None) -> Assumption :
     estimationCount: int = gameState.round
@@ -178,6 +183,7 @@ def _getTestResultsForMafia(gameState: GameState, recorder: TrustRecorder, me: P
         if player == me or player.info == mainTargetInfo :
             continue
         candidates.append(player)
+    logger.logCandidatesPlayer(candidates)
 
     estimationTargets: list[Player] = []
     estimationTargets = random.sample(candidates, k=estimationCount-1)
@@ -192,7 +198,7 @@ def _getTestResultsForMafia(gameState: GameState, recorder: TrustRecorder, me: P
     for target in estimationTargets :
         # 탈락한 플레이어의 경우 실제 역할 적용
         if not target.isLive :
-            estimations.append(Estimation(target.info, target.info.role))
+            estimations.append(Estimation(target.info, Role.MAFIA if target.info.role == Role.MAFIA else Role.CITIZEN))
 
         # 탈락하지 않은 플레이어의 경우 우선 시민 역할 적용
         elif citizenCount > 0 :
@@ -209,7 +215,54 @@ def _getTestResultsForMafia(gameState: GameState, recorder: TrustRecorder, me: P
     return Assumption(
         estimations=estimations,
         reason='You investigated them.',
+        assumptionType=AssumptionType.TEST_RESULT,
     )
+
+_claimePoliceSelectors: dict[Role, Callable[[GameState, TrustRecorder, Player], Assumption]] = {
+    Role.POLICE : _claimePoliceForPolice,
+    Role.MAFIA : _claimePoliceForMafia,
+}
+
+def _updatePoliceForPolice(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
+    pass
+    # target: Player = player.testedTargets[-1]
+    # role: Role = player.testResults[target]
+    # if role != Role.MAFIA :
+    #     role = Role.CITIZEN
+    # return Estimation(target.info, role)
+
+def _updatePoliceForMafia(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
+    logger.log('apply method: _updatePoliceForMafia')
+    citizenCount: int = gameState.getCitizenCount()
+
+    for estimation in me.estimationsAsPolice.values() :
+        target: Player = gameState.getPlayerByInfo(estimation.playerInfo)
+        if target.isLive and estimation.role == Role.CITIZEN :
+            citizenCount -= 1
+
+    candidates: list[PlayerInfo] = []
+    for player in gameState.players :
+        if player == me or player in me.estimationsAsPolice :
+            continue
+        candidates.append(player.info)
+    logger.logCandidates(candidates)
+
+    if len(candidates) == 0 :
+        return None
+
+    targetInfo: PlayerInfo = random.choice(candidates)
+    role: Role = Role.CITIZEN if citizenCount > 0 else Role.MAFIA
+
+    return Assumption(
+        estimations=Estimation(targetInfo, role),
+        reason='You investigated them.',
+        assumptionType=AssumptionType.TEST_RESULT,
+    )
+
+_updatePoliceSelectors: dict[Role, Callable[[GameState, TrustRecorder, Player], Assumption]] = {
+    Role.POLICE : _updatePoliceForPolice,
+    Role.MAFIA : _updatePoliceForMafia,
+}
 
 def _choiceFromCandidates(gameState: GameState, recorder: TrustRecorder, me: Player, candidates: list[PlayerInfo]) -> PlayerInfo :
     n: int = len(candidates)
