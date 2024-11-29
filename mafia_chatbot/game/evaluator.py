@@ -109,7 +109,8 @@ def _getTargetByTrustConformityRandom(gameState: GameState, recorder: TrustRecor
 
     candidates: list[PlayerInfo] = []
     for player in gameState.players :
-        if player == me :
+        profile: TrustProfile = recorder.getTrustProfile(player.info)
+        if player == me or not profile.isTargetable() :
             continue
         candidates.append(player.info)
     logger.logCandidates(candidates)
@@ -127,7 +128,42 @@ _targetSelecters: list[Callable[[GameState, TrustRecorder, Player], tuple[Player
 ]
 
 def _claimePoliceForPolice(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
-    pass
+    # 시민으로 조사되지 않은 플레이어가 경찰 주장을 한 경우
+    for p in recorder.publicPolicePlayerInfos :
+        if p not in me.testResults or me.testResults[p] != Role.CITIZEN :
+            logger.log('claime police: counter')
+            return _getTestResultsForPolice(gameState, recorder, me)
+
+    # 조사한 정보가 없으면 공개하지 않음
+    if len(me.testResults) == 0 :
+        return None
+
+    # 조사율과 공개확률에 따라 공개
+    knownMafiaCount: int = len(list(filter(lambda p : p.isLive, me.testedMafias)))
+    knownCitizenCount: int = len(list(filter(lambda p : p.isLive, me.testedCitizens)))
+    knownRatio: float = max(knownMafiaCount / gameState.getMafiaCount(), knownCitizenCount / gameState.getCitizenCount())
+    logger.log(f'claime police: knownRatio={knownRatio}')
+    if knownRatio * me.claimeFactor > random.random() :
+        logger.log('claime police: random')
+        return _getTestResultsForPolice(gameState, recorder, me)
+
+    return None
+
+def _getTestResultsForPolice(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
+    estimations: list[Estimation] = []
+    for p, role in me.testResults.items() :
+        estimations.append(Estimation(
+            playerInfo=p.info,
+            role=Role.MAFIA if role == Role.MAFIA else Role.CITIZEN,
+        ))
+
+    random.shuffle(estimations)
+    estimations.sort(key=lambda estimation : estimation.role.value)
+    return Assumption(
+        estimations=estimations,
+        reason='You investigated them.',
+        assumptionType=AssumptionType.TEST_RESULT,
+    )
 
 def _claimePoliceForMafia(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
     # check state condition
@@ -224,12 +260,15 @@ _claimePoliceSelectors: dict[Role, Callable[[GameState, TrustRecorder, Player], 
 }
 
 def _updatePoliceForPolice(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
-    pass
-    # target: Player = player.testedTargets[-1]
-    # role: Role = player.testResults[target]
-    # if role != Role.MAFIA :
-    #     role = Role.CITIZEN
-    # return Estimation(target.info, role)
+    if me.lastTestedTarget != None :
+        role: Role = Role.MAFIA if me.testResults[me.lastTestedTarget] == Role.MAFIA else Role.CITIZEN
+        return Assumption(
+            estimations=[Estimation(me.lastTestedTarget.info, role)],
+            reason='You investigated them.',
+            assumptionType=AssumptionType.TEST_RESULT,
+        )
+
+    return None
 
 def _updatePoliceForMafia(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
     logger.log('apply method: _updatePoliceForMafia')
@@ -254,7 +293,7 @@ def _updatePoliceForMafia(gameState: GameState, recorder: TrustRecorder, me: Pla
     role: Role = Role.CITIZEN if citizenCount > 0 else Role.MAFIA
 
     return Assumption(
-        estimations=Estimation(targetInfo, role),
+        estimations=[Estimation(targetInfo, role)],
         reason='You investigated them.',
         assumptionType=AssumptionType.TEST_RESULT,
     )
@@ -288,9 +327,18 @@ def _choiceFromCandidates(gameState: GameState, recorder: TrustRecorder, me: Pla
 
     for candidate in candidates :
         pointerOrVoters: set[PlayerInfo] = recorder.getPointerOrVoters(candidate)
+
+        # 마피아일 경우 아무도 지목하지 않은 마피아 동료를 지목하지 않음
         if me.info.role == Role.MAFIA and candidate.role == Role.MAFIA and len(pointerOrVoters) == 0 and not isIFocused :
             weights.append(0.0)
             continue
+
+        # 경찰일 경우 조사된 마피아가 있다면 아무도 지목하지 않은 조사되지 않거나 시민으로 조사된 플레이어를 지목하지 않음
+        if me.info.role == Role.POLICE and len(pointerOrVoters) == 0 and len(list(filter(lambda p : p.isLive, me.testedMafias))) > 0 :
+            p: Player = gameState.getPlayerByInfo(candidate)
+            if p not in me.testResults or me.testResults[p] != Role.MAFIA :
+                weights.append(0.0)
+                continue
 
         # calculate weights using trust
         point: float = normalizePoint(recorder.getTrustPoint(candidate))
@@ -307,8 +355,19 @@ def _choiceFromCandidates(gameState: GameState, recorder: TrustRecorder, me: Pla
         cw: float = (n - 1.0) * cp / (1.0 - cp)
 
         conformity: float = me.conformity
+
+        # 마피아일 경우 동료 마피아에 대해 낮은 동조
         if me.info.role == Role.MAFIA and candidate.role == Role.MAFIA :
             conformity *= 0.5
+
+        # 경찰일 경우 조사한 시민, 마피아에 대해 동조값 변경
+        if me.info.role == Role.POLICE :
+            p: Player = gameState.getPlayerByInfo(candidate)
+            if p in me.testResults :
+                if me.testResults[p] == Role.MAFIA :
+                    conformity *= 10.0
+                else :
+                    conformity *= 0.5
 
         cw = pow(cw, conformity)
 

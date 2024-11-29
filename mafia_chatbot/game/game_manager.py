@@ -253,6 +253,8 @@ class GameManager :
                 content=f'The police confirmed that {nightTargetData.testTarget.info.name}\'s role is {nightTargetData.testTarget.info.role.name}.',
                 receiver=police.info,
             )
+        else :
+            police.addTestResult(None, None)
 
     def _addSystemChat(self, content, receiver: PlayerInfo = None) :
         self.gameState.appendSystemChat(content, receiver=receiver)

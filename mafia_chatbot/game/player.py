@@ -34,7 +34,7 @@ class Player :
         # personal factors
         self.trustSensitivity: float = random.uniform(0.0, 2.0) # 값이 클수록 타겟을 정할 때 신뢰도 값을 많이 반영함
         self.conformity: float = random.uniform(0.5, 1.5) # 값이 클수록 더 적은 수의 플레이어에게 지목되더라도 그 플레이어를 지목함
-        self.claimeFactor: float = random.uniform(0.0, 0.3) # 0.1
+        self.claimeFactor: float = random.uniform(0.0, 0.3) # 0.1 경찰인 경우 1보다 커야 함
         self.selfHealFactor: float = random.uniform(0.7, 1.0) # 0.9
         self.isFakePolice: bool = False
 
@@ -55,7 +55,9 @@ class Player :
 
         # police's private data
         self.testResults: dict[Player, Role] = {}
-        self.testedTargets: list[Player] = []
+        self.testedMafias: list[Player] = []
+        self.testedCitizens: list[Player] = []
+        self.lastTestedTarget: Player = None
 
         # doctor's private data
         self.healSuccesses: set[Player] = set()
@@ -141,8 +143,15 @@ class Player :
         self.removeReason = removeReason
 
     def addTestResult(self, player: Player, role: Role) :
-        self.testResults[player] = role
-        self.testedTargets.append(player)
+        if player != None :
+            self.testResults[player] = role
+
+            if role == Role.MAFIA :
+                self.testedMafias.append(player)
+            else :
+                self.testedCitizens.append(player)
+
+        self.lastTestedTarget = player
 
     def addHealSuccess(self, player: Player) :
         self.healSuccesses.add(player)
