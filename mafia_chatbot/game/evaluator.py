@@ -15,16 +15,16 @@ def getOneTargetStrategy(publicRole: Role, targetInfo: PlayerInfo, reason: str) 
     return Strategy(publicRole, [Assumption([Estimation(targetInfo, Role.MAFIA)], reason)])
 
 def evaluateDiscussionStrategy(gameState: GameState, recorder: TrustRecorder, me: Player) -> Strategy :
-    if me.publicRole == Role.CITIZEN and me.info.role in _claimePoliceSelectors :
-        assumption: Assumption = _claimePoliceSelectors[me.info.role](gameState, recorder, me)
+    if me.publicRole == Role.CITIZEN and me.info.role in _claimeSelectors :
+        assumption: Assumption = _claimeSelectors[me.info.role](gameState, recorder, me)
         if assumption != None :
-            logger.log(f'evaluateDiscussionStrategy result (claime police): publicRole={me.publicRole}, assumption={assumption}')
+            logger.log(f'evaluateDiscussionStrategy result (claime): publicRole={me.publicRole}, assumption={assumption}')
             return Strategy(Role.POLICE, [assumption])
 
-    if me.publicRole == Role.POLICE and me.info.role in _updatePoliceSelectors :
-        assumption: Assumption = _updatePoliceSelectors[me.info.role](gameState, recorder, me)
+    if me.publicRole == Role.POLICE and me.info.role in _updateSelectors :
+        assumption: Assumption = _updateSelectors[me.info.role](gameState, recorder, me)
         if assumption != None :
-            logger.log(f'evaluateDiscussionStrategy result (update police): publicRole={me.publicRole}, assumption={assumption}')
+            logger.log(f'evaluateDiscussionStrategy result (update): publicRole={me.publicRole}, assumption={assumption}')
             return Strategy(Role.POLICE, [assumption])
 
     for selector in _targetSelecters :
@@ -254,9 +254,43 @@ def _getTestResultsForMafia(gameState: GameState, recorder: TrustRecorder, me: P
         assumptionType=AssumptionType.TEST_RESULT,
     )
 
-_claimePoliceSelectors: dict[Role, Callable[[GameState, TrustRecorder, Player], Assumption]] = {
+def _claimeDoctorForDoctor(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
+    # 자신이 치료에 성공한 플레이어가 마피아로 몰린 경우
+    playerCount = gameState.getPlayerCount()
+    for player in gameState.players :
+        if player in me.healSuccesses :
+            count: int = len(recorder.getPointerOrVoters(player.info))
+            if (count * 2.0 / playerCount) * me.claimeFactor > random.random() :
+                logger.log('claime doctor: random')
+                return _getHealSuccessesForDoctor(gameState, recorder, me)
+
+    # 다른 플레이어가 의사 주장을 한 경우
+    for p in recorder.publicDoctorPlayerInfos :
+        if p not in me.healSuccesses :
+            logger.log('claime doctor: counter')
+            return _getHealSuccessesForDoctor(gameState, recorder, me)
+
+    return None
+
+def _getHealSuccessesForDoctor(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
+    estimations: list[Estimation] = []
+    for p in me.healSuccesses :
+        estimations.append(Estimation(
+            playerInfo=p.info,
+            role=Role.CITIZEN,
+        ))
+
+    random.shuffle(estimations)
+    return Assumption(
+        estimations=estimations,
+        reason='Since you successfully treated that player, they are a civilian.',
+        assumptionType=AssumptionType.HEAL_SUCCESS,
+    )
+
+_claimeSelectors: dict[Role, Callable[[GameState, TrustRecorder, Player], Assumption]] = {
     Role.POLICE : _claimePoliceForPolice,
     Role.MAFIA : _claimePoliceForMafia,
+    Role.DOCTOR: _claimeDoctorForDoctor,
 }
 
 def _updatePoliceForPolice(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
@@ -298,9 +332,20 @@ def _updatePoliceForMafia(gameState: GameState, recorder: TrustRecorder, me: Pla
         assumptionType=AssumptionType.TEST_RESULT,
     )
 
-_updatePoliceSelectors: dict[Role, Callable[[GameState, TrustRecorder, Player], Assumption]] = {
+def _updateDoctorForDoctor(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
+    if me.lastHealSuccess != None :
+        return Assumption(
+            estimations=[Estimation(me.lastHealSuccess.info, Role.CITIZEN)],
+            reason='Since you successfully treated that player, they are a civilian.',
+            assumptionType=AssumptionType.HEAL_SUCCESS,
+        )
+
+    return None
+
+_updateSelectors: dict[Role, Callable[[GameState, TrustRecorder, Player], Assumption]] = {
     Role.POLICE : _updatePoliceForPolice,
     Role.MAFIA : _updatePoliceForMafia,
+    Role.DOCTOR : _updateDoctorForDoctor,
 }
 
 def _choiceFromCandidates(gameState: GameState, recorder: TrustRecorder, me: Player, candidates: list[PlayerInfo]) -> PlayerInfo :

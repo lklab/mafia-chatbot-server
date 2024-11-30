@@ -234,6 +234,7 @@ class GameManager :
         await asyncio.sleep(waitTime)
 
         ### execute kill
+        doctor.addHealSuccess(None)
         if nightTargetData.killTarget == None :
             self._addSystemChat('The mafia did not assassinate anyone.')
         else :
