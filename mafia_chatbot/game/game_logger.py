@@ -30,10 +30,16 @@ class GameLogger :
     def logCandidatesPlayer(self, player: list[Player]) :
         self.log(f'candidates: {', '.join(map(lambda p : p.info.name, player))}')
 
+    def logCandidatesWithWeights(self, playerInfos: list[PlayerInfo], weights: list[float]) :
+        total: float = sum(weights)
+        self.log(f'candidates: {', '.join(map(lambda i : f'{playerInfos[i].name}({weights[i] * 100.0 / total:.2f})', range(len(playerInfos))))}')
+
 class FakeGameLogger :
     def log(self, message: str) :
         pass
     def logCandidates(self, playerInfos: list[PlayerInfo]) :
         pass
     def logCandidatesPlayer(self, player: list[Player]) :
+        pass
+    def logCandidatesWithWeights(self, playerInfos: list[PlayerInfo], weights: list[float]) :
         pass

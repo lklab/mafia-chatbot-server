@@ -340,6 +340,13 @@ def _choiceFromCandidates(gameState: GameState, recorder: TrustRecorder, me: Pla
                 weights.append(0.0)
                 continue
 
+        # 의사일 경우 아무도 지목하지 않은, 치료에 성공한 플레이어를 지목하지 않음
+        if me.info.role == Role.DOCTOR and len(pointerOrVoters) == 0 :
+            p: Player = gameState.getPlayerByInfo(candidate)
+            if p in me.healSuccesses :
+                weights.append(0.0)
+                continue
+
         # calculate weights using trust
         point: float = normalizePoint(recorder.getTrustPoint(candidate))
         tp: float = a / (d * (point + e)) # 다른 모든 플레이어의 신뢰도가 0일 때 현재 플레이어가 지목될 확률
@@ -369,12 +376,19 @@ def _choiceFromCandidates(gameState: GameState, recorder: TrustRecorder, me: Pla
                 else :
                     conformity *= 0.5
 
+        # 의사일 경우 치료에 성공한 플레이어에 대해 동조값 변경
+        if me.info.role == Role.DOCTOR :
+            p: Player = gameState.getPlayerByInfo(candidate)
+            if p in me.healSuccesses :
+                conformity *= 0.5
+
         cw = pow(cw, conformity)
 
         # apply weight
         weights.append(tw * cw)
 
     # choice
+    logger.logCandidatesWithWeights(candidates, weights)
     return random.choices(candidates, weights=weights, k=1)[0]
 
 

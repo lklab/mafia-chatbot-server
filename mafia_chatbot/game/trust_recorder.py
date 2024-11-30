@@ -345,8 +345,14 @@ class TrustRecorder :
                     )
                     return
 
-                if estimation.role != Role.MAFIA :
-                    citizenEstimationCount += 1
+                if estimation.role == Role.MAFIA :
+                    profile.setState(
+                        state=TrustState.CONFIRMED_MAFIA,
+                        reason='The doctor cannot identify who the mafia is even after successfully treating someone, but he pointed out a mafia member.',
+                    )
+                    return
+
+                citizenEstimationCount += 1
 
             if citizenEstimationCount > len(self.healSucceededList) :
                 profile.setState(
