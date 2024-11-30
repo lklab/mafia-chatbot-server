@@ -195,7 +195,7 @@ class GameManager :
         ### mafia action: kill
         # bot chooses the kill target
         if len(self.gameState.humanMafiaPlayers) == 0 :
-            nightTargetData.killTarget = evaluator.evaluateKillTarget(self.gameState)
+            nightTargetData.killTarget = evaluator.evaluateKillTarget(self.gameState, self.trustRecorder)
 
         # local player chooses the kill target
         elif (
@@ -215,7 +215,7 @@ class GameManager :
 
             # bot chooses the test target
             elif not police.info.isHuman :
-                nightTargetData.testTarget = evaluator.evaluateTestTarget(self.gameState, police)
+                nightTargetData.testTarget = evaluator.evaluateTestTarget(self.gameState, self.trustRecorder, police)
 
         ### doctor action: Heal
         doctor: Player = self.gameState.doctorPlayer
@@ -227,7 +227,7 @@ class GameManager :
 
             # bot chooses the heal target
             elif not doctor.info.isHuman :
-                nightTargetData.healTarget = evaluator.evaluateHealTarget(self.gameState, doctor)
+                nightTargetData.healTarget = evaluator.evaluateHealTarget(self.gameState, self.trustRecorder, doctor)
 
         # await until time limit
         waitTime: float = (self.gameState.timeLimit - datetime.now(timezone.utc)).total_seconds()

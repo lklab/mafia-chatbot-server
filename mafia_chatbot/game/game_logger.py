@@ -27,12 +27,16 @@ class GameLogger :
     def logCandidates(self, playerInfos: list[PlayerInfo]) :
         self.log(f'candidates: {', '.join(map(lambda info : info.name, playerInfos))}')
 
-    def logCandidatesPlayer(self, player: list[Player]) :
-        self.log(f'candidates: {', '.join(map(lambda p : p.info.name, player))}')
+    def logCandidatesPlayer(self, players: list[Player]) :
+        self.log(f'candidates: {', '.join(map(lambda p : p.info.name, players))}')
 
     def logCandidatesWithWeights(self, playerInfos: list[PlayerInfo], weights: list[float]) :
         total: float = sum(weights)
         self.log(f'candidates: {', '.join(map(lambda i : f'{playerInfos[i].name}({weights[i] * 100.0 / total:.2f})', range(len(playerInfos))))}')
+
+    def logCandidatesPlayerWithWeights(self, players: list[Player], weights: list[float]) :
+        total: float = sum(weights)
+        self.log(f'candidates: {', '.join(map(lambda i : f'{players[i].info.name}({weights[i] * 100.0 / total:.2f})', range(len(players))))}')
 
 class FakeGameLogger :
     def log(self, message: str) :
@@ -42,4 +46,6 @@ class FakeGameLogger :
     def logCandidatesPlayer(self, player: list[Player]) :
         pass
     def logCandidatesWithWeights(self, playerInfos: list[PlayerInfo], weights: list[float]) :
+        pass
+    def logCandidatesPlayerWithWeights(self, players: list[Player], weights: list[float]) :
         pass
