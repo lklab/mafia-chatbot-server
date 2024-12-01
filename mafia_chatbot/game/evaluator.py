@@ -375,6 +375,10 @@ def _getTestResultsForMafia(gameState: GameState, recorder: TrustRecorder, me: P
     )
 
 def _claimeDoctorForDoctor(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
+    # 치료에 성공한 내역이 없으면 의사 주장을 하지 않음
+    if len(me.healSuccesses) == 0 :
+        return None
+
     # 자신이 치료에 성공한 플레이어가 마피아로 몰린 경우
     playerCount = gameState.getPlayerCount()
     for player in gameState.players :

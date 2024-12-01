@@ -37,6 +37,7 @@ class Player :
         self.claimeFactor: float = random.uniform(0.0, 0.3) # 0.1 경찰/의사인 경우 1보다 커야 함
         self.mainHealFactor: float = random.uniform(0.7, 1.0) # 0.9
         self.isFakePolice: bool = False
+        self.positiveness: float = random.uniform(0.1, 1.0) # 토론 참여 적극성
 
         # strategies
         self.discussionStrategy: Strategy = None

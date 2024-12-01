@@ -37,4 +37,16 @@ async def asyncMain() :
 # myClass = MyClass(1)
 # myClass.doSomething()
 
-asyncio.run(asyncMain())
+# asyncio.run(asyncMain())
+
+async def test1() :
+    print('test1')
+    await asyncio.sleep(1) # do some async method
+    await test1()
+
+async def test2() :
+    print('test2')
+    await asyncio.sleep(1)
+    asyncio.create_task(test2())
+
+asyncio.run(test2())
