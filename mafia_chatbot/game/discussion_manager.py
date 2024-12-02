@@ -1,6 +1,8 @@
 import random
 import asyncio
 from datetime import datetime, timedelta
+from typing import Callable, Deque
+from collections import deque
 
 from mafia_chatbot.game.game_state import GameState
 from mafia_chatbot.game.trust_recorder import TrustRecorder
@@ -13,6 +15,9 @@ from mafia_chatbot.game.game_logger import GameLogger
 
 import  mafia_chatbot.utils.utils as utils
 
+class DiscussionManager :
+    pass
+
 class DiscussionPlayer :
     def __init__(self, player: Player) :
         self.player: Player = player
@@ -20,6 +25,11 @@ class DiscussionPlayer :
 
     def addDiscussionCount(self) :
         self.discussionCount += 1
+
+class ResponseContent :
+    def __init__(self, player: Player, strategy: Strategy) :
+        self.player = player
+        self.strategy = strategy
 
 class DiscussionManager :
     def __init__(self, gameState: GameState, trustRecorder: TrustRecorder, llm: LLM, logger: GameLogger) :
@@ -29,7 +39,9 @@ class DiscussionManager :
         self.logger = logger
 
         self._isRunning: bool = False
-        self._currentTask: asyncio.Task = None
+        self._normalDiscussionTask: asyncio.Task = None
+        self._responseDiscussionTask: asyncio.Task = None
+        self._responseContentQueue: Deque[ResponseContent] = deque()
 
         self.gameState.setOnHumanChatListener(self._onHumanChat)
 
@@ -53,6 +65,10 @@ class DiscussionManager :
             del players[index]
             del weights[index]
 
+        self.dPlayersByPlayer: dict[Player, DiscussionPlayer] = {}
+        for dPlayer in self.dPlayers :
+            self.dPlayersByPlayer[dPlayer.player] = dPlayer
+
         # process local player
         asyncio.create_task(self._processLocalPlayer())
 
@@ -65,8 +81,40 @@ class DiscussionManager :
 
         await utils.waitUntil(self._isNotProcessingHumanDiscussion)
 
-    def _generateDiscussion(self) :
-        self._generateNormalDiscussion()
+    def _generateDiscussion(self, lastStrategy: Strategy) :
+        for getter in DiscussionManager._responseContentGetters :
+            content: ResponseContent = getter(self, lastStrategy)
+            if content != None :
+                self._responseContentQueue.append(content)
+                break
+
+        if len(self._responseContentQueue) > 0 :
+            self._generateResponseDiscussion()
+        else :
+            self._generateNormalDiscussion()
+
+    def _generateResponseDiscussion(self) :
+        if self._responseDiscussionTask != None :
+            return
+        self._stopTask()
+
+        content: ResponseContent = self._responseContentQueue[0]
+        self._responseDiscussionTask = asyncio.create_task(self._generateResponseDiscussionTask(content))
+
+    async def _generateResponseDiscussionTask(self, content: ResponseContent) :
+        # get info
+        dPlayer: DiscussionPlayer = self.dPlayersByPlayer(content.player)
+        discussionTime: datetime = datetime.now()
+
+        # publish discussion
+        await self._publishDiscussion(dPlayer, content.strategy, discussionTime)
+
+        # remove content form queue
+        self._responseContentQueue.popleft()
+        self._responseDiscussionTask = None
+
+        # generate next discussion
+        self._generateDiscussion(content.strategy)
 
     def _generateNormalDiscussion(self) :
         self._stopTask()
@@ -78,7 +126,7 @@ class DiscussionManager :
         discussionTime: datetime = self._lastDiscussionTime + timedelta(seconds=random.uniform(2.0, 5.0))
 
         # start task
-        self._currentTask = asyncio.create_task(self._generateNormalDiscussionTask(dPlayer, discussionTime))
+        self._normalDiscussionTask = asyncio.create_task(self._generateNormalDiscussionTask(dPlayer, discussionTime))
 
     async def _generateNormalDiscussionTask(self, dPlayer: DiscussionPlayer, discussionTime: datetime) :
         # wait for discussion time
@@ -89,10 +137,20 @@ class DiscussionManager :
         if not self._isRunning :
             return
 
+        # log
+        self.logger.log(f'evaluate {dPlayer.player.info.name}\'s strategy')
+
         # evaluate strategy
         self.trustRecorder.updateTrustRecords()
         strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, self.trustRecorder, dPlayer.player)
 
+        # publish discussion
+        await self._publishDiscussion(dPlayer, strategy, discussionTime)
+
+        # generate next discussion
+        self._generateDiscussion(strategy)
+
+    async def _publishDiscussion(self, dPlayer: DiscussionPlayer, strategy: Strategy, discussionTime: datetime) :
         # generate discussion
         if self.gameState.gameInfo.useLLM :
             discussion: str = self.llm.getDiscussion(self.gameState, dPlayer.player, strategy) # TODO await LLM
@@ -124,9 +182,6 @@ class DiscussionManager :
         power = min(power, 1.0)
         index: int = round(pow(random.random(), power) * len(self.dPlayers))
         self.dPlayers.insert(index, dPlayer)
-
-        # generate next discussion
-        self._generateDiscussion()
 
     async def _processLocalPlayer(self) :
         if self.gameState.localPlayer != None :
@@ -177,18 +232,31 @@ class DiscussionManager :
             self.gameState.appendDiscussionChat(player.info, f'I think {strategy.mainTarget.name} is a mafia')
 
         # generate next discussion
-        self._generateDiscussion()
+        self._generateDiscussion(strategy)
 
         return True
 
     def _isNotProcessingHumanDiscussion(self) -> bool :
         return self._processingHumanDiscussionCount == 0
 
+    # 마피아 플레이어의 경찰 주장
+    def _getResponseContent_claimePoliceForMafia(self, lastStrategy: Strategy) -> ResponseContent :
+        pass
+
+    _responseContentGetters: list[Callable[[DiscussionManager, Strategy], ResponseContent]] = [
+        _getResponseContent_claimePoliceForMafia,
+    ]
+
     def _stopTask(self) :
-        if self._currentTask != None :
-            self._currentTask.cancel()
-            asyncio.create_task(self._reapTask(self._currentTask))
-            self._currentTask = None
+        if self._normalDiscussionTask != None :
+            self._normalDiscussionTask.cancel()
+            asyncio.create_task(self._reapTask(self._normalDiscussionTask))
+            self._normalDiscussionTask = None
+
+        if self._responseDiscussionTask != None :
+            self._responseDiscussionTask.cancel()
+            asyncio.create_task(self._reapTask(self._responseDiscussionTask))
+            self._responseDiscussionTask = None
 
     async def _reapTask(self, task: asyncio.Task) :
         try :
