@@ -9,11 +9,15 @@ from mafia_chatbot.game.client_player import ClientPlayer
 from mafia_chatbot.game.client_message_processor import ClientMessageProcessor
 from mafia_chatbot.game.game_end_info import GameEndInfo, GameEndReason, gameEndReasonToProtoDict
 from mafia_chatbot.game.trust_recorder import TrustRecorder
+from mafia_chatbot.game.discussion_manager import DiscussionManager
+from mafia_chatbot.game.game_logger import GameLogger
 
 class GameManager :
     def __init__(self, gameInfo: GameInfo) :
         self.gameState = GameState(gameInfo)
-        self.gameState.setOnHumanChatListener(self._onHumanChat)
+
+        self.logger = GameLogger(self.gameState.gameId, 'log')
+        evaluator.logger = self.logger
 
         self.trustRecorder: TrustRecorder = TrustRecorder(self.gameState)
 
@@ -24,6 +28,8 @@ class GameManager :
                 self._subscribeClient(player)
 
         self.llm = LLM(self.gameState, gameInfo.language)
+
+        self.discussionManager: DiscussionManager = DiscussionManager(self.gameState, self.trustRecorder, self.llm, self.logger)
 
     def removeClient(self, client: ClientPlayer) :
         player = self.clientDict.get(client.id)
@@ -77,76 +83,22 @@ class GameManager :
     async def _processDay(self) :
         self._addSystemChat('It is morning. Please engage in a discussion.')
 
-        players = self.gameState.players
-        playerCount = len(players)
-        index = self.gameState.round % playerCount
-
-        for _ in range(playerCount) :
-            player: Player = players[index]
-            index += 1
-            index %= playerCount
-
-            # for human player
-            if player.info.isLocalPlayer :
-                if self.gameState.gameInfo.useLLM :
-                    discussion: str = input('It\'s your turn: ')
-                    strategy: Strategy = self.llm.analyzeHumanMessage(player, discussion)
-                    self._printCUI(f'human\'s strategy: {strategy}')
-                else :
-                    targetPlayer: Player = await self._getTargetFromCUI('It\'s your turn: ')
-                    discussion: str = f'I think {targetPlayer.info.name} is a mafia'
-                    strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, targetPlayer.info, '')
-
-            # for bot player
-            elif not player.info.isHuman :
-                await asyncio.sleep(1)
-
-                self.trustRecorder.updateTrustRecords()
-                strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, players[index])
-
-                if self.gameState.gameInfo.useLLM :
-                    discussion: str = self.llm.getDiscussion(self.gameState, player, strategy)
-                else :
-                    discussion: str = str(strategy)
-
-                self._printCUI(f'{player.info.name}: {discussion}')
-
-            else :
-                continue
-
-            self._updateStrategy(player, strategy)
-            self.gameState.appendDiscussionChat(player.info, discussion)
+        # start discussion
+        self.discussionManager.start()
 
         # await until time limit
         waitTime: float = (self.gameState.timeLimit - datetime.now(timezone.utc)).total_seconds()
         await asyncio.sleep(waitTime)
 
-    def _onHumanChat(self, chat: ChatData) :
-        player: Player = self.gameState.getPlayerByInfo(chat.sender)
-
-        if self.gameState.gameInfo.useLLM :
-            strategy: Strategy = self.llm.analyzeHumanMessage(player, chat.content)
-        else :
-            target: Player = self.gameState.getPlayerByName(chat.content)
-            if target == None :
-                return
-            strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, target.info, '')
-
-        self._updateStrategy(player, strategy)
-
-    def _updateStrategy(self, player: Player, strategy: Strategy) :
-        # apply strategy and discussion
-        player.setDiscussionStrategy(self.gameState.round, strategy)
-
-        # record trust info
-        self.trustRecorder.discussionStrategyUpdated(player.info, strategy)
+        # stop discussion
+        await self.discussionManager.stop()
 
     async def _processEvening(self) :
         self.trustRecorder.updateTrustRecords()
 
         cuiInputTask: asyncio.Task = None
         if self.gameState.localPlayer != None and self.gameState.localPlayer.isLive :
-            cuiInputTask = asyncio.create_task(self._getTargetFromCUI('Choose the player to vote on: '))
+            cuiInputTask = asyncio.create_task(self.gameState.getPlayerFromCuiAsync('Choose the player to vote on: '))
 
         voteData: VoteData = self.gameState.getCurrentVoteData()
         players = self.gameState.players
@@ -203,7 +155,7 @@ class GameManager :
             self.gameState.localPlayer.isLive and
             self.gameState.localPlayer.info.role == Role.MAFIA
         ) :
-            nightTargetData.killTarget = await self._getTargetFromCUI('Choose the target to assassinate: ')
+            nightTargetData.killTarget = await self.gameState.getPlayerFromCuiAsync('Choose the target to assassinate: ')
 
         ### police action: test
         police: Player = self.gameState.policePlayer
@@ -211,7 +163,7 @@ class GameManager :
         if police.isLive :
             # local player chooses the test target
             if police.info.isLocalPlayer :
-                nightTargetData.testTarget = await self._getTargetFromCUI('Choose the target to investigate: ')
+                nightTargetData.testTarget = await self.gameState.getPlayerFromCuiAsync('Choose the target to investigate: ')
 
             # bot chooses the test target
             elif not police.info.isHuman :
@@ -223,7 +175,7 @@ class GameManager :
         if doctor.isLive :
             # local player chooses the heal target
             if doctor.info.isLocalPlayer :
-                nightTargetData.healTarget = await self._getTargetFromCUI('Choose the target to heal: ')
+                nightTargetData.healTarget = await self.gameState.getPlayerFromCuiAsync('Choose the target to heal: ')
 
             # bot chooses the heal target
             elif not doctor.info.isHuman :
@@ -264,15 +216,6 @@ class GameManager :
     def _printCUI(self, text) :
         if self.gameState.gameInfo.isCUI :
             print(text)
-
-    async def _getTargetFromCUI(self, text) -> Player :
-        target: Player = None
-
-        while target == None :
-            name: str = await asyncio.get_running_loop().run_in_executor(None, input, text)
-            target = self.gameState.getPlayerByName(name)
-
-        return target
 
     def checkGameEnd(self) -> GameEndInfo :
         mafiaCount = len(self.gameState.mafiaPlayers)

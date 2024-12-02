@@ -1,6 +1,7 @@
 import random
 from datetime import datetime, timedelta, timezone
 from typing import Callable
+import uuid
 
 from mafia_chatbot.game.game_info import *
 from mafia_chatbot.game.player_info import PlayerInfo
@@ -8,6 +9,8 @@ from mafia_chatbot.game.player import *
 from mafia_chatbot.game.chat_data import ChatData, ChatType
 
 from mafia_chatbot.network.messages import *
+
+import mafia_chatbot.utils.utils as utils
 
 NAMES: dict[str, list[str]] = {
     'english' : [
@@ -130,6 +133,7 @@ class PlayerRemoveInfo :
 class GameState :
     def __init__(self, gameInfo: GameInfo) :
         self.gameInfo = gameInfo
+        self.gameId = str(uuid.uuid4())
 
         ### create players
         self.players: list[Player] = []
@@ -336,6 +340,15 @@ class GameState :
             return player.info
         else :
             return None
+
+    async def getPlayerFromCuiAsync(self, text) -> Player :
+        player: Player = None
+
+        while player == None :
+            name: str = await utils.getCuiInputAsync(text)
+            player = self.getPlayerByName(name)
+
+        return player
 
     def addRound(self) :
         self.round += 1
