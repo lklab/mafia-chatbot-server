@@ -172,6 +172,13 @@ class TrustRecorder :
         else :
             return defaultReason
 
+    def getPositiveTrustReason(self, playerInfo: PlayerInfo, positiveReason: str) -> str :
+        record: TrustRecord = self.profileByPlayerInfo[playerInfo].mainRecord
+        if record.point > 0.0 :
+            return record.reason
+        else :
+            return positiveReason
+
     def getPointerOrVoters(self, targetInfo: PlayerInfo) -> set[PlayerInfo] :
         if targetInfo in self.pointerOrVoterInfosByTargetInfo :
             return self.pointerOrVoterInfosByTargetInfo[targetInfo]

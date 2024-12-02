@@ -34,7 +34,8 @@ class Player :
         # personal factors
         self.trustSensitivity: float = random.uniform(0.0, 2.0) # 값이 클수록 타겟을 정할 때 신뢰도 값을 많이 반영함
         self.conformity: float = random.uniform(0.5, 1.5) # 값이 클수록 더 적은 수의 플레이어에게 지목되더라도 그 플레이어를 지목함
-        self.claimeFactor: float = random.uniform(0.0, 0.3) # 0.1 경찰/의사인 경우 1보다 커야 함
+        self.claimeFactorForMafia: float = random.uniform(0.0, 0.2) # 마피아가 경찰 주장을 할 확률
+        self.claimeFactorForReal: float = random.uniform(1.0, 2.0) # 경찰/의사인 경우 1보다 커야 함
         self.mainHealFactor: float = random.uniform(0.7, 1.0) # 0.9
         self.isFakePolice: bool = False
         self.positiveness: float = random.uniform(0.1, 1.0) # 토론 참여 적극성

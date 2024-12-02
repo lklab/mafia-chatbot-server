@@ -248,12 +248,6 @@ _targetSelecters: list[Callable[[GameState, TrustRecorder, Player], tuple[Player
 ]
 
 def _claimePoliceForPolice(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
-    # 시민으로 조사되지 않은 플레이어가 경찰 주장을 한 경우
-    for p in recorder.publicPolicePlayerInfos :
-        if p not in me.testResults or me.testResults[p] != Role.CITIZEN :
-            logger.log('claime police: counter')
-            return _getTestResultsForPolice(gameState, recorder, me)
-
     # 조사한 정보가 없으면 공개하지 않음
     if len(me.testResults) == 0 :
         return None
@@ -263,9 +257,19 @@ def _claimePoliceForPolice(gameState: GameState, recorder: TrustRecorder, me: Pl
     knownCitizenCount: int = len(list(filter(lambda p : p.isLive, me.testedCitizens)))
     knownRatio: float = max(knownMafiaCount / gameState.getMafiaCount(), knownCitizenCount / gameState.getCitizenCount())
     logger.log(f'claime police: knownRatio={knownRatio}')
-    if knownRatio * me.claimeFactor > random.random() :
+    if knownRatio * me.claimeFactorForReal > random.random() :
         logger.log('claime police: random')
         return _getTestResultsForPolice(gameState, recorder, me)
+
+    return None
+
+def claimePoliceForPoliceResponse(gameState: GameState, recorder: TrustRecorder, me: Player) -> Strategy :
+    # 시민으로 조사되지 않은 플레이어가 경찰 주장을 한 경우
+    for p in recorder.publicPolicePlayerInfos :
+        if p not in me.testResults or me.testResults[p] != Role.CITIZEN :
+            logger.log('claime police: counter')
+            assumption: Assumption = _getTestResultsForPolice(gameState, recorder, me)
+            return Strategy(Role.POLICE, [assumption])
 
     return None
 
@@ -300,22 +304,39 @@ def _claimePoliceForMafia(gameState: GameState, recorder: TrustRecorder, me: Pla
     ) :
         # check trigger conditions
         # 경찰 주장 플레이어가 없을 때 확률에 따라 경찰 주장
-        if len(recorder.publicPolicePlayerInfos) == 0 and me.claimeFactor > random.random() :
+        if len(recorder.publicPolicePlayerInfos) == 0 and me.claimeFactorForMafia > random.random() :
             logger.log('claime police: random')
             return _getTestResultsForMafia(gameState, recorder, me)
 
+    return None
+
+def claimePoliceForMafiaResponse(gameState: GameState, recorder: TrustRecorder, me: Player) -> Strategy :
+    # check state condition
+    if (
+        gameState.round > 0 and
+        me.isFakePolice and
+        (
+            gameState.getMafiaCount() >= 2 or
+            recorder.getEffectiveCitizenCount() <= 1
+        ) and
+        recorder.isPoliceLive and
+        len(recorder.verifiedPoliceInfos) == 0 and
+        len(list(filter(lambda info : info.role == Role.MAFIA, recorder.publicPolicePlayerInfos))) == 0
+    ) :
         myTrustPoint: float = recorder.getTrustPoint(me.info)
         for otherPublicPoliceInfo in recorder.publicPolicePlayerInfos :
             # 경찰 주장 플레이어의 신뢰도가 나보다 낮을 때 높은 확률로 경찰 주장
-            if recorder.getTrustPoint(otherPublicPoliceInfo) < myTrustPoint and me.claimeFactor * 3.0 > random.random() :
+            if recorder.getTrustPoint(otherPublicPoliceInfo) < myTrustPoint and me.claimeFactorForMafia * 3.0 > random.random() :
                 logger.log('claime police: trust')
-                return _getTestResultsForMafia(gameState, recorder, me, mainTargetInfo=otherPublicPoliceInfo)
+                assumption: Assumption = _getTestResultsForMafia(gameState, recorder, me, mainTargetInfo=otherPublicPoliceInfo)
+                return Strategy(Role.POLICE, [assumption])
 
             # 경찰이 나를 시민 또는 마피아로 지목했을 때 경찰 주장
             otherPublicPolice: Player = gameState.getPlayerByInfo(otherPublicPoliceInfo)
             if me.info in otherPublicPolice.estimationsAsPolice :
                 logger.log('claime police: I\'m targeted')
-                return _getTestResultsForMafia(gameState, recorder, me, mainTargetInfo=otherPublicPoliceInfo)
+                assumption: Assumption = _getTestResultsForMafia(gameState, recorder, me, mainTargetInfo=otherPublicPoliceInfo)
+                return Strategy(Role.POLICE, [assumption])
 
     return None
 
@@ -374,7 +395,7 @@ def _getTestResultsForMafia(gameState: GameState, recorder: TrustRecorder, me: P
         assumptionType=AssumptionType.TEST_RESULT,
     )
 
-def _claimeDoctorForDoctor(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
+def claimeDoctorForDoctorResponse(gameState: GameState, recorder: TrustRecorder, me: Player) -> Strategy :
     # 치료에 성공한 내역이 없으면 의사 주장을 하지 않음
     if len(me.healSuccesses) == 0 :
         return None
@@ -384,15 +405,17 @@ def _claimeDoctorForDoctor(gameState: GameState, recorder: TrustRecorder, me: Pl
     for player in gameState.players :
         if player in me.healSuccesses :
             count: int = len(recorder.getPointerOrVoters(player.info))
-            if (count * 2.0 / playerCount) * me.claimeFactor > random.random() :
+            if (count * 2.0 / playerCount) * me.claimeFactorForReal > random.random() :
                 logger.log('claime doctor: random')
-                return _getHealSuccessesForDoctor(gameState, recorder, me)
+                assumption: Assumption = _getHealSuccessesForDoctor(gameState, recorder, me)
+                return Strategy(Role.DOCTOR, [assumption])
 
     # 다른 플레이어가 의사 주장을 한 경우
     for p in recorder.publicDoctorPlayerInfos :
         if p not in me.healSuccesses :
             logger.log('claime doctor: counter')
-            return _getHealSuccessesForDoctor(gameState, recorder, me)
+            assumption: Assumption = _getHealSuccessesForDoctor(gameState, recorder, me)
+            return Strategy(Role.DOCTOR, [assumption])
 
     return None
 
@@ -414,7 +437,6 @@ def _getHealSuccessesForDoctor(gameState: GameState, recorder: TrustRecorder, me
 _claimeSelectors: dict[Role, Callable[[GameState, TrustRecorder, Player], Assumption]] = {
     Role.POLICE : _claimePoliceForPolice,
     Role.MAFIA : _claimePoliceForMafia,
-    Role.DOCTOR: _claimeDoctorForDoctor,
 }
 
 def _updatePoliceForPolice(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :

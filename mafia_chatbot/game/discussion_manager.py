@@ -6,9 +6,11 @@ from collections import deque
 
 from mafia_chatbot.game.game_state import GameState
 from mafia_chatbot.game.trust_recorder import TrustRecorder
+from mafia_chatbot.game.trust_profile import TrustProfile
 from mafia_chatbot.game.player import Player
+from mafia_chatbot.game.player_info import Role
 import mafia_chatbot.game.evaluator as evaluator
-from mafia_chatbot.game.strategy import Strategy
+from mafia_chatbot.game.strategy import Strategy, Assumption, AssumptionType, Estimation
 from mafia_chatbot.game.llm import LLM
 from mafia_chatbot.game.chat_data import ChatData
 from mafia_chatbot.game.game_logger import GameLogger
@@ -49,8 +51,11 @@ class DiscussionManager :
         # initialize variables
         self._isRunning = True
         self._allDiscussionCount: int = 0
-        self._lastDiscussionTime: datetime = datetime.now()
         self._processingHumanDiscussionCount: int = 0
+        self._lastDiscussionTime: datetime = datetime.now()
+
+        self._lastPlayer: Player = None
+        self._lastStrategy: Strategy = None
 
         # setup dPlayers
         players: list[Player] = list(filter(lambda p: not p.info.isHuman, self.gameState.players))
@@ -81,9 +86,12 @@ class DiscussionManager :
 
         await utils.waitUntil(self._isNotProcessingHumanDiscussion)
 
-    def _generateDiscussion(self, lastStrategy: Strategy) :
+    def _generateDiscussion(self, lastPlayer: Player, lastStrategy: Strategy) :
+        self._lastPlayer = lastPlayer
+        self._lastStrategy = lastStrategy
+
         for getter in DiscussionManager._responseContentGetters :
-            content: ResponseContent = getter(self, lastStrategy)
+            content: ResponseContent = getter(self)
             if content != None :
                 self._responseContentQueue.append(content)
                 break
@@ -103,8 +111,11 @@ class DiscussionManager :
 
     async def _generateResponseDiscussionTask(self, content: ResponseContent) :
         # get info
-        dPlayer: DiscussionPlayer = self.dPlayersByPlayer(content.player)
+        dPlayer: DiscussionPlayer = self.dPlayersByPlayer[content.player]
         discussionTime: datetime = datetime.now()
+
+        # log
+        self.logger.log(f'generate response discussion: name={content.player.info.name}, strategy={content.strategy}')
 
         # publish discussion
         await self._publishDiscussion(dPlayer, content.strategy, discussionTime)
@@ -114,7 +125,7 @@ class DiscussionManager :
         self._responseDiscussionTask = None
 
         # generate next discussion
-        self._generateDiscussion(content.strategy)
+        self._generateDiscussion(content.player, content.strategy)
 
     def _generateNormalDiscussion(self) :
         self._stopTask()
@@ -148,7 +159,7 @@ class DiscussionManager :
         await self._publishDiscussion(dPlayer, strategy, discussionTime)
 
         # generate next discussion
-        self._generateDiscussion(strategy)
+        self._generateDiscussion(dPlayer.player, strategy)
 
     async def _publishDiscussion(self, dPlayer: DiscussionPlayer, strategy: Strategy, discussionTime: datetime) :
         # generate discussion
@@ -232,7 +243,7 @@ class DiscussionManager :
             self.gameState.appendDiscussionChat(player.info, f'I think {strategy.mainTarget.name} is a mafia')
 
         # generate next discussion
-        self._generateDiscussion(strategy)
+        self._generateDiscussion(player, strategy)
 
         return True
 
@@ -240,11 +251,81 @@ class DiscussionManager :
         return self._processingHumanDiscussionCount == 0
 
     # 마피아 플레이어의 경찰 주장
-    def _getResponseContent_claimePoliceForMafia(self, lastStrategy: Strategy) -> ResponseContent :
-        pass
+    def _getResponseContent_claimePoliceForMafia(self) -> ResponseContent :
+        if self._lastPlayer.publicRole == Role.POLICE :
+            for player in self.gameState.players :
+                if player.publicRole == Role.CITIZEN and player.info.role == Role.MAFIA :
+                    strategy: Strategy = evaluator.claimePoliceForMafiaResponse(self.gameState, self.trustRecorder, player)
+                    if strategy != None :
+                        return ResponseContent(player, strategy)
 
-    _responseContentGetters: list[Callable[[DiscussionManager, Strategy], ResponseContent]] = [
+    # 경찰 플레이어의 경찰 주장
+    def _getResponseContent_claimePoliceForPolice(self) -> ResponseContent :
+        if self._lastPlayer.publicRole == Role.POLICE :
+            police: Player = self.gameState.policePlayer
+            if police.isLive and police.publicRole == Role.CITIZEN :
+                strategy: Strategy = evaluator.claimePoliceForPoliceResponse(self.gameState, self.trustRecorder, police)
+                if strategy != None :
+                    return ResponseContent(police, strategy)
+
+    # 의사 플레이어의 의사 주장
+    def _getResponseContent_claimeDoctorForDoctor(self) -> ResponseContent :
+        doctor: Player = self.gameState.doctorPlayer
+        if doctor.isLive and doctor.publicRole == Role.CITIZEN :
+            strategy: Strategy = evaluator.claimeDoctorForDoctorResponse(self.gameState, self.trustRecorder, doctor)
+            if strategy != None :
+                return ResponseContent(doctor, strategy)
+
+    # 내가 지목당함
+    def _getResponseContent_iampointed(self) -> ResponseContent :
+        for estimation in self._lastStrategy.mafiaEstimations :
+            player: Player = self.gameState.getPlayerByInfo(estimation.playerInfo)
+            if player.positiveness * player.positiveness > random.random() : # 낮은 확률로 반박
+                strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, self.trustRecorder, player)
+                strategy.assumptions[0].reason = 'You claim that you are not the mafia. And you suspect someone else of being the mafia. ' + strategy.assumptions[0].reason
+                return ResponseContent(player, strategy)
+
+    # 경찰이 나를 지목함
+    def _getResponseContent_thePolicePointedMe(self) -> ResponseContent :
+        if self._lastPlayer.publicRole == Role.POLICE :
+            for assumption in self._lastStrategy.assumptions :
+                if assumption.assumptionType == AssumptionType.TEST_RESULT :
+                    for estimation in assumption.estimations :
+                        if estimation.role == Role.MAFIA :
+                            player: Player = self.gameState.getPlayerByInfo(estimation.playerInfo)
+                            strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, self._lastPlayer.info, 'He pointed me of being the mafia, but I am not.')
+                            return ResponseContent(player, strategy)
+
+    # 신뢰도가 높은 플레이어가 마피아로 지목됨
+    def _getResponseContent_supportCitizen(self) -> ResponseContent :
+        for estimation in self._lastStrategy.mafiaEstimations :
+            point: float = self.trustRecorder.getTrustPoint(estimation.playerInfo)
+            if point > 30.0 and (point / 100.0) > random.random() :
+                player: Player = None
+                for dPlayer in self.dPlayers :
+                    if dPlayer.player != self._lastPlayer and dPlayer.player.info != estimation.playerInfo :
+                        player = dPlayer.player
+                        break
+
+                if player != None :
+                    strategy: Strategy = Strategy(
+                        publicRole=player.publicRole,
+                        assumptions=[
+                            Assumption(
+                                estimations=[Estimation(estimation.playerInfo, Role.CITIZEN)],
+                                reason=self.trustRecorder.getPositiveTrustReason(estimation.playerInfo, 'You believe that he is a citizen'),
+                            )
+                        ]
+                    )
+                    return ResponseContent(player, strategy)
+
+    _responseContentGetters: list[Callable[[DiscussionManager], ResponseContent]] = [
         _getResponseContent_claimePoliceForMafia,
+        _getResponseContent_claimePoliceForPolice,
+        _getResponseContent_claimeDoctorForDoctor,
+        _getResponseContent_iampointed,
+        _getResponseContent_thePolicePointedMe,
+        _getResponseContent_supportCitizen,
     ]
 
     def _stopTask(self) :
