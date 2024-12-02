@@ -157,12 +157,14 @@ class DiscussionManager :
             self._processingHumanDiscussionCount += 1
             strategy: Strategy = self.llm.analyzeHumanMessage(player, discussion) # TODO await
             self._processingHumanDiscussionCount -= 1
-            self.logger.log(f'human {player.info.name}\'s strategy: {strategy}')
         else :
             target: Player = self.gameState.getPlayerByName(discussion)
             if target == None :
                 return False
             strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, target.info, '')
+
+        # log human's strategy
+        self.logger.log(f'human {player.info.name}\'s strategy: {strategy}')
 
         # apply strategy and discussion
         player.setDiscussionStrategy(self.gameState.round, strategy)

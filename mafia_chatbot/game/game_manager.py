@@ -120,7 +120,7 @@ class GameManager :
                 cuiInputTask = None
 
             if not player.info.isHuman :
-                strategy: VoteStrategy = evaluator.evaluateVoteStrategy(self.gameState, player)
+                strategy: VoteStrategy = evaluator.evaluateVoteStrategy(self.gameState, self.trustRecorder, player)
                 voteData.setVoteStrategy(player, strategy)
                 self.trustRecorder.voteStrategyUpdated(player.info, strategy)
                 await asyncio.sleep(1)

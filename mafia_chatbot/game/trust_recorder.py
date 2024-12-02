@@ -9,7 +9,7 @@ class TrustRecorder :
         self.gameState = gameState
 
         # profile
-        self.profileByPlayerInfo: dict[PlayerInfo, TrustProfile]
+        self.profileByPlayerInfo: dict[PlayerInfo, TrustProfile] = {}
         for player in gameState.players :
             profile: TrustProfile = TrustProfile()
             self.profileByPlayerInfo[player.info] = profile
