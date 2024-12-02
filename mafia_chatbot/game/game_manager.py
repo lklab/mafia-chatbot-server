@@ -96,39 +96,31 @@ class GameManager :
     async def _processEvening(self) :
         self.trustRecorder.updateTrustRecords()
 
+        # process local player's vote
         cuiInputTask: asyncio.Task = None
         if self.gameState.localPlayer != None and self.gameState.localPlayer.isLive :
             cuiInputTask = asyncio.create_task(self.gameState.getPlayerFromCuiAsync('Choose the player to vote on: '))
 
         voteData: VoteData = self.gameState.getCurrentVoteData()
         players = self.gameState.players
-        playerCount = len(players)
-        index = 0
 
-        def _setLocalPlayerStrategy(targetPlayer: Player) :
+        # process bot player's vote
+        for player in players :
+            if not player.info.isHuman :
+                asyncio.create_task(self._processPlayerVote(voteData, player))
+
+        # await until time limit
+        waitTime: float = (self.gameState.timeLimit - datetime.now(timezone.utc)).total_seconds()
+        await asyncio.sleep(waitTime)
+
+        # get local player's vote
+        if cuiInputTask != None :
+            targetPlayer: Player = await cuiInputTask
             strategy: VoteStrategy = VoteStrategy(targetPlayer.info)
             voteData.setVoteStrategy(self.gameState.localPlayer, strategy)
             self.trustRecorder.voteStrategyUpdated(self.gameState.localPlayer.info, strategy)
 
-        while self.gameState.timeLimit > datetime.now(timezone.utc) :
-            player: Player = players[index]
-            index += 1
-            index %= playerCount
-
-            if cuiInputTask != None and cuiInputTask.done() :
-                _setLocalPlayerStrategy(cuiInputTask.result())
-                cuiInputTask = None
-
-            if not player.info.isHuman :
-                strategy: VoteStrategy = evaluator.evaluateVoteStrategy(self.gameState, self.trustRecorder, player)
-                voteData.setVoteStrategy(player, strategy)
-                self.trustRecorder.voteStrategyUpdated(player.info, strategy)
-                await asyncio.sleep(1)
-
-        if cuiInputTask != None :
-            targetPlayer: Player = await cuiInputTask
-            _setLocalPlayerStrategy(targetPlayer)
-
+        # evaluate vote data
         voteData.evaluate()
         self._printCUI(f'Voting status: {voteData.voteCount}')
 
@@ -138,6 +130,23 @@ class GameManager :
             self._addSystemChat(f'{voteData.targetPlayer.name} is executed. Their role was {voteData.targetPlayer.role.name}.')
             self.gameState.removePlayerByInfo(voteData.targetPlayer, RemoveReason.VOTE)
             self.trustRecorder.playerRemoved(voteData.targetPlayer, RemoveReason.VOTE)
+
+    async def _processPlayerVote(self, voteData: VoteData, player: Player) :
+        eveningPeriod: int = self.gameState.eveningSeconds
+        rand = random.random()
+        waitTime = rand * rand * rand * eveningPeriod / 3.0
+
+        await asyncio.sleep(waitTime)
+
+        if self.gameState.currentPhase != Phase.EVENING :
+            return
+
+        while self.gameState.currentPhase == Phase.EVENING :
+            strategy: VoteStrategy = evaluator.evaluateVoteStrategy(self.gameState, self.trustRecorder, player)
+            voteData.setVoteStrategy(player, strategy)
+            self.trustRecorder.voteStrategyUpdated(player.info, strategy)
+
+            await asyncio.sleep(random.uniform(0.1, 0.3) * eveningPeriod * 2.0 / 3.0)
 
     async def _processNight(self) :
         self.trustRecorder.updateTrustRecords()

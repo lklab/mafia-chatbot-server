@@ -254,6 +254,8 @@ class DiscussionManager :
     def _getResponseContent_claimePoliceForMafia(self) -> ResponseContent :
         if self._lastPlayer.publicRole == Role.POLICE :
             for player in self.gameState.players :
+                if player == self._lastPlayer or player.info.isHuman :
+                    continue
                 if player.publicRole == Role.CITIZEN and player.info.role == Role.MAFIA :
                     strategy: Strategy = evaluator.claimePoliceForMafiaResponse(self.gameState, self.trustRecorder, player)
                     if strategy != None :
@@ -263,7 +265,7 @@ class DiscussionManager :
     def _getResponseContent_claimePoliceForPolice(self) -> ResponseContent :
         if self._lastPlayer.publicRole == Role.POLICE :
             police: Player = self.gameState.policePlayer
-            if police.isLive and police.publicRole == Role.CITIZEN :
+            if not police.info.isHuman and police.isLive and police.publicRole == Role.CITIZEN :
                 strategy: Strategy = evaluator.claimePoliceForPoliceResponse(self.gameState, self.trustRecorder, police)
                 if strategy != None :
                     return ResponseContent(police, strategy)
@@ -271,7 +273,7 @@ class DiscussionManager :
     # 의사 플레이어의 의사 주장
     def _getResponseContent_claimeDoctorForDoctor(self) -> ResponseContent :
         doctor: Player = self.gameState.doctorPlayer
-        if doctor.isLive and doctor.publicRole == Role.CITIZEN :
+        if not doctor.info.isHuman and doctor.isLive and doctor.publicRole == Role.CITIZEN :
             strategy: Strategy = evaluator.claimeDoctorForDoctorResponse(self.gameState, self.trustRecorder, doctor)
             if strategy != None :
                 return ResponseContent(doctor, strategy)
@@ -280,6 +282,8 @@ class DiscussionManager :
     def _getResponseContent_iampointed(self) -> ResponseContent :
         for estimation in self._lastStrategy.mafiaEstimations :
             player: Player = self.gameState.getPlayerByInfo(estimation.playerInfo)
+            if player == self._lastPlayer or player.info.isHuman :
+                continue
             if player.positiveness * player.positiveness > random.random() : # 낮은 확률로 반박
                 strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, self.trustRecorder, player)
                 strategy.assumptions[0].reason = 'You claim that you are not the mafia. And you suspect someone else of being the mafia. ' + strategy.assumptions[0].reason
@@ -293,6 +297,8 @@ class DiscussionManager :
                     for estimation in assumption.estimations :
                         if estimation.role == Role.MAFIA :
                             player: Player = self.gameState.getPlayerByInfo(estimation.playerInfo)
+                            if player == self._lastPlayer or player.info.isHuman :
+                                continue
                             strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, self._lastPlayer.info, 'He pointed me of being the mafia, but I am not.')
                             return ResponseContent(player, strategy)
 
@@ -346,4 +352,4 @@ class DiscussionManager :
         except asyncio.CancelledError :
             pass
         except Exception as e:
-            print(f"[DiscussionManager] Unhandled exception in task: {e}")
+            self.logger.log(f"[DiscussionManager] Unhandled exception in task: {e}")
