@@ -10,7 +10,7 @@ if __name__ == "__main__" :
 
 import json
 import os
-from typing import Optional, Type
+from typing import Optional, Type, List
 from pydantic import BaseModel, Field
 
 from langchain_openai import ChatOpenAI
@@ -57,22 +57,6 @@ class LLM :
         # setup human message agent
         # self.humanMessageAgent = self._setupHumanMessageAgent(model, self.gameState.nameList)
 
-    def _setupDiscussionPromptTemplate(self, gameInfo: GameInfo) -> PromptTemplate :
-        textTemplate = (
-            "You are a player participating in a Mafia game. Your name is {my_name}, and your role is {my_role}. {claim_public_role}It is currently the discussion phase, and it is your turn to speak. You must claim that {estimations}. Use the provided ##Conversation Logs## and ##Evidence## as references, or base your claim on your logical reasoning. Your statement should be concise, limited to two sentences, and written in a {tone} conversational style. Your response should differ from previous statements and introduce variety in phrasing. Write your statement in %(language)s."
-            "\n\n"
-            "##Conversation Logs##"
-            "\n"
-            "{conversation_logs}"
-            "\n\n"
-            "##Evidence##"
-            "\n"
-            "{evidence}"
-        )
-        textTemplate = textTemplate % {'language' : gameInfo.language}
-        promptTemplate = PromptTemplate.from_template(textTemplate)
-        return promptTemplate
-
     async def getDiscussion(self, player: Player, strategy: Strategy) -> str :
         input: dict[str, str] = {
             'my_name' : player.info.name,
@@ -85,6 +69,25 @@ class LLM :
         }
         response = await self._ainvokeChain(self.discussionChain, input)
         return response.content
+
+    async def analyzeHumanMessage(self, player: Player, message: str) -> Strategy :
+        pass
+
+    def _setupDiscussionPromptTemplate(self, gameInfo: GameInfo) -> PromptTemplate :
+        templateText = (
+            "You are a player participating in a Mafia game. Your name is {my_name}, and your role is {my_role}. {claim_public_role}It is currently the discussion phase, and it is your turn to speak. You must claim that {estimations}. Use the provided ##Conversation Logs## and ##Evidence## as references, or base your claim on your logical reasoning. Your statement should be concise, limited to two sentences, and written in a {tone} conversational style. Your response should differ from previous statements and introduce variety in phrasing. Write your statement in %(language)s."
+            "\n\n"
+            "##Conversation Logs##"
+            "\n"
+            "{conversation_logs}"
+            "\n\n"
+            "##Evidence##"
+            "\n"
+            "{evidence}"
+        )
+        templateText = templateText % {'language' : gameInfo.language}
+        promptTemplate = PromptTemplate.from_template(templateText)
+        return promptTemplate
 
     async def _ainvokeChain(self, chain: RunnableSerializable[dict, BaseMessage], input: dict[str, str]) -> BaseMessage :
         try :
@@ -137,91 +140,58 @@ class LLM :
 
         return None
 
-    def _setupDiscussionPrompt(self, language: str) :
-        def _preprocessInput(input) :
-            gameState: GameState = input['gameState']
-            player: Player = input['player']
-            strategy: Strategy = input['strategy']
+    def _setupHumanMessageAgent(self, model) :
+        # setup tools
+        class EstimationInput(BaseModel) :
+            name: str = Field(description="The name of the person whose role the human is claiming.")
+            role: str = Field(description="The role of the individual with the specified name that the human is claiming.")
 
-            roleToTeam = {
-                Role.CITIZEN: 'Citizen',
-                Role.MAFIA: 'Mafia',
-                Role.POLICE: 'Citizen',
-                Role.DOCTOR: 'Citizen',
-            }
+        class EstimationTool(BaseTool):
+            name: str = "EstimationTool"
+            description: str = "Call this tool to analyze the human's message."
+            args_schema: Type[BaseModel] = EstimationInput
+            return_direct: bool = True
 
-            return {
-                'citizen_count': gameState.gameInfo.citizenCount,
-                'mafia_count': gameState.gameInfo.mafiaCount,
-                'players_list': ','.join(map(lambda p: p.info.name, gameState.allPlayers)),
-                'my_name': player.info.name,
-                'my_team': roleToTeam[player.info.role],
-                'mafias_list': "Unknown" if player.info.role != Role.MAFIA else ','.join(map(lambda p: p.info.name, gameState.allMafiaPlayers)),
-                'language': language,
-                'tone': player.info.tone,
-                'surviving_citizen_count': gameState.getCitizenCount(),
-                'surviving_mafia_count': gameState.getMafiaCount(),
-                'survivors_list': ','.join(map(lambda p: p.info.name, gameState.players)),
-                'current_step': f'Day {gameState.round + 1}',
-                'discussion_history': '\n'.join(gameState.discussionHistory),
-                'discussion_role': player.getRolePrompt(),
-                'discussion_assumptions': strategy.assumptionsToPrompt(),
-            }
+            def _run(self, estimations: List[EstimationInput], run_manager: Optional[CallbackManagerForToolRun] = None) -> dict:
+                data = {'estimations': []}
+                for estimation in estimations :
+                    data['estimations'].append({
+                        'name': estimation.name,
+                        'role': estimation.role
+                    })
+                return data
 
-        def _setupInformationPrompt(input) :
-            return informationTemplate.invoke(input).text
+        def fallback() -> str:
+            print('fallback')
+            return 'fallback'
 
-        def _setupHistoryPrompt(input) :
-            return historyTemplate.invoke(input).text
-
-        def _setupStrategyPrompt(input) :
-            return strategyTemplate.invoke(input).text
-
-        templateText = (
-            "## Game Rules"
-            "\nYou are participating in a Mafia game. In the Mafia game, there are two teams: the Citizen team and the Mafia team. Each night, one person is chosen by vote to be executed, and their role is revealed. The Citizens win if all Mafia members are executed, while the Mafia team wins if the number of surviving Citizens becomes equal to or fewer than the number of Mafia. You need to create suitable discussion statements considering the game information and history below, to align with your discussion strategy. Write discussion sentences in a conversational tone, concise, without line breaks or colons, and within two sentences in {language}. You should use a {tone} tone and speak differently from others."
-            "\n\n## Game Information"
-            "\n{information}"
-            "\n\n## Game History"
-            "\n{history}"
-            "\n\n## Discussion Strategy"
-            "\n{strategy}"
-        )
-        informationTemplateText = '\n'.join([
-            "Participants: {citizen_count} Citizens, {mafia_count} Mafia",
-            "Participant List: {players_list}",
-            "Your Name: {my_name}",
-            "Your Team: {my_team}",
-            "List of Mafia: {mafias_list}",
-            "Discussion Language: {language}",
-        ])
-        historyTemplateText = '\n'.join([
-            "Surviving Participants: {surviving_citizen_count} Citizens, {surviving_mafia_count} Mafia",
-            "Survivor List: {survivors_list}",
-            "Current Step: {current_step}",
-            "Discussion History:\n{discussion_history}",
-        ])
-        strategyTemplateText = '\n'.join([
-            "{discussion_role}",
-            "{discussion_assumptions}",
-        ])
-
-        template = PromptTemplate.from_template(templateText)
-        informationTemplate = PromptTemplate.from_template(informationTemplateText)
-        historyTemplate = PromptTemplate.from_template(historyTemplateText)
-        strategyTemplate = PromptTemplate.from_template(strategyTemplateText)
-
-        prompt = (
-            RunnableLambda(_preprocessInput)
-            | RunnablePassthrough.assign(information=RunnableLambda(_setupInformationPrompt))
-            | RunnablePassthrough.assign(history=RunnableLambda(_setupHistoryPrompt))
-            | RunnablePassthrough.assign(strategy=RunnableLambda(_setupStrategyPrompt))
-            | template
+        fallbackTool = StructuredTool.from_function(
+            func=fallback,
+            name="Fallback",
+            description="If the speaker's message is unrelated to the Mafia game, call this tool.",
+            return_direct=True,
         )
 
-        return prompt
+        tools = [EstimationTool(), fallbackTool]
 
-    def _setupHumanMessageAgent(self, model, nameList: list[str]) :
+        # setup system message
+        systemMessageText = (
+            "The following text is a statement made by a human participant during a discussion phase in a Mafia game. Your task is to analyze this message and determine which person the user is accusing or identifying as a specific role. The names must match one of those listed in ##list##, taking into account case variations or minor typos. If no sufficiently similar name is found, ignore that part of the message. Similarly, the role must be one of 'citizen', 'police', 'mafia', or 'doctor'. Again, account for case variations or minor typos, and ignore any roles that do not sufficiently match these options."
+            "\n\n"
+            "##list##"
+            "\n"
+            "%(name_list)s"
+        )
+        systemMessageText = systemMessageText % {'name_list' : ', '.join(map(lambda name: f'"{name}"', self.gameState.nameList))}
+        systemMessage = SystemMessage(systemMessageText)
+
+        # setup agent
+        agent_executor = create_react_agent(
+            model, tools, state_modifier=systemMessage
+        )
+
+        return agent_executor
+
         class EstimationInput(BaseModel) :
             name: str = Field(description="The name of the person whose role the speaker is claiming.")
             role: str = Field(description="The role of the individual with the specified name that the speaker is claiming.")
