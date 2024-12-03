@@ -134,7 +134,7 @@ class DiscussionManager :
         dPlayer: DiscussionPlayer = self.dPlayers[0]
 
         # decide discussion time
-        discussionTime: datetime = self._lastDiscussionTime + timedelta(seconds=random.uniform(2.0, 5.0))
+        discussionTime: datetime = self._lastDiscussionTime + timedelta(seconds=random.uniform(5.0, 10.0))
 
         # start task
         self._normalDiscussionTask = asyncio.create_task(self._generateNormalDiscussionTask(dPlayer, discussionTime))
@@ -164,7 +164,8 @@ class DiscussionManager :
     async def _publishDiscussion(self, dPlayer: DiscussionPlayer, strategy: Strategy, discussionTime: datetime) :
         # generate discussion
         if self.gameState.gameInfo.useLLM :
-            discussion: str = self.llm.getDiscussion(self.gameState, dPlayer.player, strategy) # TODO await LLM
+            discussion: str = await self.llm.getDiscussion(dPlayer.player, strategy)
+            discussion = discussion.removeprefix(f'{dPlayer.player.info.name}: ')
         else :
             discussion: str = str(strategy)
 
@@ -219,7 +220,7 @@ class DiscussionManager :
         self._processHumanDiscussion(player, chat.content)
 
     def _processHumanDiscussion(self, player: Player, discussion: str) -> bool :
-        if self.gameState.gameInfo.useLLM :
+        if False : # self.gameState.gameInfo.useLLM :
             self._processingHumanDiscussionCount += 1
             strategy: Strategy = self.llm.analyzeHumanMessage(player, discussion) # TODO await
             self._processingHumanDiscussionCount -= 1

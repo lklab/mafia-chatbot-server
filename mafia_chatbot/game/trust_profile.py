@@ -1,6 +1,6 @@
 from enum import Enum
 
-defaultReason = 'Due to a lack of information, You will randomly suspect someone as the mafia.'
+defaultReason = 'Due to a lack of information, you will suspect someone as the mafia, but it is only a guess.'
 
 class TrustState(Enum) :
     NORMAL = 0

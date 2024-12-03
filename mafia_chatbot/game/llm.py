@@ -15,21 +15,25 @@ from pydantic import BaseModel, Field
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
-from langchain_core.runnables import RunnablePassthrough, RunnableLambda
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableSerializable
 from langchain_core.callbacks import (
     CallbackManagerForToolRun,
 )
 from langchain_core.tools import BaseTool, StructuredTool
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import SystemMessage, BaseMessage
 from langchain_core.messages.tool import ToolMessage
 from langgraph.prebuilt import create_react_agent
 
-from mafia_chatbot.game.game_state import *
-from mafia_chatbot.game.player import *
-from mafia_chatbot.game.player_info import *
+import openai
+
+from mafia_chatbot.game.game_state import GameState
+from mafia_chatbot.game.game_info import GameInfo
+from mafia_chatbot.game.player import Player
+from mafia_chatbot.game.player_info import PlayerInfo, Role, roleToStrDict
+from mafia_chatbot.game.strategy import Strategy
 
 class LLM :
-    def __init__(self, gameState: GameState, language: str) :
+    def __init__(self, gameState: GameState) :
         self.gameState = gameState
 
         # load API key
@@ -47,44 +51,89 @@ class LLM :
         )
 
         # setup discussion chain
-        discussionPrompt = self._setupDiscussionPrompt(language)
-        self.discussionChain = discussionPrompt | model
+        discussionPromptTemplate = self._setupDiscussionPromptTemplate(gameState.gameInfo)
+        self.discussionChain = discussionPromptTemplate | model
 
         # setup human message agent
-        self.humanMessageAgent = self._setupHumanMessageAgent(model, self.gameState.nameList)
+        # self.humanMessageAgent = self._setupHumanMessageAgent(model, self.gameState.nameList)
 
-    def getDiscussion(self, gameState: GameState, player: Player, strategy: Strategy) :
-        response = self.discussionChain.invoke({
-            'gameState': gameState,
-            'player': player,
-            'strategy': strategy,
-        })
+    def _setupDiscussionPromptTemplate(self, gameInfo: GameInfo) -> PromptTemplate :
+        textTemplate = (
+            "You are a player participating in a Mafia game. Your name is {my_name}, and your role is {my_role}. {claim_public_role}It is currently the discussion phase, and it is your turn to speak. You must claim that {estimations}. Use the provided ##Conversation Logs## and ##Evidence## as references, or base your claim on your logical reasoning. Your statement should be concise, limited to two sentences, and written in a {tone} conversational style. Your response should differ from previous statements and introduce variety in phrasing. Write your statement in %(language)s."
+            "\n\n"
+            "##Conversation Logs##"
+            "\n"
+            "{conversation_logs}"
+            "\n\n"
+            "##Evidence##"
+            "\n"
+            "{evidence}"
+        )
+        textTemplate = textTemplate % {'language' : gameInfo.language}
+        promptTemplate = PromptTemplate.from_template(textTemplate)
+        return promptTemplate
+
+    async def getDiscussion(self, player: Player, strategy: Strategy) -> str :
+        input: dict[str, str] = {
+            'my_name' : player.info.name,
+            'my_role' : roleToStrDict[player.info.role],
+            'claim_public_role' : f"You must claim that your role is {roleToStrDict[player.publicRole]}. " if player.isPublicRoleChanged else "",
+            'estimations' : ', '.join(map(lambda e: f"{e.playerInfo.name}'s role is {roleToStrDict[e.role]}", strategy.assumptions[0].estimations)),
+            'tone': player.info.tone,
+            'conversation_logs' : '\n'.join(self.gameState.conversationLogs),
+            'evidence' : strategy.assumptions[0].reason,
+        }
+        response = await self._ainvokeChain(self.discussionChain, input)
         return response.content
 
+    async def _ainvokeChain(self, chain: RunnableSerializable[dict, BaseMessage], input: dict[str, str]) -> BaseMessage :
+        try :
+            return await chain.ainvoke(input)
+        except ValueError as e:
+            print(f"[LLM] ValueError: {e}")
+        except KeyError as e:
+            print(f"[LLM] KeyError: Missing key - {e}")
+        except openai.error.AuthenticationError as e:
+            print(f"[LLM] AuthenticationError: {e}")
+        except openai.error.RateLimitError as e:
+            print(f"[LLM] RateLimitError: {e}")
+        except openai.error.APIError as e:
+            print(f"[LLM] APIError: {e}")
+        except openai.error.Timeout as e:
+            print(f"[LLM] TimeoutError: {e}")
+        except openai.error.InvalidRequestError as e:
+            print(f"[LLM] InvalidRequestError: {e}")
+        # except LangChainError as e:
+        #     print(f"[LLM] LangChainError: {e}")
+        except TypeError as e:
+            print(f"[LLM] TypeError: {e}")
+        except Exception as e:
+            print(f"[LLM] Unexpected error: {e}")
+
     def analyzeHumanMessage(self, player: Player, message: str) -> Strategy :
-        response = self.humanMessageAgent.invoke({'messages': [('user', message)]})
+        # response = self.humanMessageAgent.invoke({'messages': [('user', message)]})
 
-        for message in reversed(response['messages']) :
-            if isinstance(message, ToolMessage) :
-                data = json.loads(message.content)
+        # for message in reversed(response['messages']) :
+        #     if isinstance(message, ToolMessage) :
+        #         data = json.loads(message.content)
 
-                publicRole: Role = None
-                if 'role' in data :
-                    publicRole = strToRole(data['role'])
-                if publicRole == None :
-                    publicRole = player.publicRole
+        #         publicRole: Role = None
+        #         if 'role' in data :
+        #             publicRole = strToRole(data['role'])
+        #         if publicRole == None :
+        #             publicRole = player.publicRole
 
-                estimations: list[Estimation] = []
-                for estimation in data['estimations'] :
-                    playerInfo: PlayerInfo = self.gameState.getPlayerInfoByName(estimation['name'])
-                    role: Role = strToRole(estimation['role'])
-                    if playerInfo != None and role != None :
-                        estimations.append(Estimation(playerInfo, role))
+        #         estimations: list[Estimation] = []
+        #         for estimation in data['estimations'] :
+        #             playerInfo: PlayerInfo = self.gameState.getPlayerInfoByName(estimation['name'])
+        #             role: Role = strToRole(estimation['role'])
+        #             if playerInfo != None and role != None :
+        #                 estimations.append(Estimation(playerInfo, role))
 
-                assumptions: list[Assumption] = [Assumption(estimations, '')]
+        #         assumptions: list[Assumption] = [Assumption(estimations, '')]
 
-                strategy: Strategy = Strategy(publicRole, assumptions)
-                return strategy
+        #         strategy: Strategy = Strategy(publicRole, assumptions)
+        #         return strategy
 
         return None
 

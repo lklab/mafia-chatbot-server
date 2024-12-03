@@ -27,7 +27,7 @@ class GameManager :
                 self.clientDict[player.client.id] = player
                 self._subscribeClient(player)
 
-        self.llm = LLM(self.gameState, gameInfo.language)
+        self.llm = LLM(self.gameState)
 
         self.discussionManager: DiscussionManager = DiscussionManager(self.gameState, self.trustRecorder, self.llm, self.logger)
 

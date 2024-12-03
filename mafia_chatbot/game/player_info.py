@@ -19,6 +19,13 @@ strToRoleDict: dict[str, Role] = {
     'doctor': Role.DOCTOR,
 }
 
+roleToStrDict: dict[Role, str] = {
+    Role.CITIZEN : 'citizen',
+    Role.POLICE : 'police',
+    Role.MAFIA : 'mafia',
+    Role.DOCTOR : 'doctor',
+}
+
 roleToProtoDict: dict[Role, game_pb2.Role] = {
     Role.CITIZEN: game_pb2.Role.Role_CITIZEN,
     Role.POLICE: game_pb2.Role.Role_POLICE,
