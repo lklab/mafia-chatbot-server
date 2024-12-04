@@ -207,7 +207,7 @@ class DiscussionManager :
                     return
 
                 # process discussion
-                if self._processHumanDiscussion(player, discussion) :
+                if await self._processHumanDiscussion(player, discussion) :
                     break
 
     def _onHumanChat(self, chat: ChatData) :
@@ -217,13 +217,15 @@ class DiscussionManager :
 
         # process discussion
         player: Player = self.gameState.getPlayerByInfo(chat.sender)
-        self._processHumanDiscussion(player, chat.content)
+        asyncio.create_task(self._processHumanDiscussion(player, chat.content))
 
-    def _processHumanDiscussion(self, player: Player, discussion: str) -> bool :
-        if False : # self.gameState.gameInfo.useLLM :
+    async def _processHumanDiscussion(self, player: Player, discussion: str) -> bool :
+        if self.gameState.gameInfo.useLLM :
             self._processingHumanDiscussionCount += 1
-            strategy: Strategy = self.llm.analyzeHumanMessage(player, discussion) # TODO await
+            strategy: Strategy = await self.llm.analyzeHumanMessage(player, discussion)
             self._processingHumanDiscussionCount -= 1
+            if strategy == None :
+                return False
         else :
             target: Player = self.gameState.getPlayerByName(discussion)
             if target == None :
