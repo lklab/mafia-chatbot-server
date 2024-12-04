@@ -58,6 +58,8 @@ class EstimationInput(BaseModel) :
 
 class EstimationInputList(BaseModel):
     estimations: List[EstimationInput] = Field(description="A list of estimations.")
+    police: str = Field(description="The name of the individual who performed an action related to investigation or verification as a police role. If no such role is identified in the context, set to 'none'.")
+    doctor: str = Field(description="The name of the individual who performed an action related to healing or saving as a doctor role. If no such role is identified in the context, set to 'none'.")
 
 class EstimationTool(BaseTool):
     name: str = "EstimationTool"
@@ -65,8 +67,12 @@ class EstimationTool(BaseTool):
     args_schema: Type[BaseModel] = EstimationInputList
     return_direct: bool = True
 
-    def _run(self, estimations: List[EstimationInput], run_manager: Optional[CallbackManagerForToolRun] = None) -> dict:
-        data = {'estimations': []}
+    def _run(self, estimations: List[EstimationInput], police: str, doctor: str, run_manager: Optional[CallbackManagerForToolRun] = None) -> dict:
+        data = {
+            'estimations': [],
+            'police': police,
+            'doctor': doctor,
+        }
         for estimation in estimations :
             data['estimations'].append({
                 'name': estimation.name,
@@ -120,7 +126,7 @@ chain = prompt | model | parser
 
 response = chain.invoke({
     'name' : "경현",
-    'sentence' : "경현: 내 생각에 시우가 마피아라고 생각해.",
+    'sentence' : "경현: 나는 시우가 마피아라고 확신해. 왜냐면 내가 조사했거든",
 })
 print(f'[1]\n{response}')
 

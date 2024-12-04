@@ -30,7 +30,7 @@ from mafia_chatbot.game.game_state import GameState
 from mafia_chatbot.game.game_info import GameInfo
 from mafia_chatbot.game.player import Player
 from mafia_chatbot.game.player_info import PlayerInfo, Role, strToRole, roleToStrDict
-from mafia_chatbot.game.strategy import Strategy, Assumption, Estimation
+from mafia_chatbot.game.strategy import Strategy, Assumption, Estimation, AssumptionType
 
 class LLM :
     def __init__(self, gameState: GameState) :
@@ -84,20 +84,37 @@ class LLM :
             if isinstance(message, ToolMessage) :
                 data = json.loads(message.content)
 
-                publicRole: Role = player.publicRole
+                publicRole: Role = Role.CITIZEN
+                assumptionType: AssumptionType = AssumptionType.NORMAL
+
+                police: Player = self.gameState.getPlayerByName(data['police'])
+                doctor: Player = self.gameState.getPlayerByName(data['doctor'])
+
+                if police != None and police == player :
+                    publicRole = Role.POLICE
+                    assumptionType = AssumptionType.TEST_RESULT
+                elif doctor != None and doctor == player :
+                    publicRole = Role.DOCTOR
+                    assumptionType = AssumptionType.HEAL_SUCCESS
 
                 estimations: list[Estimation] = []
                 for estimation in data['estimations'] :
                     playerInfo: PlayerInfo = self.gameState.getPlayerInfoByName(estimation['name'])
                     role: Role = strToRole(estimation['role'])
-                    if playerInfo != None and role != None :
-                        if playerInfo == player.info :
+                    if playerInfo != None :
+                        if playerInfo == player.info and publicRole == Role.CITIZEN :
                             publicRole = role
+                            if role == Role.POLICE :
+                                assumptionType = AssumptionType.TEST_RESULT
+                            elif role == Role.DOCTOR :
+                                assumptionType = AssumptionType.HEAL_SUCCESS
                         else :
                             estimations.append(Estimation(playerInfo, role))
 
-                assumptions: list[Assumption] = [Assumption(estimations, '')]
+                assumptions: list[Assumption] = [Assumption(estimations, '', assumptionType=assumptionType)]
 
+                if publicRole == Role.CITIZEN :
+                    publicRole = player.publicRole
                 strategy: Strategy = Strategy(publicRole, assumptions)
                 return strategy
 
@@ -148,6 +165,8 @@ class LLM :
 
         class EstimationInputList(BaseModel):
             estimations: List[EstimationInput] = Field(description="A list of estimations.")
+            police: str = Field(description="The name of the individual who performed an action related to investigation or verification as a police role. If no such role is identified in the context, set to '&none'.")
+            doctor: str = Field(description="The name of the individual who performed an action related to healing or saving as a doctor role. If no such role is identified in the context, set to '&none'.")
 
         class EstimationTool(BaseTool):
             name: str = "EstimationTool"
@@ -155,8 +174,12 @@ class LLM :
             args_schema: Type[BaseModel] = EstimationInputList
             return_direct: bool = True
 
-            def _run(self, estimations: List[EstimationInput], run_manager: Optional[CallbackManagerForToolRun] = None) -> dict:
-                data = {'estimations': []}
+            def _run(self, estimations: List[EstimationInput], police: str, doctor: str, run_manager: Optional[CallbackManagerForToolRun] = None) -> dict:
+                data = {
+                    'estimations': [],
+                    'police': police,
+                    'doctor': doctor,
+                }
                 for estimation in estimations :
                     data['estimations'].append({
                         'name': estimation.name,

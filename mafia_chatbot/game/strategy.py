@@ -32,7 +32,7 @@ class Assumption :
 
     def __str__(self) :
         estimations = ','.join(map(lambda estimation: str(estimation), self.estimations))
-        return f'{estimations} ({self.reason})'
+        return f'{estimations}[{self.assumptionType.name}] ({self.reason})'
 
     def __repr__(self) :
         return self.__str__()
