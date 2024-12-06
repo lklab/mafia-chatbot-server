@@ -28,6 +28,8 @@ if 'LANGCHAIN_API_KEY' in keys :
 # setup model
 model = ChatOpenAI(
     model="gpt-3.5-turbo",
+    # model="gpt-4-turbo",
+    # temperature=0.1,
 )
 
 # setup tools
@@ -80,7 +82,7 @@ class EstimationTool(BaseTool):
             })
         return data
 
-def fallback() -> str:
+def fallback() -> str :
     print('fallback')
     return 'fallback'
 
@@ -95,7 +97,7 @@ tools = [EstimationTool(), fallbackTool]
 
 # setup system message
 systemMessageText = (
-    "The following message is a statement made by a human participant during the discussion phase of a mafia game. Your task is to analyze this message and invoke the appropriate tools."
+    "he following message is a conversation log from a Mafia game, and the final message is a statement made by a human participant. Your task is to analyze the final message and invoke the appropriate tools."
 )
 systemMessage = SystemMessage(systemMessageText)
 
@@ -112,23 +114,66 @@ agent_executor = create_react_agent(
 # print(response)
 
 
-template = (
-    "If ##sentence## does not contain any first-person pronouns, return it as is without making any changes. If ##sentence## contains any first-person pronouns, replace them with the third-person proper noun \"{name}\" and provide the modified sentence. Do not modify any other parts of the sentence, including other names or the overall sentence structure."
-    # "If ##sentence## contains any first-person pronouns?"
-    "\n\n"
-    "##sentence##"
-    "\n"
-    "{sentence}"
-)
-prompt = PromptTemplate.from_template(template)
-parser = StrOutputParser()
-chain = prompt | model | parser
+# template = (
+#     "If ##sentence## does not contain any first-person pronouns, return it as is without making any changes. If ##sentence## contains any first-person pronouns, replace them with the third-person proper noun \"{name}\" and provide the modified sentence. Do not modify any other parts of the sentence, including other names or the overall sentence structure."
+#     "\n\n"
+#     "##sentence##"
+#     "\n"
+#     "{sentence}"
+# )
+# prompt = PromptTemplate.from_template(template)
+# parser = StrOutputParser()
+# chain = prompt | model | parser
 
-response = chain.invoke({
-    'name' : "경현",
-    'sentence' : "경현: 나는 시우가 마피아라고 확신해. 왜냐면 내가 조사했거든",
-})
-print(f'[1]\n{response}')
+# response = chain.invoke({
+#     'name' : "민지",
+#     # 'sentence' : "민지: 나는 시우가 마피아라고 확신해. 왜냐면 내가 조사했거든",
+#     # 'sentence' : "민지: 나도 시우와 같은 생각이야",
+#     'sentence' : "민지: 나는 마피아가 아니야",
+# })
+# print(f'[1]\n{response}')
 
-response = agent_executor.invoke({'messages': [HumanMessage(response)]})
-print(f'[2]\n{response}')
+# template = (
+#     "##sentence## is a statement made by a human player during the discussion phase of a Mafia game. Your task is to determine whether the sentence clearly indicates who the human player suspects of having a specific role based solely on its content. If the sentence explicitly identifies a person and their suspected role, respond with true; otherwise, respond with false."
+#     "\n\n"
+#     "##sentence##"
+#     "\n"
+#     "{sentence}"
+# )
+# prompt = PromptTemplate.from_template(template)
+# parser = StrOutputParser()
+# chain = prompt | model | parser
+
+# response = chain.invoke({
+#     # 'name' : "민지",
+#     'sentence' : "민지: 내가 경찰이야",
+# })
+# print(f'[2]\n{response}')
+
+# template = (
+#     "Given a ##conversation history## and the latest statement ##sentence##, which is a remark made during the discussion phase of a Mafia game and might reference context from the ##conversation history##, rewrite ##sentence## into a standalone statement that clearly indicates who the speaker thinks has which role. If ##sentence## agrees or disagrees with a previous statement in the ##conversation history##, rewrite it to logically reflect what the speaker believes about the roles based on that agreement or disagreement. The rewritten statement should be specific and complete, without requiring any reference to other parts of the conversation. Do NOT interpret or analyze the statement; simply rewrite it if necessary, or return it as is if already standalone."
+#     "\n\n"
+#     "##conversation history##"
+#     "\n"
+#     "{history}"
+#     "\n\n"
+#     "##sentence##"
+#     "\n"
+#     "{sentence}"
+# )
+# prompt = PromptTemplate.from_template(template)
+# parser = StrOutputParser()
+# chain = prompt | model | parser
+
+# response = chain.invoke({
+#     'history' : "은비: 나는 시우가 마피인 것 같아.\n시우: 나는 은비가 마피아라고 생각해",
+#     'sentence' : "민지: 나는 은비의 의견에 동의하지 않아",
+# })
+# print(f'[2]\n{response}')
+
+response = agent_executor.invoke({'messages': [
+    HumanMessage('은비: 나는 시우가 마피인 것 같아.'),
+    HumanMessage('시우: 나는 은비가 마피아라고 생각해'),
+    HumanMessage('민지: 나는 은비의 의견에 동의하지 않아'),
+]})
+print(f'[3]\n{response}')

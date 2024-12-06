@@ -187,7 +187,7 @@ class LLM :
                     })
                 return data
 
-        def fallback() -> str:
+        def fallback() -> str :
             print('fallback')
             return 'fallback'
 
