@@ -10,11 +10,11 @@ if __name__ == "__main__" :
 
 import json
 import os
-from typing import Optional, Type, List, Any
+from typing import Optional, Type, List
 from pydantic import BaseModel, Field
 
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate, ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableSerializable
 from langchain_core.callbacks import (
     CallbackManagerForToolRun,
@@ -45,16 +45,13 @@ class LLM :
             os.environ["LANGCHAIN_TRACING_V2"] = "true"
             os.environ["LANGCHAIN_API_KEY"] = keys['LANGCHAIN_API_KEY']
 
-        # setup model
-        model = ChatOpenAI(
-            model="gpt-3.5-turbo",
-        )
-
-        # setup discussion chain
-        discussionPromptTemplate = self._setupDiscussionPromptTemplate(gameState.gameInfo)
-        self.discussionChain = discussionPromptTemplate | model
-
-        self._setupHumanMessageAgent(model)
+        # setup chains and agents
+        self._setupDiscussionChain(gameState.gameInfo)
+        self._setupRemoveFirstPersonChain()
+        self._setupHumanMessageAgent()
+        self._setupCheckContainsEstimationChain()
+        self._setupCheckQuestionChain()
+        self._setupGenerateResponseChain()
 
     async def getDiscussion(self, player: Player, strategy: Strategy) -> str :
         input: dict[str, str] = {
@@ -69,9 +66,19 @@ class LLM :
         response = await self._ainvokeChain(self.discussionChain, input)
         return response.content
 
+    async def checkContainsEstimation(self, message: str) -> bool :
+        response: str = await self._ainvokeChain(
+            chain=self.checkContainsEstimationChain,
+            input={
+                'sentence' : message,
+            }
+        )
+
+        return response.lower() == "true"
+
     async def analyzeHumanMessage(self, player: Player, message: str) -> Strategy :
         message = await self._ainvokeChain(
-            chain=self.humanMessagePreprocessor,
+            chain=self.removeFirstPersonChain,
             input={
                 'name' : player.info.name,
                 'sentence' : message,
@@ -120,8 +127,61 @@ class LLM :
 
         return None
 
-    def _setupDiscussionPromptTemplate(self, gameInfo: GameInfo) -> PromptTemplate :
-        templateText = (
+    async def isMessageQuestion(self, message: str) -> bool :
+        response: str = await self._ainvokeChain(
+            chain=self.checkQuestionChain,
+            input={
+                'message' : message,
+            }
+        )
+
+        return response.lower() == "true"
+
+    async def generateResponse(self, conversation: list[str]) -> tuple[Player, str] :
+        # setup input
+        nameList: str = ', '.join(map(lambda p: p.info.name, self.gameState.players))
+
+        messages = []
+        for message in conversation :
+            messages.append(HumanMessage(content=message))
+
+        # call chain
+        jsonData: str = await self._ainvokeChain(
+            chain=self.generateResponseChain,
+            input={
+                'nameList' : nameList,
+                'messages' : messages,
+            }
+        )
+
+        # parse response
+        try :
+            data = json.loads(jsonData)
+            name: str = data['name']
+            message: str = data['message']
+        except json.JSONDecodeError as e :
+            print(f"[LLM] generateResponse JSONDecodeError: {e}")
+            return None
+        except Exception as e :
+            print(f"[LLM] generateResponse Exception: {e}")
+            return None
+
+        # get speaker player
+        player: Player = self.gameState.getPlayerByName(name)
+        if player == None or player.info.isHuman :
+            return None
+
+        return (player, message)
+
+    def _setupDiscussionChain(self, gameInfo: GameInfo) :
+        # setup model
+        model = ChatOpenAI(
+            model="gpt-3.5-turbo",
+            temperature=0.7,
+        )
+
+        # setup prompt
+        template = (
             "You are a player participating in a Mafia game. Your name is {my_name}, and your role is {my_role}. {claim_public_role}It is currently the discussion phase, and it is your turn to speak. You must claim that {estimations}. Use the provided ##Conversation Logs## and ##Evidence## as references, or base your claim on your logical reasoning. Keep your statement concise, limited to two sentences, and written in a {tone} tone, written in %(language)s and resembling natural dialogue. Your response should differ from previous statements and introduce variety in phrasing."
             "\n\n"
             "##Conversation Logs##"
@@ -132,22 +192,41 @@ class LLM :
             "\n"
             "{evidence}"
         )
-        templateText = templateText % {'language' : gameInfo.language}
-        promptTemplate = PromptTemplate.from_template(templateText)
-        return promptTemplate
+        template = template % {'language' : gameInfo.language}
+        prompt = PromptTemplate.from_template(template)
 
-    def _setupHumanMessageAgent(self, model) :
-        # setup preprocessor
-        preprocessorTemplate = (
+        # setup chain
+        self.discussionChain = prompt | model
+
+    def _setupRemoveFirstPersonChain(self) :
+        # setup model
+        model = ChatOpenAI(
+            model="gpt-3.5-turbo",
+            temperature=0.1,
+        )
+
+        # setup prompt
+        template = (
             "If ##sentence## does not contain any first-person pronouns, return it as is without making any changes. If ##sentence## contains any first-person pronouns, replace them with the third-person proper noun \"{name}\" and provide the modified sentence. Do not modify any other parts of the sentence, including other names or the overall sentence structure."
             "\n\n"
             "##sentence##"
             "\n"
             "{name}: {sentence}"
         )
-        preprocessorPrompt = PromptTemplate.from_template(preprocessorTemplate)
-        preprocessorParser = StrOutputParser()
-        self.humanMessagePreprocessor = preprocessorPrompt | model | preprocessorParser
+        prompt = PromptTemplate.from_template(template)
+
+        # setup parser
+        parser = StrOutputParser()
+
+        # setup chain
+        self.removeFirstPersonChain = prompt | model | parser
+
+    def _setupHumanMessageAgent(self) :
+        # setup model
+        model = ChatOpenAI(
+            model="gpt-3.5-turbo",
+            temperature=0.1,
+        )
 
         # setup tools
         nameList = ', '.join(self.gameState.nameList)
@@ -210,6 +289,80 @@ class LLM :
         self.humanMessageAgent = create_react_agent(
             model, tools, state_modifier=systemMessage
         )
+
+    def _setupCheckContainsEstimationChain(self) :
+        # setup model
+        model = ChatOpenAI(
+            model="gpt-3.5-turbo",
+            temperature=0.1,
+        )
+
+        # setup prompt
+        template = (
+            "##sentence## is a statement made by a human player during the discussion phase of a Mafia game. Your task is to determine whether the sentence clearly indicates who the human player suspects of having a specific role based solely on its content. The roles can include Citizen, Mafia, Police, or Doctor. If the sentence explicitly identifies a person and their suspected role, or explicitly claims that a person does NOT have a specific role, respond with \"true\"; otherwise, respond with \"false\""
+            "\n\n"
+            "##sentence##"
+            "\n"
+            "{sentence}"
+        )
+        prompt = PromptTemplate.from_template(template)
+
+        # setup parser
+        parser = StrOutputParser()
+
+        # setup chain
+        self.checkContainsEstimationChain = prompt | model | parser
+
+    def _setupCheckQuestionChain(self) :
+        # setup model
+        model = ChatOpenAI(
+            model="gpt-3.5-turbo",
+            temperature=0.1,
+        )
+
+        # setup prompt
+        template = (
+            "Respond with \"true\" if ##message## is a question; otherwise, respond with \"false\"."
+            "\n\n"
+            "##message##"
+            "\n"
+            "{message}"
+        )
+        prompt = PromptTemplate.from_template(template)
+
+        # setup parser
+        parser = StrOutputParser()
+
+        # setup chain
+        self.checkQuestionChain = prompt | model | parser
+
+    def _setupGenerateResponseChain(self) :
+        # setup model
+        model = ChatOpenAI(
+            model="gpt-3.5-turbo",
+            temperature=0.9,
+        )
+
+        # setup prompt
+        systemMessageTemplate = (
+            "Below is a conversation snippet from a Mafia game. Generate the name of the participant who will respond to the last message and their response message in JSON format. The name must be one from the {nameList}. You can freely and creatively write the content of the response message, but it must be something plausible within the context of a Mafia game and must not contradict the participant's previous claims. For the JSON format, provide only the JSON itself as the output, without enclosing it in code blocks or additional text."
+            "\n\n"
+            "##JSON format##"
+            "\n"
+            '\"{{"name":"", "message":""}}\"'
+        )
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                ('system', systemMessageTemplate),
+                MessagesPlaceholder(variable_name="messages"),
+            ]
+        )
+
+        # setup parser
+        parser = StrOutputParser()
+
+        # setup chain
+        self.generateResponseChain = prompt | model | parser
 
     async def _ainvokeChain(self, chain: RunnableSerializable[dict, BaseMessage], input: dict[str, str]) -> BaseMessage :
         try :
