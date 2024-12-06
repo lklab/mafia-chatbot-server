@@ -133,22 +133,22 @@ agent_executor = create_react_agent(
 # })
 # print(f'[1]\n{response}')
 
-template = (
-    "##sentence## is a statement made by a human player during the discussion phase of a Mafia game. Your task is to determine whether the sentence clearly indicates who the human player suspects of having a specific role based solely on its content. The roles can include Citizen, Mafia, Police, or Doctor. If the sentence explicitly identifies a person and their suspected role, or explicitly claims that a person does NOT have a specific role, respond with \"true\"; otherwise, respond with \"false\""
-    "\n\n"
-    "##sentence##"
-    "\n"
-    "{sentence}"
-)
-prompt = PromptTemplate.from_template(template)
-parser = StrOutputParser()
-chain = prompt | model | parser
+# template = (
+#     "##sentence## is a statement made by a human player during the discussion phase of a Mafia game. Your task is to determine whether the sentence clearly indicates who the human player suspects of having a specific role based solely on its content. The roles can include Citizen, Mafia, Police, or Doctor. If the sentence explicitly identifies a person and their suspected role, or explicitly claims that a person does NOT have a specific role, respond with \"true\"; otherwise, respond with \"false\""
+#     "\n\n"
+#     "##sentence##"
+#     "\n"
+#     "{sentence}"
+# )
+# prompt = PromptTemplate.from_template(template)
+# parser = StrOutputParser()
+# chain = prompt | model | parser
 
-response = chain.invoke({
-    # 'name' : "민지",
-    'sentence' : "민지: 나는 시우의 의견에 동의해",
-})
-print(f'[2]\n{response.lower()}')
+# response = chain.invoke({
+#     # 'name' : "민지",
+#     'sentence' : "민지: 나는 시우의 의견에 동의해",
+# })
+# print(f'[2]\n{response.lower()}')
 
 # template = (
 #     "Given a ##conversation history## and the latest statement ##sentence##, which is a remark made during the discussion phase of a Mafia game and might reference context from the ##conversation history##, rewrite ##sentence## into a standalone statement that clearly indicates who the speaker thinks has which role. If ##sentence## agrees or disagrees with a previous statement in the ##conversation history##, rewrite it to logically reflect what the speaker believes about the roles based on that agreement or disagreement. The rewritten statement should be specific and complete, without requiring any reference to other parts of the conversation. Do NOT interpret or analyze the statement; simply rewrite it if necessary, or return it as is if already standalone."
@@ -184,37 +184,37 @@ print(f'[2]\n{response.lower()}')
 
 
 
-# nameList = ', '.join([
-#     '지민', '수현', '서준', '민서', '도윤', '하늘', '지우',
-#     '연우', '소윤', '유진', '성민', '은비', '재현', '예린',
-#     '태윤', '민지', '시우', '세영', '아린', '진우',
-# ])
+nameList = ', '.join([
+    '지민', '수현', '서준', '민서', '도윤', '하늘', '지우',
+    '연우', '소윤', '유진', '성민', '은비', '재현', '예린',
+    '태윤', '민지', '시우', '세영', '아린', '진우',
+])
 
-# systemMessageTemplate = (
-#     "Below is a conversation snippet from a Mafia game. Generate the name of the participant who will respond to the last message and their response message in JSON format. The name must be one from the {nameList}. You can freely and creatively write the content of the response message, but it must be something plausible within the context of a Mafia game and must not contradict the participant's previous claims. For the JSON format, provide only the JSON itself as the output, without enclosing it in code blocks or additional text."
-#     "\n\n"
-#     "##JSON format##"
-#     "\n"
-#     '\"{{"name":"", "message":""}}\"'
-# )
-# prompt = ChatPromptTemplate.from_messages(
-#     [
-#         ('system', systemMessageTemplate),
-#         MessagesPlaceholder(variable_name="messages"),
-#     ]
-# )
-# parser = StrOutputParser()
-# chain = prompt | model | parser
+systemMessageTemplate = (
+    "Below is a conversation snippet from a Mafia game. Generate the name of the participant who will respond to the last message and their response message in JSON format. The name must be one from the {nameList}. You can freely and creatively write the content of the response message, but it must be something plausible within the context of a Mafia game and must not contradict the participant's previous claims. For the JSON format, provide only the JSON itself as the output, without enclosing it in code blocks or additional text."
+    "\n\n"
+    "##JSON format##"
+    "\n"
+    '\"{{"name":"", "message":""}}\"'
+)
+prompt = ChatPromptTemplate.from_messages(
+    [
+        ('system', systemMessageTemplate),
+        MessagesPlaceholder(variable_name="messages"),
+    ]
+)
+parser = StrOutputParser()
+chain = prompt | model | parser
 
-# response = chain.invoke({
-#     'nameList' : nameList,
-#     'messages' : [
-#         HumanMessage(content="은비: 나는 시우가 마피인 것 같아"),
-#         HumanMessage(content="시우: 나는 은비가 마피아라고 생각해"),
-#         HumanMessage(content="민지: 오늘은 날씨가 좋네"),
-#     ],
-# })
-# print(f'{response}')
+response = chain.invoke({
+    'nameList' : nameList,
+    'messages' : [
+        HumanMessage(content="은비: 나는 시우가 마피인 것 같아"),
+        HumanMessage(content="시우: 나는 은비가 마피아라고 생각해"),
+        HumanMessage(content="민지: 오늘은 날씨가 좋네"),
+    ],
+})
+print(f'{response}')
 
 
 

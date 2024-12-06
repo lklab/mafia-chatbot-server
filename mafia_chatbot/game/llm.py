@@ -137,9 +137,9 @@ class LLM :
 
         return response.lower() == "true"
 
-    async def generateResponse(self, conversation: list[str]) -> tuple[Player, str] :
+    async def generateResponse(self, speaker: Player, conversation: list[str]) -> tuple[Player, str] :
         # setup input
-        nameList: str = ', '.join(map(lambda p: p.info.name, self.gameState.players))
+        nameList: str = ', '.join(map(lambda p: p.info.name, filter(lambda p: p != speaker, self.gameState.players)))
 
         messages = []
         for message in conversation :
@@ -161,17 +161,17 @@ class LLM :
             message: str = data['message']
         except json.JSONDecodeError as e :
             print(f"[LLM] generateResponse JSONDecodeError: {e}")
-            return None
+            return (None, None)
         except Exception as e :
             print(f"[LLM] generateResponse Exception: {e}")
-            return None
+            return (None, None)
 
-        # get speaker player
-        player: Player = self.gameState.getPlayerByName(name)
-        if player == None or player.info.isHuman :
-            return None
+        # get respondent player
+        respondent: Player = self.gameState.getPlayerByName(name)
+        if respondent == None or respondent.info.isHuman :
+            return (None, None)
 
-        return (player, message)
+        return (respondent, message)
 
     def _setupDiscussionChain(self, gameInfo: GameInfo) :
         # setup model

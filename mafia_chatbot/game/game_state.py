@@ -267,6 +267,7 @@ class GameState :
         ### history
         self.chatList: list[ChatData] = []
         self.conversationLogs: list[str] = []
+        self.chatLogs: list[str] = []
         self.voteHistory: list[VoteData] = []
         self.nightTargetHistory: list[NightTargetData] = []
         self.removedPlayers: dict[Player, PlayerRemoveInfo] = {}
@@ -399,6 +400,7 @@ class GameState :
         )
         self.chatList.append(chat)
         self.conversationLogs.append(f'{sender.name}: {content}')
+        self.chatLogs.append(f'{sender.name}: {content}')
         self.sendAddChatMessageToAllClient(chat)
 
     def appendSystemChat(self, content: str, receiver: PlayerInfo = None) :
@@ -422,6 +424,7 @@ class GameState :
         )
         self.chatList.append(chat)
         self.conversationLogs.append(f'{sender.name}: {chat.content}')
+        self.chatLogs.append(f'{sender.name}: {chat.content}')
 
         if self.onHumanChat != None :
             self.onHumanChat(chat)
