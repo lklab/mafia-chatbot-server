@@ -94,7 +94,9 @@ class TrustRecorder :
             if playerInfo not in self.mafiaPointingData :
                 self.mafiaPointingData[playerInfo] = {}
 
-            basePoint: float = 100.0 / (len(self.everPointerPlayerInfos) * (self.gameState.getMafiaCount() - 1))
+            # 해당 마피아가 탈락했을 때 지목된 사람의 신뢰도를 올리는 용도이므로 현재 마피아가 1명이면 의미 없음
+            mafiaCount: int = max(self.gameState.getMafiaCount(), 2)
+            basePoint: float = 100.0 / (len(self.everPointerPlayerInfos) * (mafiaCount - 1))
 
             for estimation in strategy.mafiaEstimations :
                 targetInfo: PlayerInfo = estimation.playerInfo
