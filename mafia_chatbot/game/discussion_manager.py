@@ -61,6 +61,8 @@ class DiscussionManager :
         self.gameState.setOnHumanChatListener(self._onHumanChat)
 
     def start(self) :
+        self.logger.log(TAG.DISCUSSION, 'start discussion')
+
         # initialize variables
         self._isRunning = True
         self._allDiscussionCount: int = 0
@@ -92,10 +94,14 @@ class DiscussionManager :
         self._generateNormalDiscussion()
 
     async def stop(self) :
+        self.logger.log(TAG.DISCUSSION, 'stop discussion')
+
         self._stopTask()
         self._isRunning = False
 
         await utils.waitUntil(self._isNotProcessingHumanDiscussion)
+
+        self.logger.log(TAG.DISCUSSION, 'stop discussion completed')
 
     def _generateDiscussion(self, lastDiscussionData: DiscussionData) :
         if not self._isRunning :
@@ -185,21 +191,28 @@ class DiscussionManager :
     async def _generateAndPublishDiscussion(self, dPlayer: DiscussionPlayer, strategy: Strategy, discussionTime: datetime) :
         # generate discussion
         if self.gameState.gameInfo.useLLM :
+            self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}: isRunning={self._isRunning} call getDiscussion') # TODO delete
             discussion: str = await self.llm.getDiscussion(dPlayer.player, strategy)
+            self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}: isRunning={self._isRunning} getDiscussion result = {discussion}') # TODO delete
             if not self._isRunning :
                 return
             discussion = discussion.removeprefix(f'{dPlayer.player.info.name}: ')
+            self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}: removeprefix = {discussion}') # TODO delete
         else :
             discussion: str = str(strategy)
 
         # apply strategy and discussion
+        self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}: call setDiscussionStrategy') # TODO delete
         dPlayer.player.setDiscussionStrategy(self.gameState.round, strategy)
 
         # record trust info
+        self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}: call discussionStrategyUpdated') # TODO delete
         self.trustRecorder.discussionStrategyUpdated(dPlayer.player.info, strategy)
 
         # publish discussion
+        self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}: call _publishDiscussion') # TODO delete
         self._publishDiscussion(dPlayer, discussion, discussionTime)
+        self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}: _generateAndPublishDiscussion finished') # TODO delete
 
     def _publishDiscussion(self, dPlayer: DiscussionPlayer, discussion: str, discussionTime: datetime) :
         # set last discussion time
