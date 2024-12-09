@@ -2,6 +2,7 @@ import subprocess
 
 srcFiles: list[str] = [
     'mafia_chatbot/game/game_manager.py',
+    'mafia_chatbot/game/game_state.py',
 ]
 destFile: str = 'mafia_chatbot/locales/messages.pot'
 

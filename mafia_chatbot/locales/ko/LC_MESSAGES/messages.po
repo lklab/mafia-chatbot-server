@@ -20,3 +20,58 @@ msgstr ""
 #: .\mafia_chatbot\game\game_manager.py:87
 msgid "It is now morning. Please begin your discussion."
 msgstr "아침이 되었습니다. 토론을 시작하세요."
+
+#: mafia_chatbot/game/game_manager.py:131
+msgid "Voting results"
+msgstr "투표 결과"
+
+#: mafia_chatbot/game/game_manager.py:134
+msgid "No one was executed due to a tie."
+msgstr "동률로 인해 아무도 처형하지 않았습니다."
+
+#: mafia_chatbot/game/game_manager.py:138
+#, python-brace-format
+msgid "{name} was executed. Their role was {role}."
+msgstr "{name}이 처형됐습니다. 그의 직업은 {role}(이)었습니다."
+
+#: mafia_chatbot/game/game_manager.py:208
+msgid "The Mafia did not assassinate anyone."
+msgstr "마피아는 아무도 암살하지 않았습니다."
+
+#: mafia_chatbot/game/game_manager.py:213
+msgid "The Mafia attempted to assassinate someone but failed."
+msgstr "마피아는 누군가를 암살하려 했으나, 실패했습니다."
+
+#: mafia_chatbot/game/game_manager.py:219
+#, python-brace-format
+msgid "{name} was assassinated by the Mafia. Their role was {role}."
+msgstr "{name}이 마피아에 의해 암살됐습니다. 그의 직업은 {role}(이)었습니다."
+
+#: mafia_chatbot/game/game_manager.py:227
+msgid "This message visible only to you"
+msgstr "이 메시지는 당신에게만 보임"
+
+#: mafia_chatbot/game/game_manager.py:227
+#, python-brace-format
+msgid "{name}'s role is {role}."
+msgstr "{name}의 역할은 {role}입니다."
+
+#: mafia_chatbot/game/game_state.py:168
+msgid "Citizen"
+msgstr "시민"
+
+#: mafia_chatbot/game/game_state.py:169
+msgid "Mafia"
+msgstr "마피아"
+
+#: mafia_chatbot/game/game_state.py:170
+msgid "Police"
+msgstr "경찰"
+
+#: mafia_chatbot/game/game_state.py:171
+msgid "Doctor"
+msgstr "의사"
+
+#: mafia_chatbot/game/game_state.py:455
+msgid "System"
+msgstr "시스템"

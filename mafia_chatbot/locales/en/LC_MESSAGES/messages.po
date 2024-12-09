@@ -20,3 +20,58 @@ msgstr ""
 #: .\mafia_chatbot\game\game_manager.py:87
 msgid "It is now morning. Please begin your discussion."
 msgstr "It is now morning. Please begin your discussion."
+
+#: mafia_chatbot/game/game_manager.py:131
+msgid "Voting results"
+msgstr "Voting results"
+
+#: mafia_chatbot/game/game_manager.py:134
+msgid "No one was executed due to a tie."
+msgstr "No one was executed due to a tie."
+
+#: mafia_chatbot/game/game_manager.py:138
+#, python-brace-format
+msgid "{name} was executed. Their role was {role}."
+msgstr "{name} was executed. Their role was {role}."
+
+#: mafia_chatbot/game/game_manager.py:208
+msgid "The Mafia did not assassinate anyone."
+msgstr "The Mafia did not assassinate anyone."
+
+#: mafia_chatbot/game/game_manager.py:213
+msgid "The Mafia attempted to assassinate someone but failed."
+msgstr "The Mafia attempted to assassinate someone but failed."
+
+#: mafia_chatbot/game/game_manager.py:219
+#, python-brace-format
+msgid "{name} was assassinated by the Mafia. Their role was {role}."
+msgstr "{name} was assassinated by the Mafia. Their role was {role}."
+
+#: mafia_chatbot/game/game_manager.py:227
+msgid "This message visible only to you"
+msgstr "This message visible only to you"
+
+#: mafia_chatbot/game/game_manager.py:227
+#, python-brace-format
+msgid "{name}'s role is {role}."
+msgstr "{name}'s role is {role}."
+
+#: mafia_chatbot/game/game_state.py:168
+msgid "Citizen"
+msgstr "Citizen"
+
+#: mafia_chatbot/game/game_state.py:169
+msgid "Mafia"
+msgstr "Mafia"
+
+#: mafia_chatbot/game/game_state.py:170
+msgid "Police"
+msgstr "Police"
+
+#: mafia_chatbot/game/game_state.py:171
+msgid "Doctor"
+msgstr "Doctor"
+
+#: mafia_chatbot/game/game_state.py:455
+msgid "System"
+msgstr "System"

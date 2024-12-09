@@ -128,12 +128,14 @@ class GameManager :
 
         # evaluate vote data
         voteData.evaluate()
-        # TODO: notice vote data by system chat
+        self._addSystemChat(f'[{self._('Voting results')}]\n{'\n'.join(voteData.getVoteResultStr())}')
 
         if voteData.isTie :
-            self._addSystemChat('No one was executed due to a tie.')
+            self._addSystemChat(self._('No one was executed due to a tie.'))
         else :
-            self._addSystemChat(f'{voteData.targetPlayer.name} is executed. Their role was {voteData.targetPlayer.role.name}.')
+            _name = voteData.targetPlayer.name
+            _role = self.gameState.translateRole[voteData.targetPlayer.role]
+            self._addSystemChat(self._('{name} was executed. Their role was {role}.').format(name=_name, role=_role))
             self.gameState.removePlayerByInfo(voteData.targetPlayer, RemoveReason.VOTE)
             self.trustRecorder.playerRemoved(voteData.targetPlayer, RemoveReason.VOTE)
 
@@ -203,22 +205,26 @@ class GameManager :
         ### execute kill
         doctor.addHealSuccess(None)
         if nightTargetData.killTarget == None :
-            self._addSystemChat('The mafia did not assassinate anyone.')
+            self._addSystemChat(self._('The Mafia did not assassinate anyone.'))
         else :
             if nightTargetData.killTarget == nightTargetData.healTarget :
                 doctor.addHealSuccess(nightTargetData.healTarget)
                 self.trustRecorder.healSucceeded(nightTargetData.healTarget.info)
-                self._addSystemChat(f'The Mafia attempted to assassinate {nightTargetData.killTarget.info.name}, but failed due to the doctor\'s healing.')
+                self._addSystemChat(self._('The Mafia attempted to assassinate someone but failed.'))
             else :
                 self.gameState.removePlayerByInfo(nightTargetData.killTarget.info, RemoveReason.KILL)
                 self.trustRecorder.playerRemoved(nightTargetData.killTarget.info, RemoveReason.KILL)
-                self._addSystemChat(f'{nightTargetData.killTarget.info.name} was assassinated by the Mafia.')
+                _name = nightTargetData.killTarget.info.name
+                _role = self.gameState.translateRole[nightTargetData.killTarget.info.role]
+                self._addSystemChat(self._('{name} was assassinated by the Mafia. Their role was {role}.').format(name=_name, role=_role))
 
         ### execute test
         if nightTargetData.testTarget != None :
             police.addTestResult(nightTargetData.testTarget, nightTargetData.testTarget.info.role)
+            _name = nightTargetData.testTarget.info.name
+            _role = self.gameState.translateRole[nightTargetData.testTarget.info.role]
             self._addSystemChat(
-                content=f'The police confirmed that {nightTargetData.testTarget.info.name}\'s role is {nightTargetData.testTarget.info.role.name}.',
+                content=f'({self._('This message visible only to you')}) {self._('{name}\'s role is {role}.').format(name=_name, role=_role)}',
                 receiver=police.info,
             )
         else :

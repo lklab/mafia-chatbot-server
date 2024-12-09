@@ -108,6 +108,11 @@ class VoteData :
             if player not in targetVotersSet and player.info != self.targetPlayer :
                 self.notVoteTargetPlayers.append(player)
 
+    def getVoteResultStr(self) -> list[str] :
+        targets: list[PlayerInfo] = list(self.voteDict.keys())
+        targets.sort(key=lambda target: self.voteCount[target], reverse=True)
+        return list(map(lambda t: f'{t.name}({self.voteCount[t]}): {', '.join(map(lambda v: v.info.name, self.voteDict[t]))}', filter(lambda t: self.voteCount[t] > 0, targets)))
+
     def getVoteStateMessage(self) -> game_pb2.VoteState :
         message = game_pb2.VoteState()
         for target, voters in self.voteDict.items() :
@@ -157,6 +162,14 @@ class GameState :
             fallback=True,
         )
         self.translate = self.translation.gettext
+        self._ = self.translate
+
+        self.translateRole: dict[Role, str] = {
+            Role.CITIZEN : self._('Citizen'),
+            Role.MAFIA   : self._('Mafia'),
+            Role.POLICE  : self._('Police'),
+            Role.DOCTOR  : self._('Doctor'),
+        }
 
         ### create players
         self.players: list[Player] = []
@@ -439,7 +452,7 @@ class GameState :
         )
         self.chatList.append(chat)
         if receiver == None :
-            self.conversationLogs.append(f'system: {content}')
+            self.conversationLogs.append(f'{self._('System')}: {content}')
         self.logger.log(TAG.CHAT, f'SYSTEM - {chat.index} - for {"everyone" if receiver == None else receiver.name}: {content}')
         self.sendAddChatMessageToAllClient(chat)
 
