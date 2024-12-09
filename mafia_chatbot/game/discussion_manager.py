@@ -57,7 +57,6 @@ class DiscussionManager :
         self._isRunning: bool = False
         self._normalDiscussionTask: asyncio.Task = None
         self._responseDiscussionTask: asyncio.Task = None
-        self._responseContentQueue: Deque[ResponseContent] = deque()
 
         self.gameState.setOnHumanChatListener(self._onHumanChat)
 
@@ -67,6 +66,7 @@ class DiscussionManager :
         self._allDiscussionCount: int = 0
         self._processingHumanDiscussionCount: int = 0
         self._lastDiscussionTime: datetime = datetime.now()
+        self._responseContentQueue: Deque[ResponseContent] = deque()
 
         # setup dPlayers
         players: list[Player] = list(filter(lambda p: not p.info.isHuman, self.gameState.players))
@@ -135,6 +135,8 @@ class DiscussionManager :
         if content.strategy != None :
             # publish discussion
             await self._generateAndPublishDiscussion(dPlayer, content.strategy, discussionTime)
+            if not self._isRunning :
+                return
         else :
             # publish discussion
             self._publishDiscussion(dPlayer, content.message, discussionTime)
@@ -165,8 +167,6 @@ class DiscussionManager :
         # wait for discussion time
         waitTime: float = (discussionTime - datetime.now()).total_seconds()
         await asyncio.sleep(waitTime)
-
-        # check state
         if not self._isRunning :
             return
 
@@ -176,6 +176,8 @@ class DiscussionManager :
 
         # publish discussion
         await self._generateAndPublishDiscussion(dPlayer, strategy, discussionTime)
+        if not self._isRunning :
+            return
 
         # generate next discussion
         self._generateDiscussion(DiscussionData(dPlayer.player, strategy=strategy))
@@ -184,13 +186,11 @@ class DiscussionManager :
         # generate discussion
         if self.gameState.gameInfo.useLLM :
             discussion: str = await self.llm.getDiscussion(dPlayer.player, strategy)
+            if not self._isRunning :
+                return
             discussion = discussion.removeprefix(f'{dPlayer.player.info.name}: ')
         else :
             discussion: str = str(strategy)
-
-        # check state
-        if not self._isRunning :
-            return
 
         # apply strategy and discussion
         dPlayer.player.setDiscussionStrategy(self.gameState.round, strategy)
@@ -224,15 +224,11 @@ class DiscussionManager :
 
             while True :
                 discussion: str = await utils.getCuiInputAsync('Enter your discussion: ')
-
-                # check state
                 if not self._isRunning :
                     return
 
                 # process discussion
                 await self._processHumanDiscussion(player, discussion)
-
-                # check state
                 if not self._isRunning :
                     return
 
@@ -253,19 +249,25 @@ class DiscussionManager :
             conversation: list[str] = self.gameState.chatLogs.copy()
 
             try :
-                if await self.llm.checkContainsEstimation(discussion) :
+                containsEstimation: bool = await self.llm.checkContainsEstimation(discussion)
+                if not self._isRunning :
+                    return
+
+                if containsEstimation :
                     strategy: Strategy = await self.llm.analyzeHumanMessage(player, discussion)
-                    if strategy == None :
+                    if not self._isRunning or strategy == None :
                         return
                     discussionData = DiscussionData(player, strategy=strategy)
                 else :
                     isQuestion: bool = await self.llm.isMessageQuestion(discussion)
+                    if not self._isRunning :
+                        return
                     if not isQuestion and 0.5 > random.random() :
                         isQuestion = True
 
                     if isQuestion :
                         respondent, response = await self.llm.generateResponse(player, conversation)
-                        if respondent == None :
+                        if not self._isRunning or respondent == None :
                             return
                         discussionData = DiscussionData(player, respondent=respondent, response=response)
 

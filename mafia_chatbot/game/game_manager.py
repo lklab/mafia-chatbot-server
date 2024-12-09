@@ -26,7 +26,7 @@ class GameManager :
 
         self.llm = LLM(self.gameState)
 
-        self.discussionManager: DiscussionManager = DiscussionManager(self.gameState, self.trustRecorder, self.llm)
+        self.discussionManager: DiscussionManager = None
 
         self.gameState.logger.log(TAG.INFO, f'player list: {', '.join(map(lambda p: str(p), self.gameState.players))}')
         for player in self.gameState.players :
@@ -87,6 +87,7 @@ class GameManager :
         self._addSystemChat('It is morning. Please engage in a discussion.')
 
         # start discussion
+        self.discussionManager = DiscussionManager(self.gameState, self.trustRecorder, self.llm)
         self.discussionManager.start()
 
         # await until time limit
