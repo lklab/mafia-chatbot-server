@@ -24,8 +24,6 @@ from langchain_core.messages import SystemMessage, BaseMessage, HumanMessage, To
 from langchain_core.output_parsers import StrOutputParser
 from langgraph.prebuilt import create_react_agent
 
-import openai
-
 from mafia_chatbot.game.game_state import GameState
 from mafia_chatbot.game.game_info import GameInfo
 from mafia_chatbot.game.player import Player
@@ -392,21 +390,21 @@ class LLM :
         except KeyError as e:
             self.logger.log(TAG.ERROR, f"[LLM] KeyError: Missing key - {e}")
             raise e
-        except openai.error.AuthenticationError as e:
-            self.logger.log(TAG.ERROR, f"[LLM] AuthenticationError: {e}")
-            raise e
-        except openai.error.RateLimitError as e:
-            self.logger.log(TAG.ERROR, f"[LLM] RateLimitError: {e}")
-            raise e
-        except openai.error.APIError as e:
-            self.logger.log(TAG.ERROR, f"[LLM] APIError: {e}")
-            raise e
-        except openai.error.Timeout as e:
-            self.logger.log(TAG.ERROR, f"[LLM] TimeoutError: {e}")
-            raise e
-        except openai.error.InvalidRequestError as e:
-            self.logger.log(TAG.ERROR, f"[LLM] InvalidRequestError: {e}")
-            raise e
+        # except openai.error.AuthenticationError as e:
+        #     self.logger.log(TAG.ERROR, f"[LLM] AuthenticationError: {e}")
+        #     raise e
+        # except openai.error.RateLimitError as e:
+        #     self.logger.log(TAG.ERROR, f"[LLM] RateLimitError: {e}")
+        #     raise e
+        # except openai.error.APIError as e:
+        #     self.logger.log(TAG.ERROR, f"[LLM] APIError: {e}")
+        #     raise e
+        # except openai.error.Timeout as e:
+        #     self.logger.log(TAG.ERROR, f"[LLM] TimeoutError: {e}")
+        #     raise e
+        # except openai.error.InvalidRequestError as e:
+        #     self.logger.log(TAG.ERROR, f"[LLM] InvalidRequestError: {e}")
+        #     raise e
         # except LangChainError as e:
         #     self.logger.log(TAG.ERROR, f"[LLM] LangChainError: {e}")
         #     raise e
