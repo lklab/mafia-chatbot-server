@@ -2,6 +2,7 @@ import logging
 import datetime
 import os
 from enum import Enum
+import traceback
 
 from mafia_chatbot.game.player import Player
 from mafia_chatbot.game.player_info import PlayerInfo
@@ -35,6 +36,10 @@ class GameLogger :
 
     def log(self, tag: TAG, message: str) :
         self.logger.debug(f'[{tag.name}] {message}')
+
+    def logError(self, message: str, e: Exception) :
+        self.logger.error(f'[EXCEPTION] {message}: {e}')
+        self.logger.error(traceback.format_exc())
 
     def logCandidates(self, tag: TAG, playerInfos: list[PlayerInfo]) :
         self.logger.debug(f'[{tag.name}] candidates: {', '.join(map(lambda info : info.name, playerInfos))}')

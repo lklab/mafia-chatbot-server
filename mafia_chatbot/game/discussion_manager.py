@@ -228,7 +228,7 @@ class DiscussionManager :
                     return
 
                 # process discussion
-                await self._processHumanDiscussion(player, discussion)
+                await self._processHumanDiscussionTask(player, discussion)
                 if not self._isRunning :
                     return
 
@@ -239,62 +239,30 @@ class DiscussionManager :
 
         # process discussion
         player: Player = self.gameState.getPlayerByInfo(chat.sender)
-        asyncio.create_task(self._processHumanDiscussion(player, chat.content))
+        asyncio.create_task(self._processHumanDiscussionTask(player, chat.content))
 
-    async def _processHumanDiscussion(self, player: Player, discussion: str) :
+    async def _processHumanDiscussionTask(self, player: Player, discussion: str) :
         discussionData: DiscussionData = None
 
-        if self.gameState.gameInfo.useLLM :
-            self._processingHumanDiscussionCount += 1
-            conversation: list[str] = self.gameState.chatLogs.copy()
+        # 인간 사용자의 토론은 처리가 완료될 때까지 낮 phase에서 대기해야 함
+        self._processingHumanDiscussionCount += 1
 
-            try :
-                containsEstimation: bool = await self.llm.checkContainsEstimation(discussion)
-                if not self._isRunning :
-                    return
+        try :
+            discussionData = await self._processHumanDiscussion(player, discussion)
+        except Exception as e :
+            self.logger.logError("[DiscussionManager] Exception in _processHumanDiscussionTask()", e)
 
-                if containsEstimation :
-                    strategy: Strategy = await self.llm.analyzeHumanMessage(player, discussion)
-                    if not self._isRunning or strategy == None :
-                        return
-                    discussionData = DiscussionData(player, strategy=strategy)
-                else :
-                    isQuestion: bool = await self.llm.isMessageQuestion(discussion)
-                    if not self._isRunning :
-                        return
-                    if not isQuestion and 0.5 > random.random() :
-                        isQuestion = True
-
-                    if isQuestion :
-                        respondent, response = await self.llm.generateResponse(player, conversation)
-                        if not self._isRunning or respondent == None :
-                            return
-                        discussionData = DiscussionData(player, respondent=respondent, response=response)
-
-            except Exception as e :
-                self.logger.log(TAG.ERROR, f"[DiscussionManager] Exception in _processHumanDiscussion(): {e}")
-                self._processingHumanDiscussionCount -= 1
-                return
-
-            self._processingHumanDiscussionCount -= 1
-
-        else :
-            target: Player = self.gameState.getPlayerByName(discussion)
-            if target == None :
-                return
-            strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, target.info, '')
-            discussionData = DiscussionData(player, strategy=strategy)
-            self.logger.log(TAG.STRATEGY, f'{player.info.name}: strategy is {strategy}')
+        self._processingHumanDiscussionCount -= 1
 
         if discussionData == None :
             return
 
         if discussionData.strategy != None :
             # apply strategy and discussion
-            player.setDiscussionStrategy(self.gameState.round, strategy)
+            player.setDiscussionStrategy(self.gameState.round, discussionData.strategy)
 
             # record trust info
-            self.trustRecorder.discussionStrategyUpdated(player.info, strategy)
+            self.trustRecorder.discussionStrategyUpdated(player.info, discussionData.strategy)
 
         # add chat
         if player.info.isLocalPlayer :
@@ -303,7 +271,47 @@ class DiscussionManager :
         # generate next discussion
         self._generateDiscussion(discussionData)
 
+    async def _processHumanDiscussion(self, player: Player, discussion: str) -> DiscussionData :
+        discussionData: DiscussionData = None
+
+        if self.gameState.gameInfo.useLLM :
+            conversation: list[str] = self.gameState.chatLogs.copy()
+
+            try :
+                containsEstimation: bool = await self.llm.checkContainsEstimation(discussion)
+
+                if containsEstimation :
+                    strategy: Strategy = await self.llm.analyzeHumanMessage(player, discussion)
+                    if strategy == None :
+                        return None
+                    discussionData = DiscussionData(player, strategy=strategy)
+                else :
+                    isQuestion: bool = await self.llm.isMessageQuestion(discussion)
+                    if not isQuestion and 0.5 > random.random() :
+                        isQuestion = True
+
+                    if isQuestion :
+                        respondent, response = await self.llm.generateResponse(player, conversation)
+                        if respondent == None :
+                            return None
+                        discussionData = DiscussionData(player, respondent=respondent, response=response)
+
+            except Exception as e :
+                self.logger.logError("[DiscussionManager] Exception in _processHumanDiscussion()", e)
+                return None
+
+        else :
+            target: Player = self.gameState.getPlayerByName(discussion)
+            if target == None :
+                return None
+            strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, target.info, '')
+            discussionData = DiscussionData(player, strategy=strategy)
+            self.logger.log(TAG.STRATEGY, f'{player.info.name}: strategy is {strategy}')
+
+        return discussionData
+
     def _isNotProcessingHumanDiscussion(self) -> bool :
+        self.logger.log(TAG.DISCUSSION, 'waiting for processing human discussion')
         return self._processingHumanDiscussionCount == 0
 
     # 마피아 플레이어의 경찰 주장
@@ -438,4 +446,4 @@ class DiscussionManager :
         except asyncio.CancelledError :
             pass
         except Exception as e:
-            self.logger.log(TAG.ERROR, f"[DiscussionManager] Unhandled exception in task: {e}")
+            self.logger.logError("[DiscussionManager] Unhandled exception in task", e)
