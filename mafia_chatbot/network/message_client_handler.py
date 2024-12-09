@@ -51,29 +51,22 @@ class MessageClientHandler :
         if self.state == MessageClientState.AUTHENTICATING :
             if msgType == messageTypeDict[auth_pb2.Auth] :
                 message = messageFactoryDict[msgType](data)
-                print(f'onData msgType={msgType}, message=<{message}>')
+                # print(f'[MessageClientState] {self.tcpHandler.addr} onData msgType={msgType}, message=<{message}>')
 
                 if self.onAuth(message) :
                     authResponse = auth_pb2.AuthResponse()
                     authResponse.rqid = message.rqid
                     self._send(authResponse)
                     self.state = MessageClientState.CONNECTED
-
-                    # requestError = error_pb2.RequestError()
-                    # requestError.rqid = message.rqid
-                    # requestError.rqtype = msgType
-                    # requestError.code = 123
-                    # requestError.detail = 'test error!'
-                    # self._send(requestError)
         else :
             if msgType in messageFactoryDict :
                 message = messageFactoryDict[msgType](data)
-                print(f'onData msgType={msgType}, message=<{message}>')
+                # print(f'[MessageClientState] {self.tcpHandler.addr} onData msgType={msgType}, message=<{message}>')
                 self.onMessage(message)
 
     def _onDisconnected(self) :
         self.state = MessageClientState.DISCONNECTED
-        print('onDisconnected')
+        print(f'[MessageClientState] {self.tcpHandler.addr} onDisconnected')
         self.onDisconnected()
 
     async def _sendQueuedMessages(self) :

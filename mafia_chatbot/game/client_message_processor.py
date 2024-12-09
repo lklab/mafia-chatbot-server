@@ -4,6 +4,7 @@ from mafia_chatbot.game.player_info import Role
 from mafia_chatbot.game.client_player import ClientPlayer
 from mafia_chatbot.game.strategy import VoteStrategy
 from mafia_chatbot.game.trust_recorder import TrustRecorder
+from mafia_chatbot.game.game_logger import GameLogger, TAG
 
 from mafia_chatbot.network.messages import *
 from mafia_chatbot.network.messages.message_info import messageTypeDict
@@ -11,6 +12,7 @@ from mafia_chatbot.network.messages.message_info import messageTypeDict
 class ClientMessageProcessor :
     def __init__(self, gameState: GameState, trustRecorder: TrustRecorder, player: Player) :
         self.gameState = gameState
+        self.logger: GameLogger = gameState.logger
         self.trustRecorder = trustRecorder
         self.player = player
         self.client: ClientPlayer = player.client
@@ -42,6 +44,8 @@ class ClientMessageProcessor :
         self.client.sendMessage(response)
 
     def _onRequestAddChatMessage(self, message: game_pb2.RequestAddChat) :
+        self.logger.log(TAG.NETWORK, f'[ClientMessageProcessor] {self.player.info.name}: received RequestAddChat: content={message.chat.content}')
+
         # check am I live
         if not self.player.isLive :
             errorResponse = self._makeErrorResponse(message, 0, 'You are not allowed to do that.')
@@ -128,6 +132,8 @@ class ClientMessageProcessor :
     }
 
     def _onSetTargetMessage(self, message: game_pb2.SetTarget) :
+        self.logger.log(TAG.NETWORK, f'[ClientMessageProcessor] {self.player.info.name}: received SetTarget: type={message.type}, target={message.target}')
+
         # check am I live
         if not self.player.isLive :
             errorResponse = self._makeErrorResponse(message, 0, 'You are not allowed to do that.')
@@ -167,6 +173,7 @@ class ClientMessageProcessor :
             return
 
         # process
+        self.logger.log(TAG.NETWORK, f'[ClientMessageProcessor] {self.player.info.name}: received SetTarget: type={message.type}, target={target.info.name}')
         ClientMessageProcessor._switchSetTargetProcess[message.type](self, target)
 
         # response
@@ -188,7 +195,9 @@ class ClientMessageProcessor :
         self.client.sendMessage(response)
 
     def _makeErrorResponse(self, message, code: int, detail: str) :
-        print(f'@@@ error response: {detail}')
+        self.logger.log(TAG.ERROR, f'[ClientMessageProcessor] {self.player.info.name}: response error message: code={code}, detail={detail}')
+        self.logger.log(TAG.ERROR, f'[ClientMessageProcessor] {self.player.info.name}: received message: {message}')
+
         errorResponse = error_pb2.RequestError()
         errorResponse.rqid = message.rqid
         errorResponse.rqtype = messageTypeDict[type(message)]

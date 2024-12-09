@@ -10,15 +10,12 @@ from mafia_chatbot.game.client_message_processor import ClientMessageProcessor
 from mafia_chatbot.game.game_end_info import GameEndInfo, GameEndReason, gameEndReasonToProtoDict
 from mafia_chatbot.game.trust_recorder import TrustRecorder
 from mafia_chatbot.game.discussion_manager import DiscussionManager
-from mafia_chatbot.game.game_logger import GameLogger
+from mafia_chatbot.game.game_logger import TAG
 
 class GameManager :
     def __init__(self, gameInfo: GameInfo) :
         self.gameState = GameState(gameInfo)
-
-        self.logger = GameLogger(self.gameState.gameId, 'log')
-        evaluator.logger = self.logger
-
+        evaluator.logger = self.gameState.logger
         self.trustRecorder: TrustRecorder = TrustRecorder(self.gameState)
 
         self.clientDict: dict[str, Player] = {}
@@ -29,7 +26,12 @@ class GameManager :
 
         self.llm = LLM(self.gameState)
 
-        self.discussionManager: DiscussionManager = DiscussionManager(self.gameState, self.trustRecorder, self.llm, self.logger)
+        self.discussionManager: DiscussionManager = DiscussionManager(self.gameState, self.trustRecorder, self.llm)
+
+        self.gameState.logger.log(TAG.INFO, f'player list: {', '.join(map(lambda p: str(p), self.gameState.players))}')
+        for player in self.gameState.players :
+            if player.isFakePolice :
+                self.gameState.logger.log(TAG.INFO, f'fake police player: {player.info.name}')
 
     def removeClient(self, client: ClientPlayer) :
         player = self.clientDict.get(client.id)
@@ -53,9 +55,8 @@ class GameManager :
         gameEndInfo: GameEndInfo = None
 
         while True :
-            self.trustRecorder.startNewRound()
-
             self.gameState.setPhase(Phase.DAY)
+            self.trustRecorder.startNewRound()
             await self._processDay()
 
             self.gameState.setPhase(Phase.EVENING)
@@ -73,6 +74,8 @@ class GameManager :
                 break
 
             self.gameState.addRound()
+
+        self.gameState.setPhase(Phase.NOT_PLAYING)
 
         for player in self.gameState.clientPlayers :
             if player.client != None :
@@ -122,7 +125,7 @@ class GameManager :
 
         # evaluate vote data
         voteData.evaluate()
-        self._printCUI(f'Voting status: {voteData.voteCount}')
+        # TODO: notice vote data by system chat
 
         if voteData.isTie :
             self._addSystemChat('No one was executed due to a tie.')
@@ -227,22 +230,24 @@ class GameManager :
             print(text)
 
     def checkGameEnd(self) -> GameEndInfo :
+        self.gameState.logger.log(TAG.INFO, f'survivors list: {', '.join(map(lambda p: str(p), self.gameState.players))}')
+
         mafiaCount = len(self.gameState.mafiaPlayers)
         civilCount = len(self.gameState.players) - mafiaCount
         humanCount = len(list(filter(lambda p : p.info.isHuman, self.gameState.players)))
 
         if mafiaCount == 0 :
-            print('\nIt is a victory for the Citizens.\n')
+            self.gameState.logger.log(TAG.INFO, f'game end: it is a victory for the Citizens.')
             return GameEndInfo(
                 reason=GameEndReason.CITIZEN_WIN,
             )
         elif civilCount <= mafiaCount :
-            print('\nIt is a victory for the Mafia.\n')
+            self.gameState.logger.log(TAG.INFO, f'game end: it is a victory for the Mafia.')
             return GameEndInfo(
                 reason=GameEndReason.MAFIA_WIN,
             )
         elif humanCount == 0 and not self.gameState.continueOnlyBots :
-            print('\nThere are no human players\n')
+            self.gameState.logger.log(TAG.INFO, f'game end: there are no human players.')
             return GameEndInfo(
                 reason=GameEndReason.NO_HUMAN_PLAYER,
             )

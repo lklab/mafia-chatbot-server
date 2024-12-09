@@ -13,7 +13,7 @@ import mafia_chatbot.game.evaluator as evaluator
 from mafia_chatbot.game.strategy import Strategy, Assumption, AssumptionType, Estimation
 from mafia_chatbot.game.llm import LLM
 from mafia_chatbot.game.chat_data import ChatData
-from mafia_chatbot.game.game_logger import GameLogger
+from mafia_chatbot.game.game_logger import GameLogger, TAG
 
 import  mafia_chatbot.utils.utils as utils
 
@@ -41,12 +41,18 @@ class ResponseContent :
         self.strategy = strategy
         self.message = message
 
+    def __str__(self) :
+        return f'{self.player.info.name}: {self.strategy if self.strategy != None else self.message}'
+
+    def __repr__(self) :
+        return self.__str__()
+
 class DiscussionManager :
-    def __init__(self, gameState: GameState, trustRecorder: TrustRecorder, llm: LLM, logger: GameLogger) :
-        self.gameState = gameState
-        self.trustRecorder = trustRecorder
-        self.llm = llm
-        self.logger = logger
+    def __init__(self, gameState: GameState, trustRecorder: TrustRecorder, llm: LLM) :
+        self.gameState: GameState = gameState
+        self.trustRecorder: TrustRecorder = trustRecorder
+        self.llm: LLM = llm
+        self.logger: GameLogger = gameState.logger
 
         self._isRunning: bool = False
         self._normalDiscussionTask: asyncio.Task = None
@@ -100,10 +106,12 @@ class DiscussionManager :
                 for getter in DiscussionManager._responseContentGetters :
                     content: ResponseContent = getter(self, lastDiscussionData)
                     if content != None :
+                        self.logger.log(TAG.DISCUSSION, f'Response content: {content}')
                         self._responseContentQueue.append(content)
                         break
             elif lastDiscussionData.respondent != None :
                 content: ResponseContent = ResponseContent(lastDiscussionData.respondent, message=lastDiscussionData.response)
+                self.logger.log(TAG.DISCUSSION, f'Response content: {content}')
                 self._responseContentQueue.append(content)
 
         if len(self._responseContentQueue) > 0 :
@@ -125,15 +133,9 @@ class DiscussionManager :
         discussionTime: datetime = datetime.now()
 
         if content.strategy != None :
-            # log
-            self.logger.log(f'generate response discussion: name={content.player.info.name}, strategy={content.strategy}')
-
             # publish discussion
             await self._generateAndPublishDiscussion(dPlayer, content.strategy, discussionTime)
         else :
-            # log
-            self.logger.log(f'response discussion: name={content.player.info.name}, content={content.message}')
-
             # publish discussion
             self._publishDiscussion(dPlayer, content.message, discussionTime)
 
@@ -167,9 +169,6 @@ class DiscussionManager :
         # check state
         if not self._isRunning :
             return
-
-        # log
-        self.logger.log(f'evaluate {dPlayer.player.info.name}\'s strategy')
 
         # evaluate strategy
         self.trustRecorder.updateTrustRecords()
@@ -271,7 +270,7 @@ class DiscussionManager :
                         discussionData = DiscussionData(player, respondent=respondent, response=response)
 
             except Exception as e :
-                print(f'[DiscussionManager] ERROR _processHumanDiscussion: {e}')
+                self.logger.log(TAG.ERROR, f"[DiscussionManager] Exception in _processHumanDiscussion(): {e}")
                 self._processingHumanDiscussionCount -= 1
                 return
 
@@ -283,14 +282,12 @@ class DiscussionManager :
                 return
             strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, target.info, '')
             discussionData = DiscussionData(player, strategy=strategy)
+            self.logger.log(TAG.STRATEGY, f'{player.info.name}: strategy is {strategy}')
 
         if discussionData == None :
             return
 
         if discussionData.strategy != None :
-            # log human's strategy
-            self.logger.log(f'human {player.info.name}\'s strategy: {strategy}')
-
             # apply strategy and discussion
             player.setDiscussionStrategy(self.gameState.round, strategy)
 
@@ -439,4 +436,4 @@ class DiscussionManager :
         except asyncio.CancelledError :
             pass
         except Exception as e:
-            self.logger.log(f"[DiscussionManager] Unhandled exception in task: {e}")
+            self.logger.log(TAG.ERROR, f"[DiscussionManager] Unhandled exception in task: {e}")

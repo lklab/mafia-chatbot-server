@@ -56,7 +56,7 @@ class PlayerInfo :
         self.role: Role = Role.CITIZEN
 
     def __str__(self) :
-        return self.name
+        return f'{self.name}[{"Human" if self.isHuman else "AI"}](role={self.role.name}, tone={self.tone})'
 
     def __repr__(self) :
-        return f'{self.name}({self.role.name})'
+        return f'{self.name}[{"Human" if self.isHuman else "AI"}](role={self.role.name}, tone={self.tone})'

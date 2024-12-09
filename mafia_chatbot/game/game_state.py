@@ -7,6 +7,7 @@ from mafia_chatbot.game.game_info import *
 from mafia_chatbot.game.player_info import PlayerInfo
 from mafia_chatbot.game.player import *
 from mafia_chatbot.game.chat_data import ChatData, ChatType
+from mafia_chatbot.game.game_logger import GameLogger, TAG
 
 from mafia_chatbot.network.messages import *
 
@@ -33,11 +34,13 @@ TONES: list[str] = [
 ]
 
 class Phase(Enum) :
-    DAY = 0
-    EVENING = 1
-    NIGHT = 2
+    NOT_PLAYING = 0
+    DAY = 1
+    EVENING = 2
+    NIGHT = 3
 
 phaseToProtoDict: dict[Phase, game_pb2.Phase] = {
+    Phase.NOT_PLAYING: game_pb2.Phase.Phase_UNKNOWN,
     Phase.DAY: game_pb2.Phase.Phase_DAY,
     Phase.EVENING: game_pb2.Phase.Phase_EVENING,
     Phase.NIGHT: game_pb2.Phase.Phase_NIGHT,
@@ -134,6 +137,7 @@ class GameState :
     def __init__(self, gameInfo: GameInfo) :
         self.gameInfo = gameInfo
         self.gameId = str(uuid.uuid4())
+        self.logger = GameLogger(self.gameId, 'log')
 
         ### create players
         self.players: list[Player] = []
@@ -277,7 +281,7 @@ class GameState :
 
         ### phase data
         self.round = 0
-        self.currentPhase = Phase.DAY
+        self.currentPhase = Phase.NOT_PLAYING
         self.daySeconds = 60
         self.eveningSeconds = 30
         self.nightSeconds = 30
@@ -385,8 +389,11 @@ class GameState :
 
     def setPhase(self, phase: Phase) :
         self.currentPhase = phase
-        GameState._switchPhase[phase](self)
-        self.sendGameStateMessageToAllClient()
+        self.logger.log(TAG.PHASE, f'round={self.round}, phase={self.currentPhase.name}')
+
+        if phase != Phase.NOT_PLAYING :
+            GameState._switchPhase[phase](self)
+            self.sendGameStateMessageToAllClient()
 
     def getCurrentRoundInfo(self) -> RoundInfo :
         return RoundInfo(self.round, len(self.players), len(self.mafiaPlayers))
@@ -401,6 +408,7 @@ class GameState :
         self.chatList.append(chat)
         self.conversationLogs.append(f'{sender.name}: {content}')
         self.chatLogs.append(f'{sender.name}: {content}')
+        self.logger.log(TAG.CHAT, f'DISCUSSION - {chat.index} - {sender.name}: {content}')
         self.sendAddChatMessageToAllClient(chat)
 
     def appendSystemChat(self, content: str, receiver: PlayerInfo = None) :
@@ -413,6 +421,7 @@ class GameState :
         self.chatList.append(chat)
         if receiver == None :
             self.conversationLogs.append(f'system: {content}')
+        self.logger.log(TAG.CHAT, f'SYSTEM - {chat.index} - for {"everyone" if receiver == None else receiver.name}: {content}')
         self.sendAddChatMessageToAllClient(chat)
 
     def addHumanChat(self, sender: PlayerInfo, chat_out: game_pb2.Chat) :
@@ -425,6 +434,7 @@ class GameState :
         self.chatList.append(chat)
         self.conversationLogs.append(f'{sender.name}: {chat.content}')
         self.chatLogs.append(f'{sender.name}: {chat.content}')
+        self.logger.log(TAG.CHAT, f'DISCUSSION - {chat.index} - {sender.name}: {chat.content}')
 
         if self.onHumanChat != None :
             self.onHumanChat(chat)

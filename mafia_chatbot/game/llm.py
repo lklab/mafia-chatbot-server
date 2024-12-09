@@ -31,10 +31,12 @@ from mafia_chatbot.game.game_info import GameInfo
 from mafia_chatbot.game.player import Player
 from mafia_chatbot.game.player_info import PlayerInfo, Role, strToRole, roleToStrDict
 from mafia_chatbot.game.strategy import Strategy, Assumption, Estimation, AssumptionType
+from mafia_chatbot.game.game_logger import GameLogger, TAG
 
 class LLM :
     def __init__(self, gameState: GameState) :
         self.gameState = gameState
+        self.logger: GameLogger = gameState.logger
 
         # load API key
         with open('apikeys.json') as f:
@@ -54,6 +56,8 @@ class LLM :
         self._setupGenerateResponseChain()
 
     async def getDiscussion(self, player: Player, strategy: Strategy) -> str :
+        self.logger.log(TAG.LLM, f'{player.info.name}: getDiscussion input: {strategy}')
+
         input: dict[str, str] = {
             'my_name' : player.info.name,
             'my_role' : roleToStrDict[player.info.role],
@@ -63,10 +67,14 @@ class LLM :
             'conversation_logs' : '\n'.join(self.gameState.conversationLogs),
             'evidence' : strategy.assumptions[0].reason,
         }
+
         response = await self._ainvokeChain(self.discussionChain, input)
+        self.logger.log(TAG.LLM, f'{player.info.name}: getDiscussion response: {response}')
         return response.content
 
     async def checkContainsEstimation(self, message: str) -> bool :
+        self.logger.log(TAG.LLM, f'checkContainsEstimation input: {message}')
+
         response: str = await self._ainvokeChain(
             chain=self.checkContainsEstimationChain,
             input={
@@ -74,9 +82,12 @@ class LLM :
             }
         )
 
+        self.logger.log(TAG.LLM, f'checkContainsEstimation response: {response}')
         return response.lower() == "true"
 
     async def analyzeHumanMessage(self, player: Player, message: str) -> Strategy :
+        self.logger.log(TAG.LLM, f'{player.info.name}: analyzeHumanMessage input: {message}')
+
         message = await self._ainvokeChain(
             chain=self.removeFirstPersonChain,
             input={
@@ -86,6 +97,7 @@ class LLM :
         )
 
         response = await self.humanMessageAgent.ainvoke({'messages': [HumanMessage(message)]})
+        self.logger.log(TAG.LLM, f'analyzeHumanMessage response: {response}')
 
         for message in reversed(response['messages']) :
             if isinstance(message, ToolMessage) :
@@ -128,6 +140,8 @@ class LLM :
         return None
 
     async def isMessageQuestion(self, message: str) -> bool :
+        self.logger.log(TAG.LLM, f'isMessageQuestion input: {message}')
+
         response: str = await self._ainvokeChain(
             chain=self.checkQuestionChain,
             input={
@@ -135,11 +149,15 @@ class LLM :
             }
         )
 
+        self.logger.log(TAG.LLM, f'isMessageQuestion response: {response}')
         return response.lower() == "true"
 
     async def generateResponse(self, speaker: Player, conversation: list[str]) -> tuple[Player, str] :
+        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateResponse')
+
         # setup input
         nameList: str = ', '.join(map(lambda p: p.info.name, filter(lambda p: p != speaker, self.gameState.players)))
+        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateResponse name list: {nameList}')
 
         messages = []
         for message in conversation :
@@ -153,6 +171,7 @@ class LLM :
                 'messages' : messages,
             }
         )
+        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateResponse response: {jsonData}')
 
         # parse response
         try :
@@ -160,10 +179,10 @@ class LLM :
             name: str = data['name']
             message: str = data['message']
         except json.JSONDecodeError as e :
-            print(f"[LLM] generateResponse JSONDecodeError: {e}")
+            self.logger.log(TAG.ERROR, f'[LLM] generateResponse JSONDecodeError: {e}')
             return (None, None)
         except Exception as e :
-            print(f"[LLM] generateResponse Exception: {e}")
+            self.logger.log(TAG.ERROR, f'[LLM] generateResponse Exception: {e}')
             return (None, None)
 
         # get respondent player
@@ -267,7 +286,7 @@ class LLM :
                 return data
 
         def fallback() -> str :
-            print('fallback')
+            self.logger.log(TAG.ERROR, f'[LLM] fallbacked')
             return 'fallback'
 
         fallbackTool = StructuredTool.from_function(
@@ -368,32 +387,32 @@ class LLM :
         try :
             return await chain.ainvoke(input)
         except ValueError as e:
-            print(f"[LLM] ValueError: {e}")
+            self.logger.log(TAG.ERROR, f"[LLM] ValueError: {e}")
             raise e
         except KeyError as e:
-            print(f"[LLM] KeyError: Missing key - {e}")
+            self.logger.log(TAG.ERROR, f"[LLM] KeyError: Missing key - {e}")
             raise e
         except openai.error.AuthenticationError as e:
-            print(f"[LLM] AuthenticationError: {e}")
+            self.logger.log(TAG.ERROR, f"[LLM] AuthenticationError: {e}")
             raise e
         except openai.error.RateLimitError as e:
-            print(f"[LLM] RateLimitError: {e}")
+            self.logger.log(TAG.ERROR, f"[LLM] RateLimitError: {e}")
             raise e
         except openai.error.APIError as e:
-            print(f"[LLM] APIError: {e}")
+            self.logger.log(TAG.ERROR, f"[LLM] APIError: {e}")
             raise e
         except openai.error.Timeout as e:
-            print(f"[LLM] TimeoutError: {e}")
+            self.logger.log(TAG.ERROR, f"[LLM] TimeoutError: {e}")
             raise e
         except openai.error.InvalidRequestError as e:
-            print(f"[LLM] InvalidRequestError: {e}")
+            self.logger.log(TAG.ERROR, f"[LLM] InvalidRequestError: {e}")
             raise e
         # except LangChainError as e:
-        #     print(f"[LLM] LangChainError: {e}")
+        #     self.logger.log(TAG.ERROR, f"[LLM] LangChainError: {e}")
         #     raise e
         except TypeError as e:
-            print(f"[LLM] TypeError: {e}")
+            self.logger.log(TAG.ERROR, f"[LLM] TypeError: {e}")
             raise e
         except Exception as e:
-            print(f"[LLM] Unexpected error: {e}")
+            self.logger.log(TAG.ERROR, f"[LLM] Unexpected error: {e}")
             raise e

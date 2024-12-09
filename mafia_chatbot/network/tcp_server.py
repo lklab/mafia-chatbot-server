@@ -19,22 +19,22 @@ class TcpServer :
         )
 
         addr = self.server.sockets[0].getsockname()
-        print(f'Server started on {addr}')
+        print(f'[TcpServer] Server started on {addr}')
 
     async def serve(self) :
         if self.server :
             await self.server.serve_forever()
         else:
-            print("Server has not been started yet. Please call start() first.")
+            print("[TcpServer] Server has not been started yet. Please call start() first.")
 
     async def close(self) :
         if self.server:
-            print("Shutting down server...")
+            print("[TcpServer] Shutting down server...")
             self.server.close()
             await self.server.wait_closed()
-            print("Server shut down complete.")
+            print("[TcpServer] Server shut down complete.")
         else:
-            print("Server is not running.")
+            print("[TcpServer] Server is not running.")
 
     async def _handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) :
         clientHandler = TcpClientHandler(reader, writer)

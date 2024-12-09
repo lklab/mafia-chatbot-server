@@ -1,9 +1,21 @@
 import logging
 import datetime
 import os
+from enum import Enum
 
 from mafia_chatbot.game.player import Player
 from mafia_chatbot.game.player_info import PlayerInfo
+
+class TAG(Enum) :
+    INFO = 0
+    CHAT = 1
+    PHASE = 2
+    DISCUSSION = 3
+    STRATEGY = 4
+    TRUST = 5
+    LLM = 6
+    NETWORK = 7
+    ERROR = 99
 
 class GameLogger :
     def __init__(self, gameId: str, path: str) :
@@ -21,31 +33,31 @@ class GameLogger :
         logger.addHandler(file_handler)
         self.logger = logger
 
-    def log(self, message: str) :
-        self.logger.debug(message)
+    def log(self, tag: TAG, message: str) :
+        self.logger.debug(f'[{tag.name}] {message}')
 
-    def logCandidates(self, playerInfos: list[PlayerInfo]) :
-        self.log(f'candidates: {', '.join(map(lambda info : info.name, playerInfos))}')
+    def logCandidates(self, tag: TAG, playerInfos: list[PlayerInfo]) :
+        self.logger.debug(f'[{tag.name}] candidates: {', '.join(map(lambda info : info.name, playerInfos))}')
 
-    def logCandidatesPlayer(self, players: list[Player]) :
-        self.log(f'candidates: {', '.join(map(lambda p : p.info.name, players))}')
+    def logCandidatesPlayer(self, tag: TAG, players: list[Player]) :
+        self.logger.debug(f'[{tag.name}] candidates: {', '.join(map(lambda p : p.info.name, players))}')
 
-    def logCandidatesWithWeights(self, playerInfos: list[PlayerInfo], weights: list[float]) :
+    def logCandidatesWithWeights(self, tag: TAG, playerInfos: list[PlayerInfo], weights: list[float]) :
         total: float = sum(weights)
-        self.log(f'candidates: {', '.join(map(lambda i : f'{playerInfos[i].name}({weights[i] * 100.0 / total:.2f})', range(len(playerInfos))))}')
+        self.logger.debug(f'[{tag.name}] candidates: {', '.join(map(lambda i : f'{playerInfos[i].name}({weights[i] * 100.0 / total:.2f})', range(len(playerInfos))))}')
 
-    def logCandidatesPlayerWithWeights(self, players: list[Player], weights: list[float]) :
+    def logCandidatesPlayerWithWeights(self, tag: TAG, players: list[Player], weights: list[float]) :
         total: float = sum(weights)
-        self.log(f'candidates: {', '.join(map(lambda i : f'{players[i].info.name}({weights[i] * 100.0 / total:.2f})', range(len(players))))}')
+        self.logger.debug(f'[{tag.name}] candidates: {', '.join(map(lambda i : f'{players[i].info.name}({weights[i] * 100.0 / total:.2f})', range(len(players))))}')
 
 class FakeGameLogger :
-    def log(self, message: str) :
+    def log(self, tag: TAG, message: str) :
         pass
-    def logCandidates(self, playerInfos: list[PlayerInfo]) :
+    def logCandidates(self, tag: TAG, playerInfos: list[PlayerInfo]) :
         pass
-    def logCandidatesPlayer(self, player: list[Player]) :
+    def logCandidatesPlayer(self, tag: TAG, player: list[Player]) :
         pass
-    def logCandidatesWithWeights(self, playerInfos: list[PlayerInfo], weights: list[float]) :
+    def logCandidatesWithWeights(self, tag: TAG, playerInfos: list[PlayerInfo], weights: list[float]) :
         pass
-    def logCandidatesPlayerWithWeights(self, players: list[Player], weights: list[float]) :
+    def logCandidatesPlayerWithWeights(self, tag: TAG, players: list[Player], weights: list[float]) :
         pass

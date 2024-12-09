@@ -54,11 +54,11 @@ class ClientHandler :
         return self.onAuth(self, message)
 
     def _onMessage(self, message) :
-        self._log(f'onMessage message=<{message}>')
+        # self._log(f'onMessage message=<{message}>')
         self.onMessage(self, message)
 
     def _onDisconnected(self) :
-        self._log(f'onDisconnected>')
+        self._log(f'onDisconnected')
         self.onDisconnected(self)
 
     def _log(self, message) :
@@ -189,7 +189,9 @@ class MainProgram :
             player.clearSubscribers()
 
     def _makeErrorResponse(self, message, code: int, detail: str) :
-        print(f'@@@ error response: {detail}')
+        print(f'[MainProgram] [ERROR] response error message: code={code}, detail={detail}')
+        print(f'[MainProgram] [ERROR] received message: {message}')
+
         errorResponse = error_pb2.RequestError()
         errorResponse.rqid = message.rqid
         errorResponse.rqtype = messageTypeDict[type(message)]

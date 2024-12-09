@@ -1,6 +1,7 @@
 import asyncio
 from typing import Callable
 from enum import Enum
+import traceback
 
 class TcpClientState(Enum) :
     INITIALIZED = 0
@@ -18,7 +19,7 @@ class TcpClientHandler :
         self.writer = writer
 
         self.addr = self.writer.get_extra_info('peername')
-        print(f"Client connected: {self.addr}")
+        print(f"[TcpClientHandler] {self.addr} Client connected")
 
     async def listen(self, onData: Callable[[int, bytes], None], onDisconnected: Callable[[], None]) :
         if self.state != TcpClientState.INITIALIZED :
@@ -35,7 +36,7 @@ class TcpClientHandler :
                     break
                 buffer += chunk
 
-                # print('buffer: ' + ' '.join(f'0x{byte:02x}' for byte in buffer))
+                # print(f'[TcpClientHandler] {self.addr} buffer: ' + ' '.join(f'0x{byte:02x}' for byte in buffer))
 
                 while True :
                     # check delimiter
@@ -67,13 +68,17 @@ class TcpClientHandler :
                     # remove one message
                     buffer = buffer[cursor:]
 
-                    # forward payload
-                    onData(msg_type, payload)
+                    try :
+                        # forward payload
+                        onData(msg_type, payload)
+                    except Exception as e:
+                        print(f"[TcpClientHandler] {self.addr} onData error: {e}")
+                        traceback.print_exc()
 
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"[TcpClientHandler] {self.addr} comm error: {e}")
 
-        print("Closing connection")
+        print(f"[TcpClientHandler] {self.addr} Closing connection")
         await self._close()
 
     async def sendStr(self, type: int, payload: str) -> bool :
@@ -96,7 +101,7 @@ class TcpClientHandler :
             return True
 
         except (OSError, asyncio.CancelledError) as e:
-            print(f"fail to send data: {e}")
+            print(f"[TcpClientHandler] {self.addr} fail to send data: {e}")
             await self._close()
 
         return False

@@ -1,5 +1,8 @@
 from enum import Enum
 
+from mafia_chatbot.game.player_info import PlayerInfo
+from mafia_chatbot.game.game_logger import GameLogger, TAG
+
 defaultReason = 'Due to a lack of information, you will suspect someone as the mafia, but it is only a guess.'
 
 class TrustState(Enum) :
@@ -24,6 +27,12 @@ class TrustRecord :
         self.point: float = point
         self.reason: str = reason if reason != None else defaultReason
         self.negativeReason: str = self.reason if self.point < 0 else defaultReason
+
+    def __str__(self) :
+        return f'(point={self.point}, reason={self.reason})'
+
+    def __repr__(self) :
+        return self.__str__()
 
 recordsByTrustStateDict: dict[TrustState, TrustRecord] = {
     TrustState.CONFIRMED_MAFIA   : TrustRecord(-100.0, 'He is definitely the Mafia.'),
@@ -55,7 +64,10 @@ mustTargetingsByTrustStateDict: dict[TrustState, bool] = {
 }
 
 class TrustProfile :
-    def __init__(self) :
+    def __init__(self, playerInfo: PlayerInfo, logger: GameLogger) :
+        self.playerInfo = playerInfo
+        self.logger = logger
+
         self.state: TrustState = TrustState.NORMAL
         self._mainRecord: TrustRecord = TrustRecord(0.0, defaultReason)
         self.mainRecord: TrustRecord = self._mainRecord
@@ -65,18 +77,22 @@ class TrustProfile :
             self._mainRecord = record
             if self.state == TrustState.NORMAL :
                 self.mainRecord = record
+                self.logger.log(TAG.TRUST, f'{self.playerInfo.name}: main record changed: state={self.state.name}, mainRecord={self.mainRecord}')
 
     def setState(self, state: TrustState, reason: str = None) :
-        self.state = state
-
         if state == TrustState.NORMAL :
+            if self.state == state :
+                return
+            self.state = state
             self.mainRecord = self._mainRecord
+            self.logger.log(TAG.TRUST, f'{self.playerInfo.name}: main record changed: state={self.state.name}, mainRecord={self.mainRecord}')
 
         else :
             record: TrustRecord = recordsByTrustStateDict[state]
             if reason != None :
                 record = TrustRecord(record.point, reason)
             self.mainRecord = record
+            self.logger.log(TAG.TRUST, f'{self.playerInfo.name}: main record changed: state={self.state.name}, mainRecord={self.mainRecord}')
 
     def isTargetable(self) -> bool :
         return targetablesByTrustStateDict[self.state]
