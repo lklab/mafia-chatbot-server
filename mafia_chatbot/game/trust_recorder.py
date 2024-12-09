@@ -118,6 +118,11 @@ class TrustRecorder :
             self.targetInfoByPointerOrVoterInfo[playerInfo] = targetInfo
 
     def playerRemoved(self, removedPlayerInfo: PlayerInfo, removeReason: RemoveReason) :
+        mafiaCount: int = self.gameState.getMafiaCount()
+        civilCount: int = self.gameState.getCitizenCount()
+        if mafiaCount == 0 or civilCount <= mafiaCount :
+            return # the game is already over
+
         self._updateTrustRecordsByPlayerRemoved(removedPlayerInfo, removeReason)
 
         # police
