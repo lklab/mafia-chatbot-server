@@ -15,5 +15,5 @@ for locale in locales :
     ], capture_output=True, text=True)
 
     if result.returncode != 0 :
-        print(f'\033[31mfail to compile protoc:\033[0m {result.stderr}')
+        print(f'\033[31mfail to msgfmt:\033[0m {result.stderr}')
         exit()

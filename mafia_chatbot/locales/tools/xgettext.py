@@ -14,5 +14,5 @@ result = subprocess.run([
 ] + srcFiles, capture_output=True, text=True)
 
 if result.returncode != 0 :
-    print(f'\033[31mfail to compile protoc:\033[0m {result.stderr}')
+    print(f'\033[31mfail to xgettext:\033[0m {result.stderr}')
     exit()
