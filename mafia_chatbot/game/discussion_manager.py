@@ -6,7 +6,6 @@ from collections import deque
 
 from mafia_chatbot.game.game_state import GameState
 from mafia_chatbot.game.trust_recorder import TrustRecorder
-from mafia_chatbot.game.trust_profile import TrustProfile
 from mafia_chatbot.game.player import Player
 from mafia_chatbot.game.player_info import Role
 import mafia_chatbot.game.evaluator as evaluator

@@ -2,6 +2,7 @@ import random
 from datetime import datetime, timedelta, timezone
 from typing import Callable
 import uuid
+import gettext
 
 from mafia_chatbot.game.game_info import *
 from mafia_chatbot.game.player_info import PlayerInfo
@@ -133,11 +134,29 @@ class PlayerRemoveInfo :
         self.reason = reason
         self.roundInfo = roundInfo
 
+languageToCodeDict: dict[str, str] = {
+    'english' : 'en',
+    'korean' : 'ko',
+}
+
 class GameState :
     def __init__(self, gameInfo: GameInfo) :
         self.gameInfo = gameInfo
         self.gameId = str(uuid.uuid4())
         self.logger = GameLogger(self.gameId, 'log')
+
+        ### l10n
+        languageCode: str = languageToCodeDict.get(gameInfo.language)
+        if languageCode == None :
+            languageCode = 'en'
+
+        self.translation = gettext.translation(
+            'messages',
+            localedir='mafia_chatbot/locales',
+            languages=[languageCode],
+            fallback=True,
+        )
+        self.translate = self.translation.gettext
 
         ### create players
         self.players: list[Player] = []

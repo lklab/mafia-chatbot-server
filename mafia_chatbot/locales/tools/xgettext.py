@@ -1,0 +1,18 @@
+import subprocess
+
+srcFiles: list[str] = [
+    'mafia_chatbot/game/game_manager.py',
+]
+destFile: str = 'mafia_chatbot/locales/messages.pot'
+
+result = subprocess.run([
+    'xgettext',
+    '-d',
+    'messages',
+    '-o',
+    destFile,
+] + srcFiles, capture_output=True, text=True)
+
+if result.returncode != 0 :
+    print(f'\033[31mfail to compile protoc:\033[0m {result.stderr}')
+    exit()

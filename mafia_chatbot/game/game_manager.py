@@ -33,6 +33,8 @@ class GameManager :
             if player.isFakePolice :
                 self.gameState.logger.log(TAG.INFO, f'fake police player: {player.info.name}')
 
+        self._ = self.gameState.translate
+
     def removeClient(self, client: ClientPlayer) :
         player = self.clientDict.get(client.id)
         if player != None :
@@ -84,7 +86,7 @@ class GameManager :
                 player.client.sendMessage(message)
 
     async def _processDay(self) :
-        self._addSystemChat('It is morning. Please engage in a discussion.')
+        self._addSystemChat(self._("It is now morning. Please begin your discussion."))
 
         # start discussion
         self.discussionManager = DiscussionManager(self.gameState, self.trustRecorder, self.llm)
