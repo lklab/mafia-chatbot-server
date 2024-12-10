@@ -521,8 +521,8 @@ class GameState :
         message = game_pb2.GameState()
 
         message.language = self.gameInfo.language
-        message.players.extend(list(map(lambda p : p.createProtoMessage(), self.allPlayers)))
-        player.toProtoMessage(message.me)
+        message.players.extend(list(map(lambda p : p.createProtoMessage(player), self.allPlayers)))
+        player.toProtoMessage(player, message.me)
 
         message.mafiaCount = self.gameInfo.mafiaCount
         message.remainMafiaCount = self.getMafiaCount()

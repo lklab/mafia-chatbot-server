@@ -173,15 +173,22 @@ class Player :
     def clearChatingCount(self) :
         self.remainChatingCount = 0
 
-    def createProtoMessage(self) -> game_pb2.Player :
+    def createProtoMessage(self, receiver: Player) -> game_pb2.Player :
         message = game_pb2.Player()
-        self.toProtoMessage(message)
+        self.toProtoMessage(receiver, message)
         return message
 
-    def toProtoMessage(self, message_out: game_pb2.Player) :
+    def toProtoMessage(self, receiver: Player, message_out: game_pb2.Player) :
         message_out.id = self.info.id
         message_out.name = self.info.name
-        message_out.role = roleToProtoDict[self.info.role]
+
+        if not self.isLive or self == receiver :
+            message_out.role = roleToProtoDict[self.info.role]
+        elif receiver.info.role == Role.POLICE and self in receiver.testResults :
+            message_out.role = roleToProtoDict[Role.MAFIA] if self.info.role == Role.MAFIA else roleToProtoDict[Role.CITIZEN]
+        else :
+            message_out.role = game_pb2.Role.Role_UNKNOWN
+
         message_out.isLive = self.isLive
         message_out.removeReason = removeReasonToProtoDict[self.removeReason]
 
