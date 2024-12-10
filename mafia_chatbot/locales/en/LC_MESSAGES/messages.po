@@ -51,10 +51,15 @@ msgstr "{name} was assassinated by the Mafia. Their role was {role}."
 msgid "This message visible only to you"
 msgstr "This message visible only to you"
 
-#: mafia_chatbot/game/game_manager.py:227
+#: mafia_chatbot/game/game_manager.py:228
 #, python-brace-format
-msgid "{name}'s role is {role}."
-msgstr "{name}'s role is {role}."
+msgid "{name} is a Mafia."
+msgstr "{name} is a Mafia."
+
+#: mafia_chatbot/game/game_manager.py:233
+#, python-brace-format
+msgid "{name} is not a Mafia."
+msgstr "{name} is not a Mafia."
 
 #: mafia_chatbot/game/game_state.py:168
 msgid "Citizen"
