@@ -17,6 +17,14 @@
             ]
         },
         {
+            "name" : "time",
+            "messages" :
+            [
+                "RequestTimeSync",
+                "TimeSync"
+            ]
+        },
+        {
             "name" : "game",
             "messages" :
             [

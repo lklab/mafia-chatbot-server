@@ -1,5 +1,6 @@
 import asyncio
 from typing import Callable, Any
+import time
 
 from mafia_chatbot.game.game_manager import GameManager
 from mafia_chatbot.game.client_player import ClientPlayer
@@ -106,6 +107,12 @@ class MainProgram :
         # TODO check auth message
         return True
 
+    def _switchMessageRequestTimeSync(self, client: ClientHandler, message) :
+        response = time_pb2.TimeSync()
+        response.rqid = message.rqid
+        response.time = time.monotonic()
+        client.messageHandler.send(response)
+
     def _switchMessageRequestMyGameInfo(self, client: ClientHandler, message) :
         if client.clientId in self.gameDict :
             response = game_pb2.MyGameInfo()
@@ -170,6 +177,7 @@ class MainProgram :
             return
 
     _switchMessage = {
+        time_pb2.RequestTimeSync : _switchMessageRequestTimeSync,
         game_pb2.RequestMyGameInfo : _switchMessageRequestMyGameInfo,
         game_pb2.GameStart : _switchMessageGameStart,
         game_pb2.JoinMyGame : _switchMessageJoinMyGame,
