@@ -186,6 +186,8 @@ class Player :
             message_out.role = roleToProtoDict[self.info.role]
         elif receiver.info.role == Role.POLICE and self in receiver.testResults :
             message_out.role = roleToProtoDict[Role.MAFIA] if self.info.role == Role.MAFIA else roleToProtoDict[Role.CITIZEN]
+        elif receiver.info.role == Role.MAFIA and self.info.role == Role.MAFIA :
+            message_out.role = roleToProtoDict[Role.MAFIA]
         else :
             message_out.role = game_pb2.Role.Role_UNKNOWN
 
