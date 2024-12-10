@@ -70,6 +70,13 @@ class ClientMessageProcessor :
             self.client.sendMessage(errorResponse)
             return
 
+        # check content length
+        contentLength = len(message.chat.content)
+        if contentLength > 200 :
+            errorResponse = self._makeErrorResponse(message, 0, 'The content exceeds 200 characters.')
+            self.client.sendMessage(errorResponse)
+            return
+
         self.player.remainChatingCount -= 1
 
         response = game_pb2.AddChat()

@@ -156,7 +156,7 @@ class MainProgram :
 
     def _switchMessageQuitGame(self, client: ClientHandler, message) :
         if client.clientId in self.gameDict :
-            self.gameDict[client.clientId].manager.removeClient(client.getPlayer())
+            self.gameDict[client.clientId].manager.removeClient(client.getPlayer()) # TODO 아예 나감 처리 해서 종료할지 결정하기
             del self.gameDict[client.clientId]
             client.getPlayer().clearSubscribers()
 
