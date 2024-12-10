@@ -1,7 +1,5 @@
 syntax = "proto3";
 
-import "google/protobuf/timestamp.proto";
-
 message DebugInfo {
   bool isDebug = 1;
   Role fixedRole = 2;
@@ -88,8 +86,8 @@ message GamePhase {
   string rqid = 1;
   int32 round = 2;
   Phase phase = 3;
-  google.protobuf.Timestamp phaseEndTime = 4;
-  int32 phaseRemainTime = 5;
+  float phaseEndTime = 4;
+  float phaseRemainTime = 5;
 }
 
 message RequestGameState {

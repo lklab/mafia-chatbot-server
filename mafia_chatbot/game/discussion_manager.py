@@ -1,6 +1,6 @@
 import random
 import asyncio
-from datetime import datetime, timedelta
+import time
 from typing import Callable, Deque
 from collections import deque
 
@@ -66,7 +66,7 @@ class DiscussionManager :
         self._isRunning = True
         self._allDiscussionCount: int = 0
         self._processingHumanDiscussionCount: int = 0
-        self._lastDiscussionTime: datetime = datetime.now()
+        self._lastDiscussionTime: float = time.monotonic()
         self._responseContentQueue: Deque[ResponseContent] = deque()
 
         # setup dPlayers
@@ -135,7 +135,7 @@ class DiscussionManager :
     async def _generateResponseDiscussionTask(self, content: ResponseContent) :
         # get info
         dPlayer: DiscussionPlayer = self.dPlayersByPlayer[content.player]
-        discussionTime: datetime = datetime.now()
+        discussionTime: float = time.monotonic()
 
         if content.strategy != None :
             # publish discussion
@@ -163,14 +163,14 @@ class DiscussionManager :
         dPlayer: DiscussionPlayer = self.dPlayers[0]
 
         # decide discussion time
-        discussionTime: datetime = self._lastDiscussionTime + timedelta(seconds=random.uniform(5.0, 10.0))
+        discussionTime: float = self._lastDiscussionTime + random.uniform(5.0, 10.0)
 
         # start task
         self._normalDiscussionTask = asyncio.create_task(self._generateNormalDiscussionTask(dPlayer, discussionTime))
 
-    async def _generateNormalDiscussionTask(self, dPlayer: DiscussionPlayer, discussionTime: datetime) :
+    async def _generateNormalDiscussionTask(self, dPlayer: DiscussionPlayer, discussionTime: float) :
         # wait for discussion time
-        waitTime: float = (discussionTime - datetime.now()).total_seconds()
+        waitTime: float = discussionTime - time.monotonic()
         await asyncio.sleep(waitTime)
         if not self._isRunning :
             return
@@ -187,7 +187,7 @@ class DiscussionManager :
         # generate next discussion
         self._generateDiscussion(DiscussionData(dPlayer.player, strategy=strategy))
 
-    async def _generateAndPublishDiscussion(self, dPlayer: DiscussionPlayer, strategy: Strategy, discussionTime: datetime) :
+    async def _generateAndPublishDiscussion(self, dPlayer: DiscussionPlayer, strategy: Strategy, discussionTime: float) :
         # generate discussion
         if self.gameState.gameInfo.useLLM :
             self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}: isRunning={self._isRunning} call getDiscussion') # TODO delete
@@ -213,7 +213,7 @@ class DiscussionManager :
         self._publishDiscussion(dPlayer, discussion, discussionTime)
         self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}: _generateAndPublishDiscussion finished') # TODO delete
 
-    def _publishDiscussion(self, dPlayer: DiscussionPlayer, discussion: str, discussionTime: datetime) :
+    def _publishDiscussion(self, dPlayer: DiscussionPlayer, discussion: str, discussionTime: float) :
         # set last discussion time
         self._lastDiscussionTime = discussionTime
 

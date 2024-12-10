@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timezone
+import time
 
 from mafia_chatbot.game.game_state import *
 from mafia_chatbot.game.game_result import *
@@ -93,7 +93,7 @@ class GameManager :
         self.discussionManager.start()
 
         # await until time limit
-        waitTime: float = (self.gameState.timeLimit - datetime.now(timezone.utc)).total_seconds()
+        waitTime: float = self.gameState.timeLimit - time.monotonic()
         await asyncio.sleep(waitTime)
 
         # stop discussion
@@ -116,7 +116,7 @@ class GameManager :
                 asyncio.create_task(self._processPlayerVote(voteData, player))
 
         # await until time limit
-        waitTime: float = (self.gameState.timeLimit - datetime.now(timezone.utc)).total_seconds()
+        waitTime: float = self.gameState.timeLimit - time.monotonic()
         await asyncio.sleep(waitTime)
 
         # get local player's vote
@@ -199,7 +199,7 @@ class GameManager :
                 nightTargetData.healTarget = evaluator.evaluateHealTarget(self.gameState, self.trustRecorder, doctor)
 
         # await until time limit
-        waitTime: float = (self.gameState.timeLimit - datetime.now(timezone.utc)).total_seconds()
+        waitTime: float = self.gameState.timeLimit - time.monotonic()
         await asyncio.sleep(waitTime)
 
         ### execute kill

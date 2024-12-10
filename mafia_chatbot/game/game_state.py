@@ -1,5 +1,5 @@
 import random
-from datetime import datetime, timedelta, timezone
+import time
 from typing import Callable
 import uuid
 import gettext
@@ -317,7 +317,7 @@ class GameState :
         self.daySeconds = 60
         self.eveningSeconds = 30
         self.nightSeconds = 30
-        self.timeLimit: datetime = None
+        self.timeLimit: float = None
 
         # phase data - debug
         if gameInfo.debugInfo != None :
@@ -393,15 +393,15 @@ class GameState :
 
     def _switchPhaseDay(self) :
         self._reloadAllChatingCounts()
-        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=self.daySeconds)
+        self.timeLimit: float = time.monotonic() + self.daySeconds
 
     def _switchPhaseEvening(self) :
         self._clearAllChatingCounts()
-        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=self.eveningSeconds)
+        self.timeLimit: float = time.monotonic() + self.eveningSeconds
 
     def _switchPhaseNight(self) :
         self._clearAllChatingCounts()
-        self.timeLimit: datetime = datetime.now(timezone.utc) + timedelta(seconds=self.nightSeconds)
+        self.timeLimit: float = time.monotonic() + self.nightSeconds
 
     _switchPhase = {
         Phase.DAY : _switchPhaseDay,
@@ -537,8 +537,8 @@ class GameState :
     def toProtoGamePhaseMessage(self, message_out: game_pb2.GamePhase) :
         message_out.round = self.round
         message_out.phase = phaseToProtoDict[self.currentPhase]
-        message_out.phaseEndTime.FromDatetime(self.timeLimit)
-        message_out.phaseRemainTime = int((self.timeLimit - datetime.now(timezone.utc)).total_seconds() * 1000)
+        message_out.phaseEndTime = self.timeLimit
+        message_out.phaseRemainTime = self.timeLimit - time.monotonic()
 
     def sendGameStateMessageToAllClient(self) :
         for player in self.clientPlayers :
