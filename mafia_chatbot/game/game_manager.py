@@ -142,12 +142,9 @@ class GameManager :
     async def _processPlayerVote(self, voteData: VoteData, player: Player) :
         eveningPeriod: int = self.gameState.eveningSeconds
         rand = random.random()
-        waitTime = rand * rand * rand * eveningPeriod / 3.0
+        waitTime = 1.0 + rand * rand * eveningPeriod / 3.0
 
         await asyncio.sleep(waitTime)
-
-        if self.gameState.currentPhase != Phase.EVENING :
-            return
 
         while self.gameState.currentPhase == Phase.EVENING :
             strategy: VoteStrategy = evaluator.evaluateVoteStrategy(self.gameState, self.trustRecorder, player)
