@@ -25,6 +25,7 @@ class GameLogger :
         logger = logging.getLogger(self.name)
         logger.setLevel(logging.DEBUG)
 
+        os.makedirs(path, exist_ok=True)
         file_handler = logging.FileHandler(os.path.join(path, f'{self.name}.log'), encoding='utf-8')
         file_handler.setLevel(logging.DEBUG)
 

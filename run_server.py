@@ -1,6 +1,10 @@
 import asyncio
 from typing import Callable, Any
 import time
+import datetime
+import uuid
+import os
+import json
 
 from mafia_chatbot.game.game_manager import GameManager
 from mafia_chatbot.game.client_player import ClientPlayer
@@ -176,12 +180,36 @@ class MainProgram :
             client.messageHandler.send(errorResponse)
             return
 
+    def _switchMessageReportChat(self, client: ClientHandler, message) :
+        if client.clientId in self.gameDict :
+            gameId: str = self.gameDict[client.clientId].manager.gameState.gameId
+
+            content: dict[str, str] = {}
+            content['gameId'] = gameId
+            content['reporterId'] = message.reporterId
+            content['chatIndex'] = message.chatIndex
+            content['comment'] = message.comment
+
+            timestamp: str = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+            reportId: str = str(uuid.uuid4())
+            fileName: str = f'[{timestamp}]_report_{reportId}.json'
+            path: str = 'reports'
+
+            os.makedirs(path, exist_ok=True)
+            with open(os.path.join(path, fileName), 'w', encoding='utf-8') as file :
+                json.dump(content, file, indent=4, ensure_ascii=False)
+
+        response = game_pb2.ReportChatResponse()
+        response.rqid = message.rqid
+        client.messageHandler.send(response)
+
     _switchMessage = {
         time_pb2.RequestTimeSync : _switchMessageRequestTimeSync,
         game_pb2.RequestMyGameInfo : _switchMessageRequestMyGameInfo,
         game_pb2.GameStart : _switchMessageGameStart,
         game_pb2.JoinMyGame : _switchMessageJoinMyGame,
         game_pb2.QuitGame : _switchMessageQuitGame,
+        game_pb2.ReportChat : _switchMessageReportChat,
     }
 
     def _onClientMessage(self, client: ClientHandler, message) :

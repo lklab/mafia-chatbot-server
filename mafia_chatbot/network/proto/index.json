@@ -50,7 +50,9 @@
                 "Removed",
                 "GameEnd",
                 "QuitGame",
-                "QuitGameResponse"
+                "QuitGameResponse",
+                "ReportChat",
+                "ReportChatResponse"
             ]
         }
     ]

@@ -28,10 +28,8 @@ class GameManager :
 
         self.discussionManager: DiscussionManager = None
 
-        self.gameState.logger.log(TAG.INFO, f'player list: {', '.join(map(lambda p: str(p), self.gameState.players))}')
         for player in self.gameState.players :
-            if player.isFakePolice :
-                self.gameState.logger.log(TAG.INFO, f'fake police player: {player.info.name}')
+            self.gameState.logger.log(TAG.INFO, player.getFullRepr())
 
         self._ = self.gameState.translate
 

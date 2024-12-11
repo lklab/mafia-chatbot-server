@@ -75,6 +75,22 @@ class Player :
     def __repr__(self) :
         return self.info.__repr__()
 
+    def getFullRepr(self) :
+        return (
+            f'{self.info.name}: '
+            f'id={self.info.id}, '
+            f'isHuman={self.info.isHuman}, '
+            f'role={self.info.role.name}, '
+            f'tone={self.info.tone}, '
+            f'trustSensitivity={self.trustSensitivity:.2f}, '
+            f'conformity={self.conformity:.2f}, '
+            f'claimeFactorForMafia={self.claimeFactorForMafia:.2f}, '
+            f'claimeFactorForReal={self.claimeFactorForReal:.2f}, '
+            f'mainHealFactor={self.mainHealFactor:.2f}, '
+            f'isFakePolice={self.isFakePolice}, '
+            f'positiveness={self.positiveness:.2f}'
+        )
+
     def setDiscussionStrategy(self, round: int, strategy: Strategy) :
         self.discussionStrategy = strategy
 

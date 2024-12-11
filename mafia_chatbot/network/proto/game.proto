@@ -206,3 +206,14 @@ message QuitGame {
 message QuitGameResponse {
   string rqid = 1;
 }
+
+message ReportChat {
+  string rqid = 1;
+  string reporterId = 2;
+  int32 chatIndex = 3;
+  string comment = 4;
+}
+
+message ReportChatResponse {
+  string rqid = 1;
+}
