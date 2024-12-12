@@ -11,8 +11,8 @@ if __name__ == "__main__" :
 import asyncio
 
 from mafia_chatbot.network.tcp_server import TcpServer
-from mafia_chatbot.network.tcp_client_handler import TcpClientHandler
-from mafia_chatbot.network.message_client_handler import MessageClientHandler
+from mafia_chatbot.network.tcp_handler import TcpClientHandler
+from mafia_chatbot.network.message_handler import MessageClientHandler
 from mafia_chatbot.network.messages import *
 
 client = None
@@ -37,7 +37,7 @@ def onConnected(handler: TcpClientHandler) :
     )
 
 async def main() :
-    server = TcpServer()
+    server = TcpServer(10015)
     await server.start(onConnected=onConnected)
     await server.serve()
 

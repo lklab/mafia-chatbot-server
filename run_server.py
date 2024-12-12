@@ -11,8 +11,8 @@ from mafia_chatbot.game.client_player import ClientPlayer
 from mafia_chatbot.game.game_info import GameInfo, DebugInfo
 
 from mafia_chatbot.network.tcp_server import TcpServer
-from mafia_chatbot.network.tcp_client_handler import TcpClientHandler
-from mafia_chatbot.network.message_client_handler import MessageClientHandler
+from mafia_chatbot.network.tcp_handler import TcpClientHandler
+from mafia_chatbot.network.message_handler import MessageClientHandler
 from mafia_chatbot.network.messages import *
 from mafia_chatbot.network.messages.message_info import messageTypeDict
 
@@ -95,7 +95,7 @@ class MainProgram :
         self.gameDict: dict[str, Game] = {}
 
     async def run(self) :
-        server = TcpServer()
+        server = TcpServer(port=10015)
         await server.start(onConnected=self._onClientConnected)
         await server.serve()
 

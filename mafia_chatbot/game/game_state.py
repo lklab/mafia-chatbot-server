@@ -8,7 +8,7 @@ from mafia_chatbot.game.game_info import *
 from mafia_chatbot.game.player_info import PlayerInfo
 from mafia_chatbot.game.player import *
 from mafia_chatbot.game.chat_data import ChatData, ChatType
-from mafia_chatbot.game.game_logger import GameLogger, TAG
+from mafia_chatbot.game.game_logger import GameLogger, TAG, FakeGameLogger
 
 from mafia_chatbot.network.messages import *
 
@@ -148,7 +148,7 @@ class GameState :
     def __init__(self, gameInfo: GameInfo) :
         self.gameInfo = gameInfo
         self.gameId = str(uuid.uuid4())
-        self.logger = GameLogger(self.gameId, 'log')
+        self.logger = FakeGameLogger() # GameLogger(self.gameId, 'log')
 
         ### l10n
         languageCode: str = languageToCodeDict.get(gameInfo.language)

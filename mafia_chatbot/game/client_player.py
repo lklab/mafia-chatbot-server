@@ -1,6 +1,6 @@
 from typing import Callable, Any
 
-from mafia_chatbot.network.message_client_handler import MessageClientHandler
+from mafia_chatbot.network.message_handler import MessageClientHandler
 
 class ClientPlayer :
     def __init__(self, id: str, name: str, client: MessageClientHandler) :

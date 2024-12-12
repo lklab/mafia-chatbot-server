@@ -3,7 +3,7 @@ from typing import Callable
 from enum import Enum
 import traceback
 
-class TcpClientState(Enum) :
+class TcpState(Enum) :
     INITIALIZED = 0
     CONNECTED = 1
     DISCONNECTED = 2
@@ -11,20 +11,22 @@ class TcpClientState(Enum) :
 delimiter = b'\xCA\xFE\xBA\xBE'
 maxPayloadSize = 10 * 1024 * 1024 # 10Mb
 
-class TcpClientHandler :
+class TcpHandler :
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) :
-        self.state = TcpClientState.INITIALIZED
+        self.state = TcpState.INITIALIZED
 
         self.reader = reader
         self.writer = writer
 
         self.addr = self.writer.get_extra_info('peername')
-        print(f"[TcpClientHandler] {self.addr} Client connected")
 
-    async def listen(self, onData: Callable[[int, bytes], None], onDisconnected: Callable[[], None]) :
-        if self.state != TcpClientState.INITIALIZED :
+    def listen(self, onData: Callable[[int, bytes], None], onDisconnected: Callable[[], None]) :
+        asyncio.create_task(self._listen(onData, onDisconnected))
+
+    async def _listen(self, onData: Callable[[int, bytes], None], onDisconnected: Callable[[], None]) :
+        if self.state != TcpState.INITIALIZED :
             return
-        self.state = TcpClientState.CONNECTED
+        self.state = TcpState.CONNECTED
 
         buffer = b''
         self.onDisconnected = onDisconnected
@@ -36,7 +38,7 @@ class TcpClientHandler :
                     break
                 buffer += chunk
 
-                # print(f'[TcpClientHandler] {self.addr} buffer: ' + ' '.join(f'0x{byte:02x}' for byte in buffer))
+                # print(f'[TcpHandler] {self.addr} buffer: ' + ' '.join(f'0x{byte:02x}' for byte in buffer))
 
                 while True :
                     # check delimiter
@@ -72,20 +74,20 @@ class TcpClientHandler :
                         # forward payload
                         onData(msg_type, payload)
                     except Exception as e:
-                        print(f"[TcpClientHandler] {self.addr} onData error: {e}")
+                        print(f"[TcpHandler] {self.addr} onData error: {e}")
                         traceback.print_exc()
 
         except Exception as e:
-            print(f"[TcpClientHandler] {self.addr} comm error: {e}")
+            print(f"[TcpHandler] {self.addr} comm error: {e}")
 
-        print(f"[TcpClientHandler] {self.addr} Closing connection")
+        print(f"[TcpHandler] {self.addr} Closing connection")
         await self._close()
 
     async def sendStr(self, type: int, payload: str) -> bool :
         return await self.send(type, payload.encode())
 
     async def send(self, type: int, payload: bytes) -> bool :
-        if self.state != TcpClientState.CONNECTED :
+        if self.state != TcpState.CONNECTED :
             return False
 
         data = (
@@ -101,16 +103,20 @@ class TcpClientHandler :
             return True
 
         except (OSError, asyncio.CancelledError) as e:
-            print(f"[TcpClientHandler] {self.addr} fail to send data: {e}")
+            print(f"[TcpHandler] {self.addr} fail to send data: {e}")
             await self._close()
 
         return False
 
     async def _close(self) :
-        if self.state == TcpClientState.DISCONNECTED :
+        if self.state == TcpState.DISCONNECTED :
             return
+        self.state = TcpState.DISCONNECTED
 
-        self.state = TcpClientState.DISCONNECTED
-        self.writer.close()
-        await self.writer.wait_closed()
+        try :
+            self.writer.close()
+            await self.writer.wait_closed()
+        except Exception as e :
+            print(f"[TcpHandler] {self.addr} fail to close: {e}")
+
         self.onDisconnected()
