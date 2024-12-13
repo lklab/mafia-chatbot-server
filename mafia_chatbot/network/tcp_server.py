@@ -2,7 +2,7 @@ import asyncio
 import ssl
 from typing import Callable
 
-from mafia_chatbot.network.tcp_handler import TcpClientHandler
+from mafia_chatbot.network.tcp_handler import TcpHandler
 
 class TcpServer :
     def __init__(self, port: int, useSSL: bool = True) :
@@ -10,7 +10,7 @@ class TcpServer :
         self.port: int = port
         self.useSSL: bool = useSSL
 
-    async def start(self, onConnected: Callable[[TcpClientHandler], None]) :
+    async def start(self, onConnected: Callable[[TcpHandler], None]) :
         self.onConnected = onConnected
 
         if self.useSSL :
@@ -51,6 +51,6 @@ class TcpServer :
             print("[TcpServer] Server is not running.")
 
     async def _handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) :
-        clientHandler = TcpClientHandler(reader, writer)
-        print(f"[TcpServer] {clientHandler.addr} Client connected")
-        self.onConnected(clientHandler)
+        tcpHandler = TcpHandler(reader, writer)
+        print(f"[TcpServer] {tcpHandler.addr} Client connected")
+        self.onConnected(tcpHandler)
