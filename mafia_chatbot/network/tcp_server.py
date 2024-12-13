@@ -5,8 +5,9 @@ from typing import Callable
 from mafia_chatbot.network.tcp_handler import TcpHandler
 
 class TcpServer :
-    def __init__(self, port: int, useSSL: bool = True) :
+    def __init__(self, port: int, host: str = '0.0.0.0', useSSL: bool = True) :
         self.server = None
+        self.host: str = host
         self.port: int = port
         self.useSSL: bool = useSSL
 
@@ -22,11 +23,11 @@ class TcpServer :
             )
 
             self.server = await asyncio.start_server(
-                self._handle_client, '0.0.0.0', self.port, ssl=ssl_context
+                self._handle_client, self.host, self.port, ssl=ssl_context
             )
         else :
             self.server = await asyncio.start_server(
-                self._handle_client, '0.0.0.0', self.port
+                self._handle_client, self.host, self.port
             )
 
         addr = self.server.sockets[0].getsockname()

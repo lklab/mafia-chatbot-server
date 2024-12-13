@@ -13,7 +13,7 @@ from mafia_chatbot.game.discussion_manager import DiscussionManager
 from mafia_chatbot.game.game_logger import TAG
 
 class GameManager :
-    def __init__(self, gameInfo: GameInfo) :
+    def __init__(self, gameId: str, gameInfo: GameInfo) : # TODO gameId
         self.gameState = GameState(gameInfo)
         evaluator.logger = self.gameState.logger
         self.trustRecorder: TrustRecorder = TrustRecorder(self.gameState)
@@ -33,7 +33,19 @@ class GameManager :
 
         self._ = self.gameState.translate
 
-    def removeClient(self, client: ClientPlayer) :
+    def connectClient(self, client: ClientPlayer) :
+        # TODO
+        pass
+
+    def disconnectClient(self, clientId: str) :
+        # TODO
+        pass
+
+    def removeClient(self, clientId: str) :
+        # TODO
+        pass
+
+    def removeClient(self, client: ClientPlayer, ) : # TODO client to client ID
         player = self.clientDict.get(client.id)
         if player != None :
             player.client = None

@@ -5,39 +5,71 @@ from mafia_chatbot.network.messages import *
 
 messageTypeDict: dict[Type, int] = {
     error_pb2.RequestError : 0,
-    auth_pb2.Auth : 1000,
-    auth_pb2.AuthResponse : 1001,
-    time_pb2.RequestTimeSync : 2000,
-    time_pb2.TimeSync : 2001,
-    game_pb2.RequestMyGameInfo : 3000,
-    game_pb2.MyGameInfo : 3001,
-    game_pb2.GameStart : 3002,
-    game_pb2.GameStartResponse : 3003,
-    game_pb2.JoinMyGame : 3004,
-    game_pb2.JoinMyGameResponse : 3005,
-    game_pb2.RequestGamePhase : 3006,
-    game_pb2.GamePhase : 3007,
-    game_pb2.RequestGameState : 3008,
-    game_pb2.GameState : 3009,
-    game_pb2.RequestChatList : 3010,
-    game_pb2.ChatList : 3011,
-    game_pb2.RequestAddChat : 3012,
-    game_pb2.GetChat : 3013,
-    game_pb2.AddChat : 3014,
-    game_pb2.SetTarget : 3015,
-    game_pb2.SetTargetResponse : 3016,
-    game_pb2.GetVoteState : 3017,
-    game_pb2.VoteState : 3018,
-    game_pb2.Removed : 3019,
-    game_pb2.GameEnd : 3020,
-    game_pb2.QuitGame : 3021,
-    game_pb2.QuitGameResponse : 3022,
-    game_pb2.ReportChat : 3023,
-    game_pb2.ReportChatResponse : 3024,
+    ipc_pb2.GameServerStarted : 1000,
+    ipc_pb2.StartNewGame : 1001,
+    ipc_pb2.StartNewGameResponse : 1002,
+    ipc_pb2.ClientExited : 1003,
+    ipc_pb2.GameEnded : 1004,
+    auth_pb2.Auth : 2000,
+    auth_pb2.AuthResponse : 2001,
+    time_pb2.RequestTimeSync : 3000,
+    time_pb2.TimeSync : 3001,
+    game_pb2.CheckCurrentGame : 4000,
+    game_pb2.CurrentGame : 4001,
+    game_pb2.NewGame : 4002,
+    game_pb2.NewGameResponse : 4003,
+    game_pb2.RequestGameInfo : 4004,
+    game_pb2.GameInfo : 4005,
+    game_pb2.GameStart : 4006,
+    game_pb2.GameStartResponse : 4007,
+    game_pb2.RequestGamePhase : 4008,
+    game_pb2.GamePhase : 4009,
+    game_pb2.RequestGameState : 4010,
+    game_pb2.GameState : 4011,
+    game_pb2.RequestChatList : 4012,
+    game_pb2.ChatList : 4013,
+    game_pb2.RequestAddChat : 4014,
+    game_pb2.GetChat : 4015,
+    game_pb2.AddChat : 4016,
+    game_pb2.SetTarget : 4017,
+    game_pb2.SetTargetResponse : 4018,
+    game_pb2.GetVoteState : 4019,
+    game_pb2.VoteState : 4020,
+    game_pb2.Removed : 4021,
+    game_pb2.GameEnd : 4022,
+    game_pb2.QuitGame : 4023,
+    game_pb2.QuitGameResponse : 4024,
+    game_pb2.ReportChat : 4025,
+    game_pb2.ReportChatResponse : 4026,
 }
 
 def _RequestErrorMessageFactory(data: bytes) -> error_pb2.RequestError :
     message = error_pb2.RequestError()
+    message.ParseFromString(data)
+    return message
+
+def _GameServerStartedMessageFactory(data: bytes) -> ipc_pb2.GameServerStarted :
+    message = ipc_pb2.GameServerStarted()
+    message.ParseFromString(data)
+    return message
+
+def _StartNewGameMessageFactory(data: bytes) -> ipc_pb2.StartNewGame :
+    message = ipc_pb2.StartNewGame()
+    message.ParseFromString(data)
+    return message
+
+def _StartNewGameResponseMessageFactory(data: bytes) -> ipc_pb2.StartNewGameResponse :
+    message = ipc_pb2.StartNewGameResponse()
+    message.ParseFromString(data)
+    return message
+
+def _ClientExitedMessageFactory(data: bytes) -> ipc_pb2.ClientExited :
+    message = ipc_pb2.ClientExited()
+    message.ParseFromString(data)
+    return message
+
+def _GameEndedMessageFactory(data: bytes) -> ipc_pb2.GameEnded :
+    message = ipc_pb2.GameEnded()
     message.ParseFromString(data)
     return message
 
@@ -61,13 +93,33 @@ def _TimeSyncMessageFactory(data: bytes) -> time_pb2.TimeSync :
     message.ParseFromString(data)
     return message
 
-def _RequestMyGameInfoMessageFactory(data: bytes) -> game_pb2.RequestMyGameInfo :
-    message = game_pb2.RequestMyGameInfo()
+def _CheckCurrentGameMessageFactory(data: bytes) -> game_pb2.CheckCurrentGame :
+    message = game_pb2.CheckCurrentGame()
     message.ParseFromString(data)
     return message
 
-def _MyGameInfoMessageFactory(data: bytes) -> game_pb2.MyGameInfo :
-    message = game_pb2.MyGameInfo()
+def _CurrentGameMessageFactory(data: bytes) -> game_pb2.CurrentGame :
+    message = game_pb2.CurrentGame()
+    message.ParseFromString(data)
+    return message
+
+def _NewGameMessageFactory(data: bytes) -> game_pb2.NewGame :
+    message = game_pb2.NewGame()
+    message.ParseFromString(data)
+    return message
+
+def _NewGameResponseMessageFactory(data: bytes) -> game_pb2.NewGameResponse :
+    message = game_pb2.NewGameResponse()
+    message.ParseFromString(data)
+    return message
+
+def _RequestGameInfoMessageFactory(data: bytes) -> game_pb2.RequestGameInfo :
+    message = game_pb2.RequestGameInfo()
+    message.ParseFromString(data)
+    return message
+
+def _GameInfoMessageFactory(data: bytes) -> game_pb2.GameInfo :
+    message = game_pb2.GameInfo()
     message.ParseFromString(data)
     return message
 
@@ -78,16 +130,6 @@ def _GameStartMessageFactory(data: bytes) -> game_pb2.GameStart :
 
 def _GameStartResponseMessageFactory(data: bytes) -> game_pb2.GameStartResponse :
     message = game_pb2.GameStartResponse()
-    message.ParseFromString(data)
-    return message
-
-def _JoinMyGameMessageFactory(data: bytes) -> game_pb2.JoinMyGame :
-    message = game_pb2.JoinMyGame()
-    message.ParseFromString(data)
-    return message
-
-def _JoinMyGameResponseMessageFactory(data: bytes) -> game_pb2.JoinMyGameResponse :
-    message = game_pb2.JoinMyGameResponse()
     message.ParseFromString(data)
     return message
 
@@ -189,33 +231,40 @@ def _ReportChatResponseMessageFactory(data: bytes) -> game_pb2.ReportChatRespons
 
 messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     0 : _RequestErrorMessageFactory,
-    1000 : _AuthMessageFactory,
-    1001 : _AuthResponseMessageFactory,
-    2000 : _RequestTimeSyncMessageFactory,
-    2001 : _TimeSyncMessageFactory,
-    3000 : _RequestMyGameInfoMessageFactory,
-    3001 : _MyGameInfoMessageFactory,
-    3002 : _GameStartMessageFactory,
-    3003 : _GameStartResponseMessageFactory,
-    3004 : _JoinMyGameMessageFactory,
-    3005 : _JoinMyGameResponseMessageFactory,
-    3006 : _RequestGamePhaseMessageFactory,
-    3007 : _GamePhaseMessageFactory,
-    3008 : _RequestGameStateMessageFactory,
-    3009 : _GameStateMessageFactory,
-    3010 : _RequestChatListMessageFactory,
-    3011 : _ChatListMessageFactory,
-    3012 : _RequestAddChatMessageFactory,
-    3013 : _GetChatMessageFactory,
-    3014 : _AddChatMessageFactory,
-    3015 : _SetTargetMessageFactory,
-    3016 : _SetTargetResponseMessageFactory,
-    3017 : _GetVoteStateMessageFactory,
-    3018 : _VoteStateMessageFactory,
-    3019 : _RemovedMessageFactory,
-    3020 : _GameEndMessageFactory,
-    3021 : _QuitGameMessageFactory,
-    3022 : _QuitGameResponseMessageFactory,
-    3023 : _ReportChatMessageFactory,
-    3024 : _ReportChatResponseMessageFactory,
+    1000 : _GameServerStartedMessageFactory,
+    1001 : _StartNewGameMessageFactory,
+    1002 : _StartNewGameResponseMessageFactory,
+    1003 : _ClientExitedMessageFactory,
+    1004 : _GameEndedMessageFactory,
+    2000 : _AuthMessageFactory,
+    2001 : _AuthResponseMessageFactory,
+    3000 : _RequestTimeSyncMessageFactory,
+    3001 : _TimeSyncMessageFactory,
+    4000 : _CheckCurrentGameMessageFactory,
+    4001 : _CurrentGameMessageFactory,
+    4002 : _NewGameMessageFactory,
+    4003 : _NewGameResponseMessageFactory,
+    4004 : _RequestGameInfoMessageFactory,
+    4005 : _GameInfoMessageFactory,
+    4006 : _GameStartMessageFactory,
+    4007 : _GameStartResponseMessageFactory,
+    4008 : _RequestGamePhaseMessageFactory,
+    4009 : _GamePhaseMessageFactory,
+    4010 : _RequestGameStateMessageFactory,
+    4011 : _GameStateMessageFactory,
+    4012 : _RequestChatListMessageFactory,
+    4013 : _ChatListMessageFactory,
+    4014 : _RequestAddChatMessageFactory,
+    4015 : _GetChatMessageFactory,
+    4016 : _AddChatMessageFactory,
+    4017 : _SetTargetMessageFactory,
+    4018 : _SetTargetResponseMessageFactory,
+    4019 : _GetVoteStateMessageFactory,
+    4020 : _VoteStateMessageFactory,
+    4021 : _RemovedMessageFactory,
+    4022 : _GameEndMessageFactory,
+    4023 : _QuitGameMessageFactory,
+    4024 : _QuitGameResponseMessageFactory,
+    4025 : _ReportChatMessageFactory,
+    4026 : _ReportChatResponseMessageFactory,
 }

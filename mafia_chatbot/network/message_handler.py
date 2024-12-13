@@ -2,6 +2,7 @@ import asyncio
 from enum import Enum
 from collections import deque
 from typing import Callable, Deque, Any
+import uuid
 
 from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.messages.message_info import *
@@ -31,6 +32,7 @@ class MessageHandler :
         self.onDisconnected = onDisconnected
 
         self.sendQueue: Deque[tuple[int, bytes]] = deque()
+        self.responseAwaiters: dict[str, asyncio.Future] = {}
         self.isSending = False
 
         self.tcpHandler.listen(
@@ -42,6 +44,25 @@ class MessageHandler :
         if self.state != MessageState.CONNECTED :
             return
         self._send(message)
+
+    async def sendAwaitResponse(self, message) :
+        if self.state != MessageState.CONNECTED :
+            return
+
+        rqid = str(uuid.uuid4())
+        message.rqid = rqid
+
+        future = asyncio.Future()
+        self.responseAwaiters[rqid] = future
+
+        self._send(message)
+
+        try:
+            return await asyncio.wait_for(future, 10)
+        except asyncio.TimeoutError as e :
+            del self.responseAwaiters[rqid]
+            print(f'[MessageHandler] {self.tcpHandler.addr} No response for request {rqid} within timeout: {e}\nmessage=<{message}>')
+            raise TimeoutError(f"No response for request {rqid} within timeout: {e}\nmessage=<{message}>")
 
     def _send(self, message) :
         if type(message) in messageTypeDict :
@@ -65,7 +86,13 @@ class MessageHandler :
             if msgType in messageFactoryDict :
                 message = messageFactoryDict[msgType](data)
                 # print(f'[MessageHandler] {self.tcpHandler.addr} onData msgType={msgType}, message=<{message}>')
-                self.onMessage(message)
+
+                if message.rqid in self.responseAwaiters :
+                    future = self.responseAwaiters.pop(message.rqid, None)
+                    if future and not future.done() :
+                        future.set_result(message)
+                else :
+                    self.onMessage(message)
 
     def _onDisconnected(self) :
         self.state = MessageState.DISCONNECTED

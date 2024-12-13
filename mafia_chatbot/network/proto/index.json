@@ -9,6 +9,17 @@
             ]
         },
         {
+            "name" : "ipc",
+            "messages" :
+            [
+                "GameServerStarted",
+                "StartNewGame",
+                "StartNewGameResponse",
+                "ClientExited",
+                "GameEnded"
+            ]
+        },
+        {
             "name" : "auth",
             "messages" :
             [
@@ -28,12 +39,14 @@
             "name" : "game",
             "messages" :
             [
-                "RequestMyGameInfo",
-                "MyGameInfo",
+                "CheckCurrentGame",
+                "CurrentGame",
+                "NewGame",
+                "NewGameResponse",
+                "RequestGameInfo",
+                "GameInfo",
                 "GameStart",
                 "GameStartResponse",
-                "JoinMyGame",
-                "JoinMyGameResponse",
                 "RequestGamePhase",
                 "GamePhase",
                 "RequestGameState",

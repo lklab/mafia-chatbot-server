@@ -13,21 +13,36 @@ message DebugInfo {
   bool continueOnlyBots = 10;
 }
 
-message GameInfo {
-  int32 playerCount = 1;
-  int32 mafiaCount = 2;
-  string language = 3;
-  DebugInfo debugInfo = 4;
-}
-
-message RequestMyGameInfo {
+message CheckCurrentGame {
   string rqid = 1;
 }
 
-message MyGameInfo {
+message CurrentGame {
   string rqid = 1;
   bool isGameExists = 2;
-  GameInfo info = 3;
+  int32 port = 3;
+}
+
+message NewGame {
+  string rqid = 1;
+  repeated string clients = 2;
+}
+
+message NewGameResponse {
+  string rqid = 1;
+  int32 port = 2;
+}
+
+message RequestGameInfo {
+  string rqid = 1;
+}
+
+message GameInfo {
+  string rqid = 1;
+  int32 playerCount = 2;
+  int32 mafiaCount = 3;
+  string language = 4;
+  DebugInfo debugInfo = 5;
 }
 
 message GameStart {
@@ -36,14 +51,6 @@ message GameStart {
 }
 
 message GameStartResponse {
-  string rqid = 1;
-}
-
-message JoinMyGame {
-  string rqid = 1;
-}
-
-message JoinMyGameResponse {
   string rqid = 1;
 }
 
