@@ -4,10 +4,15 @@ message GameServerStarted {
   int32 port = 1;
 }
 
+message Client {
+  string id = 1;
+  string name = 2;
+}
+
 message StartNewGame {
   string rqid = 1;
   string gameId = 2;
-  repeated string clients = 3;
+  repeated Client clients = 3;
 }
 
 message StartNewGameResponse {

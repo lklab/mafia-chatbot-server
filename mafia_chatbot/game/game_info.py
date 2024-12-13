@@ -19,12 +19,15 @@ class DebugInfo :
 
 class GameInfo :
     def __init__(self,
+        gameId: str,
         playerCount: int,
         mafiaCount: int,
         clients: list[ClientPlayer],
         localPlayerName: str,
         language: str = 'english',
         debugInfo: DebugInfo = None) :
+
+        self.gameId = gameId
 
         self.playerCount = playerCount
         self.citizenCount = playerCount - mafiaCount

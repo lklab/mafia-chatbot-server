@@ -85,8 +85,7 @@ class VoteData :
 
             message = self.getVoteStateMessage()
             for player in self.clientPlayers :
-                if player.client != None :
-                    player.client.sendMessage(message)
+                player.client.sendMessage(message)
 
     def evaluate(self) :
         maxVoteCount = 0
@@ -147,7 +146,7 @@ languageToCodeDict: dict[str, str] = {
 class GameState :
     def __init__(self, gameInfo: GameInfo) :
         self.gameInfo = gameInfo
-        self.gameId = str(uuid.uuid4())
+        self.gameId = gameInfo.gameId
         self.logger = FakeGameLogger() # GameLogger(self.gameId, 'log')
 
         ### l10n
@@ -246,8 +245,8 @@ class GameState :
         # assign debug role
         if gameInfo.debugInfo != None and gameInfo.debugInfo.fixedRole != None :
             fixedRolePlayer: Player = None
-            for player in self.players :
-                if player.client != None and player.client.id == gameInfo.debugInfo.fixedRoleClientId :
+            for player in self.clientPlayers :
+                if player.client.clientId == gameInfo.debugInfo.fixedRoleClientId :
                     fixedRolePlayer = player
                     self.players.remove(fixedRolePlayer)
                     break
@@ -346,10 +345,9 @@ class GameState :
         self.removedPlayers[player] = PlayerRemoveInfo(player, reason, self.getCurrentRoundInfo())
 
         # send player removed message
-        if player.client != None :
-            message = game_pb2.Removed()
-            message.reason = removeReasonToProtoDict[reason]
-            player.client.sendMessage(message)
+        message = game_pb2.Removed()
+        message.reason = removeReasonToProtoDict[reason]
+        player.client.sendMessage(message)
 
     def removePlayerByInfo(self, playerInfo: PlayerInfo, reason: RemoveReason) :
         self.removePlayer(self.getPlayerByInfo(playerInfo), reason)
@@ -542,18 +540,16 @@ class GameState :
 
     def sendGameStateMessageToAllClient(self) :
         for player in self.clientPlayers :
-            if player.client != None :
-                message = self.toProtoGameStateMessage(player)
-                player.client.sendMessage(message)
+            message = self.toProtoGameStateMessage(player)
+            player.client.sendMessage(message)
 
     def sendAddChatMessageToAllClient(self, chat: ChatData) :
         for player in self.clientPlayers :
-            if player.client != None :
-                message = game_pb2.AddChat()
-                chat.toProtoMessage(player.info, message.chat)
-                message.remainMyChat = player.remainChatingCount
-                message.maxMyChat = player.maxChatingCount
-                player.client.sendMessage(message)
+            message = game_pb2.AddChat()
+            chat.toProtoMessage(player.info, message.chat)
+            message.remainMyChat = player.remainChatingCount
+            message.maxMyChat = player.maxChatingCount
+            player.client.sendMessage(message)
 
     def expandList(self, l: list, size: int, fillValue = None) :
         for _ in range(len(l), size) :

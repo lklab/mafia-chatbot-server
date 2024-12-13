@@ -122,8 +122,9 @@ class MainProcess :
         gameId: str = message.gameId
 
         if gameId in self.gameDict :
-            game = self.gameDict[gameId]
+            game: GameHandler = self.gameDict[gameId]
             del self.gameDict[gameId]
+            game.terminate()
 
             for clientId in game.clientIds :
                 if clientId in self.gameByClientId :
@@ -189,10 +190,17 @@ class MainProcess :
 
             # send new game
             gameId: str = str(uuid.uuid4())
-            clientIds: list[str] = [client.clientId] # TODO multiplay
+
+            clients: list[ipc_pb2.Client] = []
+
+            # TODO multiplay
+            clientInfo = ipc_pb2.Client()
+            clientInfo.id = client.clientId
+            clientInfo.name = client.clientName
+
             startNewGame = ipc_pb2.StartNewGame()
             startNewGame.gameId = gameId
-            startNewGame.clients.extend(clientIds)
+            startNewGame.clients.extend(clients)
 
             try :
                 await targetProcess.messageHandler.sendAwaitResponse(startNewGame)
@@ -205,8 +213,7 @@ class MainProcess :
             # assign game
             game: GameHandler = GameHandler(gameId, targetProcess)
             self.gameDict[gameId] = game
-            for clientId in clientIds :
-                self.gameByClientId[clientId] = game
+            self.gameByClientId[client.clientId] = game # TODO multiplay
 
             # response port to client
             newGameResponse = game_pb2.NewGameResponse()

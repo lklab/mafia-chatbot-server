@@ -1,14 +1,19 @@
 from typing import Callable, Any
 
-from mafia_chatbot.network.message_handler import MessageClientHandler
+from mafia_chatbot.network.message_handler import MessageHandler
 
 class ClientPlayer :
-    def __init__(self, id: str, name: str, client: MessageClientHandler) :
-        self.id = id
+    def __init__(self, clientId: str, name: str) :
+        self.clientId = clientId
         self.name = name
-        self.client = client
 
         self.subscribers: dict[type, Callable[[Any], None]] = {}
+
+    def setMessageHandler(self, messageHandler: MessageHandler) :
+        self.messageHandler = messageHandler
+
+    def clearMessageHandler(self) :
+        self.messageHandler = None
 
     def forwardMessage(self, message: Any) :
         msgType = type(message)
@@ -22,7 +27,8 @@ class ClientPlayer :
         self.subscribers[msgType] = listener
 
     def sendMessage(self, message: Any) :
-        self.client.send(message)
+        if self.messageHandler != None :
+            self.messageHandler.send(message)
 
     def clearSubscribers(self) :
         self.subscribers.clear()

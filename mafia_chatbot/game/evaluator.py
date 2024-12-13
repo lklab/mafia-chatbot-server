@@ -11,6 +11,8 @@ from mafia_chatbot.game.game_logger import GameLogger, FakeGameLogger, TAG
 
 logger: GameLogger = FakeGameLogger()
 
+# TODO change to class
+
 def getOneTargetStrategy(publicRole: Role, targetInfo: PlayerInfo, reason: str) -> Strategy :
     return Strategy(publicRole, [Assumption([Estimation(targetInfo, Role.MAFIA)], reason)])
 

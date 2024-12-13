@@ -27,22 +27,23 @@ class ClientHandler :
 
         self.authorized: bool = False
         self.clientId: str = None
+        self.clientName: str = None
+
         self.player: ClientPlayer = None
 
-    def getPlayer(self) -> ClientPlayer :
-        return self.player
+    def setPlayer(self, player: ClientPlayer) :
+        self.player = player
+
+    def forwardMessage(self, message: Any) -> bool :
+        if self.player != None :
+            return self.player.forwardMessage(message)
+        return False
 
     def _onAuth(self, message) :
         if self.onAuth(self, message) :
             self.authorized = True
             self.clientId = message.clientId
             self.clientName = message.name
-
-            self.player = ClientPlayer(
-                id=self.clientId,
-                name=self.clientName,
-                client=self.messageHandler,
-            )
             return True
         else :
             return False

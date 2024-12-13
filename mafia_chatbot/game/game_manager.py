@@ -13,16 +13,14 @@ from mafia_chatbot.game.discussion_manager import DiscussionManager
 from mafia_chatbot.game.game_logger import TAG
 
 class GameManager :
-    def __init__(self, gameId: str, gameInfo: GameInfo) : # TODO gameId
+    def __init__(self, gameInfo: GameInfo) :
         self.gameState = GameState(gameInfo)
         evaluator.logger = self.gameState.logger
         self.trustRecorder: TrustRecorder = TrustRecorder(self.gameState)
+        self.terminated: bool = False
 
-        self.clientDict: dict[str, Player] = {}
         for player in self.gameState.clientPlayers :
-            if player.client != None :
-                self.clientDict[player.client.id] = player
-                self._subscribeClient(player)
+            self._subscribeClient(player)
 
         self.llm = LLM(self.gameState)
 
@@ -33,32 +31,11 @@ class GameManager :
 
         self._ = self.gameState.translate
 
-    def connectClient(self, client: ClientPlayer) :
-        # TODO
-        pass
-
-    def disconnectClient(self, clientId: str) :
-        # TODO
-        pass
-
-    def removeClient(self, clientId: str) :
-        # TODO
-        pass
-
-    def removeClient(self, client: ClientPlayer, ) : # TODO client to client ID
-        player = self.clientDict.get(client.id)
-        if player != None :
-            player.client = None
-
-    def assignClient(self, client: ClientPlayer) :
-        player = self.clientDict.get(client.id)
-        if player != None :
-            player.client = client
-            self._subscribeClient(player)
+    def terminate(self) :
+        self.terminated = True
 
     def _subscribeClient(self, player: Player) :
-        if player.client != None :
-            ClientMessageProcessor(self.gameState, self.trustRecorder, player)
+        ClientMessageProcessor(self.gameState, self.trustRecorder, player)
 
     async def start(self) :
         await self._mainLogic()
@@ -90,10 +67,9 @@ class GameManager :
         self.gameState.setPhase(Phase.NOT_PLAYING)
 
         for player in self.gameState.clientPlayers :
-            if player.client != None :
-                message = game_pb2.GameEnd()
-                message.reason = gameEndReasonToProtoDict[gameEndInfo.reason]
-                player.client.sendMessage(message)
+            message = game_pb2.GameEnd()
+            message.reason = gameEndReasonToProtoDict[gameEndInfo.reason]
+            player.client.sendMessage(message)
 
     async def _processDay(self) :
         self._addSystemChat(self._("It is now morning. Please begin your discussion."))
@@ -270,6 +246,11 @@ class GameManager :
             )
         elif humanCount == 0 and not self.gameState.continueOnlyBots :
             self.gameState.logger.log(TAG.INFO, f'game end: there are no human players.')
+            return GameEndInfo(
+                reason=GameEndReason.NO_HUMAN_PLAYER,
+            )
+        elif self.terminated :
+            self.gameState.logger.log(TAG.INFO, f'game end: terminated.')
             return GameEndInfo(
                 reason=GameEndReason.NO_HUMAN_PLAYER,
             )
