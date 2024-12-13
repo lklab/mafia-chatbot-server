@@ -62,7 +62,7 @@ class TcpHandler :
                         continue
 
                     # get payload
-                    if len(buffer) > cursor + payload_size :
+                    if len(buffer) < cursor + payload_size :
                         break
                     payload = buffer[cursor:cursor+payload_size]
                     cursor += payload_size
