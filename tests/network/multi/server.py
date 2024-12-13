@@ -10,19 +10,18 @@ if __name__ == "__main__" :
 
 import asyncio
 from multiprocessing import Process
+import time
 import traceback
 
 from mafia_chatbot.network.tcp_server import TcpServer
 from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.message_handler import MessageHandler
-
-import mafia_chatbot.network.messages.message_info as MsgInfo
+from mafia_chatbot.network.messages import *
 
 class MainProcess :
     async def main(self) :
-        self.mainServerTask = asyncio.create_task(self._startMainServer())
         self.ipcServerTask = asyncio.create_task(self._startIpcServer())
-        await self.mainServerTask
+        await self.ipcServerTask
 
     async def _startMainServer(self) :
         self.mainServer = TcpServer(port=10015)
@@ -35,6 +34,7 @@ class MainProcess :
         await self.ipcServer.serve()
 
     def _onClientConnected(self, tcpHandler: TcpHandler) :
+        print(f'[Main] [Client] _onClientConnected')
         messageHandler = MessageHandler(
             tcpHandler=tcpHandler,
             onAuth=lambda m: self._onClientAuth(messageHandler, m),
@@ -43,6 +43,7 @@ class MainProcess :
         )
 
     def _onIpcConnected(self, tcpHandler: TcpHandler) :
+        print(f'[Main] [IPC] _onIpcConnected')
         messageHandler = MessageHandler(
             tcpHandler=tcpHandler,
             onAuth=None,
@@ -56,12 +57,17 @@ class MainProcess :
 
     def _onClientMessage(self, messageHandler: MessageHandler, message) :
         print(f'[Main] [Client] onMessage message=<{message}>')
+        message = game_pb2.GamePhase()
+        message.round = self.gamePort
+        messageHandler.send(message)
 
     def _onClientDisconnected(self, messageHandler: MessageHandler) :
         print('[Main] [Client] onDisconnected')
 
     def _onIpcMessage(self, messageHandler: MessageHandler, message) :
         print(f'[Main] [IPC] onMessage message=<{message}>')
+        self.gamePort = message.round
+        self.mainServerTask = asyncio.create_task(self._startMainServer())
 
     def _onIpcDisconnected(self, messageHandler: MessageHandler) :
         print('[Main] [IPC] onDisconnected')
@@ -93,26 +99,49 @@ class GameProcess :
             try :
                 self.gameServer = TcpServer(port=self.port)
                 await self.gameServer.start(onConnected=self._onClientConnected)
-            except OSError :
+            except OSError as e :
+                print(f'[Game] [Error] {e}')
+                traceback.print_exc()
                 self.port += 1
+                await asyncio.sleep(1)
                 continue
             break
 
-        message = None # TODO 현재 포트에서 열었다고 알리기
+        message = game_pb2.GamePhase()
+        message.round = self.port
         self.ipcMessageHandler.send(message)
 
         await self.gameServer.serve()
 
     def _onClientConnected(self, tcpHandler: TcpHandler) :
-        pass
+        print(f'[Game] [Client] _onClientConnected')
+        messageHandler = MessageHandler(
+            tcpHandler=tcpHandler,
+            onAuth=lambda m: self._onClientAuth(messageHandler, m),
+            onMessage=lambda m: self._onClientMessage(messageHandler, m),
+            onDisconnected=lambda: self._onClientDisconnected(messageHandler),
+        )
+
+    def _onClientAuth(self, messageHandler: MessageHandler, message) :
+        print(f'[Game] [Client] onAuth message=<{message}>')
+        return True
+
+    def _onClientMessage(self, messageHandler: MessageHandler, message) :
+        print(f'[Game] [Client] onMessage message=<{message}>')
+        messageHandler.send(message)
+
+    def _onClientDisconnected(self, messageHandler: MessageHandler) :
+        print('[Game] [Client] onDisconnected')
+
+def startGameProcess() :
+    time.sleep(2)
+    gameProcess = GameProcess()
+    asyncio.run(gameProcess.main(10016))
 
 if __name__ == '__main__' :
-    # m2sq = Queue()
-    # s2mq = Queue()
-
-    # process = Process(target=startGameProcess, args=(m2sq, s2mq))
-    # process.daemon = True
-    # process.start()
+    process = Process(target=startGameProcess)
+    process.daemon = True
+    process.start()
 
     mainProcess = MainProcess()
     asyncio.run(mainProcess.main())

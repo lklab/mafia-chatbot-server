@@ -1,72 +1,101 @@
-import socket
+if __name__ == "__main__" :
+    from pathlib import Path
+    import sys
+
+    path_root = Path(__file__).resolve().parent
+    while path_root.name != 'mafia-chatbot-server' :
+        path_root = path_root.parent
+
+    sys.path.append(str(path_root))
+
 import ssl
-import time
+import asyncio
 
-delimiter = b'\xCA\xFE\xBA\xBE'
+from mafia_chatbot.network.tcp_handler import TcpHandler
+from mafia_chatbot.network.message_handler import MessageHandler
+from mafia_chatbot.network.messages import *
 
-def parseData(data: bytes) :
-    # check delimiter
-    cursor = data.find(delimiter)
-    cursor += 4
+gamePort = None
 
-    # get message type and payload size
-    msg_type = int.from_bytes(data[cursor:cursor+4], byteorder='big')
-    cursor += 4
-    payload_size = int.from_bytes(data[cursor:cursor+4], byteorder='big')
-    cursor += 4
+def onMainMessage(message) :
+    global gamePort
+    print(f'onMainMessage message=<{message}>')
+    if type(message) == game_pb2.GamePhase :
+        gamePort = message.round
 
-    # get payload
-    payload = data[cursor:cursor+payload_size]
-    cursor += payload_size
+def onMainDisconnected() :
+    print(f'onMainDisconnected')
 
-    # return
-    return msg_type, payload
+def onGameMessage(message) :
+    print(f'onGameMessage message=<{message}>')
 
-# 서버 설정
-HOST = 'localhost'
-PORT = 10015
+def onGameDisconnected() :
+    print(f'onGameDisconnected')
 
+async def main() :
+    global gamePort
 
-# 기본 소켓 생성
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # main server part
+    context = ssl._create_unverified_context()
+    reader, writer = await asyncio.open_connection(
+        '127.0.0.1', 10015, ssl=context
+    )
+    print('Connected to main server')
 
-# TLS 설정 추가
-# context = ssl.create_default_context()
-context = ssl._create_unverified_context()
-with context.wrap_socket(client_socket, server_hostname=HOST) as tls_client_socket:
-    tls_client_socket.connect((HOST, PORT))
-    print(f'Connected main process')
+    tcpHandler = TcpHandler(reader, writer)
+    messageHandler = MessageHandler(
+        tcpHandler=tcpHandler,
+        onAuth=None,
+        onMessage=onMainMessage,
+        onDisconnected=onMainDisconnected,
+    )
 
-    buffer = tls_client_socket.recv(4096)
-    msgType, data = parseData(buffer)
-    port = int.from_bytes(data, byteorder='big')
-    print(f'Received port: {port}')
+    authMessage = auth_pb2.Auth()
+    authMessage.rqid = '1'
+    authMessage.clientId = '2'
+    authMessage.name = '3'
+    messageHandler.send(authMessage)
+    print('send auth')
 
-    time.sleep(10)
-    tls_client_socket.close()
-    print(f'Closed')
+    messageHandler.send(authMessage)
+    print('send data')
+    while (gamePort == None) :
+        await asyncio.sleep(0.1)
 
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-context = ssl._create_unverified_context()
-with context.wrap_socket(client_socket, server_hostname=HOST) as tls_client_socket:
-    tls_client_socket.connect((HOST, port))
-    print(f'Connected game process')
+    await tcpHandler._close()
+    print('Disconnected from main server')
 
-    for i in range(10) :
-        value = i * i
-        data = value.to_bytes(4, byteorder='big')
-        print(f'Send value: {value}')
-        tls_client_socket.send(delimiter +
-            msgType.to_bytes(4, byteorder='big') +
-            len(data).to_bytes(4, byteorder='big') +
-            data
-        )
+    # game server part
+    context = ssl._create_unverified_context()
+    reader, writer = await asyncio.open_connection(
+        '127.0.0.1', gamePort, ssl=context
+    )
+    print('Connected to game server')
 
-        buffer = tls_client_socket.recv(4096)
-        msgType, data = parseData(buffer)
-        received = int.from_bytes(data, byteorder='big')
-        print(f'Received value: {received}')
+    tcpHandler = TcpHandler(reader, writer)
+    messageHandler = MessageHandler(
+        tcpHandler=tcpHandler,
+        onAuth=None,
+        onMessage=onGameMessage,
+        onDisconnected=onGameDisconnected,
+    )
 
-        time.sleep(1)
+    authMessage = auth_pb2.Auth()
+    authMessage.rqid = '1'
+    authMessage.clientId = '2'
+    authMessage.name = '3'
+    messageHandler.send(authMessage)
+    print('send auth')
 
-    tls_client_socket.close()
+    for i in range(1, 11) :
+        message = game_pb2.GamePhase()
+        message.round = i * i
+        messageHandler.send(message)
+        print('send data')
+        await asyncio.sleep(1)
+
+    await tcpHandler._close()
+    print('Disconnected from game server')
+
+if __name__ == '__main__' :
+    asyncio.run(main())
