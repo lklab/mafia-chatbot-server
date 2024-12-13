@@ -23,14 +23,17 @@ class GameInstance :
     pass
 
 class GameInstance :
-    def __init__(self, id: str, clientIds: list[str]) :
+    def __init__(self, id: str, clientIds: list[str], onGameEnded: Callable[[GameInstance], None]) :
         self.id = id
         self.clientIds = clientIds
+        self.onGameEnded = onGameEnded
 
         self.gameInfoMessage: game_pb2.GameInfo = None
         self.gameInfo: GameInfo = None
 
         self.gameManager: GameManager = None
+
+        # TODO 일정시간동안 게임 실행 성공 못하면 게임 종료 처리
 
     def setGameInfoMessage(self, message: game_pb2.GameInfo) :
         self.gameInfoMessage = message
@@ -41,10 +44,10 @@ class GameInstance :
         self.gameInfo = self._setupGameInfo(clients)
         return self.gameInfo.checkValid()
 
-    def startGame(self, onGameEnded: Callable[[GameInstance], None]) :
+    def startGame(self) :
         async def _startGame() :
             await self.gameManager.start()
-            onGameEnded(self)
+            self.onGameEnded(self)
 
         if self.gameManager != None or self.gameInfo == None :
             return
@@ -71,6 +74,10 @@ class GameInstance :
 
         if self.gameManager != None :
             self.gameManager.removeClient(client.clientId)
+
+    def terminate(self) :
+        self.onGameEnded(self)
+        # TODO
 
     def _setupGameInfo(self, clients: list[ClientHandler]) :
         self.gameInfo = GameInfo(
@@ -133,7 +140,7 @@ class GameProcess :
         gameId: str = message.gameId
         clientIds: list[str] = message.clients
 
-        game: GameInstance = GameInstance(gameId, clientIds)
+        game: GameInstance = GameInstance(gameId, clientIds, self._clearGame)
         for cliendId in clientIds :
             self.gameByClientId[cliendId] = game
 
@@ -230,10 +237,10 @@ class GameProcess :
         if not isValid :
             errorResponse = self._makeErrorResponse(message, 0, 'GameInfo is invalid.')
             client.messageHandler.send(errorResponse)
-            self._clearGame(game)
+            game.terminate()
             return
 
-        game.startGame(self._onGameEnded)
+        game.startGame()
 
         response = game_pb2.GameStartResponse()
         response.rqid = message.rqid
@@ -288,9 +295,6 @@ class GameProcess :
         game_pb2.QuitGame : _switchClientMessageQuitGame,
         game_pb2.ReportChat : _switchClientMessageReportChat,
     }
-
-    def _onGameEnded(self, game: GameInstance) :
-        self._clearGame(game)
 
     def _clearGame(self, game: GameInstance) :
         for clientId in game.clientIds :
