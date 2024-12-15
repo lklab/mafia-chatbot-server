@@ -1,7 +1,8 @@
 syntax = "proto3";
 
 message GameServerStarted {
-  int32 port = 1;
+  string rqid = 1;
+  int32 port = 2;
 }
 
 message Client {
@@ -20,10 +21,12 @@ message StartNewGameResponse {
 }
 
 message ClientExited {
-  string gameId = 1;
-  string clientId = 2;
+  string rqid = 1;
+  string gameId = 2;
+  string clientId = 3;
 }
 
 message GameEnded {
-  string gameId = 1;
+  string rqid = 1;
+  string gameId = 2;
 }

@@ -191,12 +191,11 @@ class MainProcess :
             # send new game
             gameId: str = str(uuid.uuid4())
 
-            clients: list[ipc_pb2.Client] = []
-
             # TODO multiplay
             clientInfo = ipc_pb2.Client()
             clientInfo.id = client.clientId
             clientInfo.name = client.clientName
+            clients: list[ipc_pb2.Client] = [clientInfo]
 
             startNewGame = ipc_pb2.StartNewGame()
             startNewGame.gameId = gameId
@@ -211,7 +210,7 @@ class MainProcess :
                 return
 
             # assign game
-            game: GameHandler = GameHandler(gameId, targetProcess)
+            game: GameHandler = GameHandler(gameId, targetProcess, [client.clientId]) # TODO multiplay
             self.gameDict[gameId] = game
             self.gameByClientId[client.clientId] = game # TODO multiplay
 
@@ -219,6 +218,7 @@ class MainProcess :
             newGameResponse = game_pb2.NewGameResponse()
             newGameResponse.rqid = message.rqid
             newGameResponse.port = game.process.port
+            client.messageHandler.send(newGameResponse)
 
         # check exist game
         if client.clientId in self.gameByClientId :

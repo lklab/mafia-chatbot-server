@@ -190,7 +190,7 @@ class GameState :
             )
             self.clientPlayers.append(clientPlayer)
 
-            if client.id == observerClientId :
+            if client.clientId == observerClientId :
                 self.observerPlayer = clientPlayer
                 clientPlayer.setRemoved(RemoveReason.OBSERVER)
             else :
