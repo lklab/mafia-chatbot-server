@@ -96,7 +96,7 @@ class MainProcess :
         )
 
     def _onGameProcessMessage(self, messageHandler: MessageHandler, message) :
-        print(f'[MainProcess] _onGameProcessMessage message=<{message}>')
+        # print(f'[MainProcess] _onGameProcessMessage type={type(message)}, message=<{message}>')
         if type(message) in MainProcess._switchGameProcessMessage :
             MainProcess._switchGameProcessMessage[type(message)](self, messageHandler, message)
 
@@ -151,7 +151,7 @@ class MainProcess :
         return True # TODO check auth message
 
     def _onClientMessage(self, client: ClientHandler, message) :
-        print(f'[MainProcess] _onClientMessage name={client.clientName}, message=<{message}>')
+        # print(f'[MainProcess] _onClientMessage name={client.clientName}, type={type(message)}, message=<{message}>')
         if type(message) in MainProcess._switchClientMessage :
             MainProcess._switchClientMessage[type(message)](self, client, message)
         else :

@@ -160,7 +160,7 @@ class GameProcess :
 
     ### Handle main process ###
     def _onMainProcessMessage(self, message) :
-        print(f'[GameProcess] _onMainProcessMessage message=<{message}>')
+        # print(f'[GameProcess] _onMainProcessMessage type={type(message)}, message=<{message}>')
         if type(message) in GameProcess._switchMainProcessMessage :
             GameProcess._switchMainProcessMessage[type(message)](self, message)
 
@@ -214,7 +214,7 @@ class GameProcess :
             return False
 
     def _onClientMessage(self, client: ClientHandler, message) :
-        print(f'[GameProcess] _onClientMessage name={client.clientName}, type={type(message)}, message=<{message}>')
+        # print(f'[GameProcess] _onClientMessage name={client.clientName}, type={type(message)}, message=<{message}>')
         if type(message) in GameProcess._switchClientMessage :
             GameProcess._switchClientMessage[type(message)](self, client, message)
         else :
@@ -236,24 +236,20 @@ class GameProcess :
 
     def _switchClientMessageRequestGameInfo(self, client: ClientHandler, message) :
         if client.clientId not in self.gameByClientId :
-            print('@@@ There are no participating games.')
             errorResponse = self._makeErrorResponse(message, 0, 'There are no participating games.')
             client.messageHandler.send(errorResponse)
             return
 
         game: GameInstance = self.gameByClientId[client.clientId]
         if game.gameInfoMessage == None :
-            print('@@@ Game info not set yet.')
             errorResponse = self._makeErrorResponse(message, 0, 'Game info not set yet.')
             client.messageHandler.send(errorResponse)
             return
 
-        print('@@@ send game info 1.')
         response = game_pb2.GameInfo()
         response.CopyFrom(game.gameInfoMessage)
         response.rqid = message.rqid
         client.messageHandler.send(response)
-        print(f'@@@ send game info 2. {response}')
 
     def _switchClientMessageGameStart(self, client: ClientHandler, message) :
         if client.clientId not in self.gameByClientId :
