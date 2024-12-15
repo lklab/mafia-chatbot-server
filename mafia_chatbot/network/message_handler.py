@@ -26,6 +26,8 @@ class MessageHandler :
         else :
             self.state = MessageState.CONNECTED
         self.tcpHandler = tcpHandler
+        self.addr = tcpHandler.addr
+        self.desc: str = ''
 
         self.onAuth = onAuth
         self.onMessage = onMessage
@@ -63,6 +65,9 @@ class MessageHandler :
             del self.responseAwaiters[rqid]
             print(f'[MessageHandler] {self.tcpHandler.addr} No response for request {rqid} within timeout: {e}\nmessage=<{message}>')
             raise TimeoutError(f"No response for request {rqid} within timeout: {e}\nmessage=<{message}>")
+
+    def setDesc(self, desc: str) :
+        self.desc = desc
 
     def _send(self, message) :
         if type(message) in messageTypeDict :

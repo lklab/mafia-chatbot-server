@@ -14,6 +14,8 @@ class ClientHandler :
                  onAuth: Callable[[ClientHandler, Any], bool],
                  onMessage: Callable[[ClientHandler, Any], None],
                  onDisconnected: Callable[[ClientHandler], None],) :
+        self.addr = tcpHandler.addr
+
         self.onAuth = onAuth
         self.onMessage = onMessage
         self.onDisconnected = onDisconnected
