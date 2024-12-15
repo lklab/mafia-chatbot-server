@@ -7,52 +7,48 @@ from mafia_chatbot.game.player_info import PlayerInfo, Role
 from mafia_chatbot.game.strategy import Strategy, VoteStrategy, Assumption, Estimation, AssumptionType
 from mafia_chatbot.game.trust_recorder import TrustRecorder
 from mafia_chatbot.game.trust_profile import TrustProfile, normalizePoint
-from mafia_chatbot.game.game_logger import GameLogger, FakeGameLogger, TAG
-
-logger: GameLogger = FakeGameLogger()
-
-# TODO change to class
+from mafia_chatbot.game.game_logger import TAG
 
 def getOneTargetStrategy(publicRole: Role, targetInfo: PlayerInfo, reason: str) -> Strategy :
     return Strategy(publicRole, [Assumption([Estimation(targetInfo, Role.MAFIA)], reason)])
 
 # 토론 전략 생성
 def evaluateDiscussionStrategy(gameState: GameState, recorder: TrustRecorder, me: Player) -> Strategy :
-    logger.log(TAG.STRATEGY, f'{me.info.name}: start evaluate discussion strategy')
+    gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: start evaluate discussion strategy')
 
     if me.publicRole == Role.CITIZEN and me.info.role in _claimeSelectors :
         assumption: Assumption = _claimeSelectors[me.info.role](gameState, recorder, me)
         if assumption != None :
             strategy: Strategy = Strategy(Role.POLICE, [assumption])
-            logger.log(TAG.STRATEGY, f'{me.info.name}: discussion strategy result (claime): {strategy}')
+            gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: discussion strategy result (claime): {strategy}')
             return strategy
 
     if me.publicRole == Role.POLICE and me.info.role in _updateSelectors :
         assumption: Assumption = _updateSelectors[me.info.role](gameState, recorder, me)
         if assumption != None :
             strategy: Strategy = Strategy(Role.POLICE, [assumption])
-            logger.log(TAG.STRATEGY, f'{me.info.name}: discussion strategy result (update): {strategy}')
+            gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: discussion strategy result (update): {strategy}')
             return strategy
 
     for selector in _targetSelecters :
         target, reason = selector(gameState, recorder, me)
         if target :
             strategy: Strategy = getOneTargetStrategy(me.publicRole, target.info, reason)
-            logger.log(TAG.STRATEGY, f'{me.info.name}: discussion strategy result (normal): {strategy}')
+            gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: discussion strategy result (normal): {strategy}')
             return strategy
 
 # 투표 전략 생성
 def evaluateVoteStrategy(gameState: GameState, recorder: TrustRecorder, me: Player) -> VoteStrategy :
-    logger.log(TAG.STRATEGY, f'{me.info.name}: start evaluate vote strategy')
+    gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: start evaluate vote strategy')
     for selector in _targetSelecters :
         target, _ = selector(gameState, recorder, me)
         if target :
-            logger.log(TAG.STRATEGY, f'{me.info.name}: vote strategy result: {target.info.name}')
+            gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: vote strategy result: {target.info.name}')
             return VoteStrategy(target.info)
 
 # 암살 전략
 def evaluateKillTarget(gameState: GameState, recorder: TrustRecorder) -> Player :
-    logger.log(TAG.STRATEGY, f'start evaluate kill strategy')
+    gameState.logger.log(TAG.STRATEGY, f'start evaluate kill strategy')
 
     publicPolice: Player = None
     for playerInfo in recorder.publicPolicePlayerInfos :
@@ -68,7 +64,7 @@ def evaluateKillTarget(gameState: GameState, recorder: TrustRecorder) -> Player 
 
     # 생존하고 공개된 경찰이 있고 의사가 탈락한 경우
     if publicPolice != None and not recorder.isDoctorLive :
-        logger.log(TAG.STRATEGY, f'kill strategy result (police): {publicPolice.info.name}')
+        gameState.logger.log(TAG.STRATEGY, f'kill strategy result (police): {publicPolice.info.name}')
         return publicPolice
 
     candidates: list[Player] = []
@@ -76,7 +72,7 @@ def evaluateKillTarget(gameState: GameState, recorder: TrustRecorder) -> Player 
 
     # 생존하고 공개된 경찰, 의사가 있을 경우
     if publicPolice != None and publicDoctor != None :
-        logger.log(TAG.STRATEGY, f'kill strategy: police or doctor or trust')
+        gameState.logger.log(TAG.STRATEGY, f'kill strategy: police or doctor or trust')
         candidates.append(publicPolice)
         weights.append(1.0)
         candidates.append(publicDoctor)
@@ -97,7 +93,7 @@ def evaluateKillTarget(gameState: GameState, recorder: TrustRecorder) -> Player 
 
     # 그 외의 경우 공개된 경찰/의사/마피아 제외하고 랜덤
     else :
-        logger.log(TAG.STRATEGY, f'kill strategy: except police and doctor')
+        gameState.logger.log(TAG.STRATEGY, f'kill strategy: except police and doctor')
         for p in gameState.players :
             if p == publicPolice or p == publicDoctor or p.info.role == Role.MAFIA :
                 continue
@@ -105,14 +101,14 @@ def evaluateKillTarget(gameState: GameState, recorder: TrustRecorder) -> Player 
             candidates.append(p)
             weights.append(normalizePoint(point) + 0.01)
 
-    logger.logCandidatesPlayerWithWeights(TAG.STRATEGY, candidates, weights)
+    gameState.logger.logCandidatesPlayerWithWeights(TAG.STRATEGY, candidates, weights)
     target: Player = random.choices(candidates, weights=weights, k=1)[0]
-    logger.log(TAG.STRATEGY, f'kill strategy result (normal): {target.info.name}')
+    gameState.logger.log(TAG.STRATEGY, f'kill strategy result (normal): {target.info.name}')
     return target
 
 # 조사 전략
 def evaluateTestTarget(gameState: GameState, recorder: TrustRecorder, police: Player) -> Player :
-    logger.log(TAG.STRATEGY, f'start evaluate test strategy')
+    gameState.logger.log(TAG.STRATEGY, f'start evaluate test strategy')
 
     candidates: list[Player] = []
     weights: list[float] = []
@@ -125,17 +121,17 @@ def evaluateTestTarget(gameState: GameState, recorder: TrustRecorder, police: Pl
         weights.append(1.0 - normalizePoint(point) + 0.01)
 
     if len(candidates) > 0 :
-        logger.logCandidatesPlayerWithWeights(TAG.STRATEGY, candidates, weights)
+        gameState.logger.logCandidatesPlayerWithWeights(TAG.STRATEGY, candidates, weights)
         target: Player = random.choices(candidates, weights=weights, k=1)[0]
-        logger.log(TAG.STRATEGY, f'test strategy result: {target.info.name}')
+        gameState.logger.log(TAG.STRATEGY, f'test strategy result: {target.info.name}')
         return target
     else :
-        logger.log(TAG.STRATEGY, f'test strategy result: no target')
+        gameState.logger.log(TAG.STRATEGY, f'test strategy result: no target')
         return None # all live player are known
 
 # 치료 전략
 def evaluateHealTarget(gameState: GameState, recorder: TrustRecorder, doctor: Player) -> Player :
-    logger.log(TAG.STRATEGY, f'start evaluate heal strategy')
+    gameState.logger.log(TAG.STRATEGY, f'start evaluate heal strategy')
 
     if recorder.onePublicPolicePlayerInfo != None :
         police: Player = gameState.getPlayerByInfo(recorder.onePublicPolicePlayerInfo)
@@ -150,9 +146,9 @@ def evaluateHealTarget(gameState: GameState, recorder: TrustRecorder, doctor: Pl
         mainTargets = [doctor]
 
     if doctor.mainHealFactor > random.random() :
-        logger.logCandidatesPlayer(TAG.STRATEGY, mainTargets)
+        gameState.logger.logCandidatesPlayer(TAG.STRATEGY, mainTargets)
         target: Player = random.choice(mainTargets)
-        logger.log(TAG.STRATEGY, f'heal strategy result (main): {target.info.name}')
+        gameState.logger.log(TAG.STRATEGY, f'heal strategy result (main): {target.info.name}')
         return target
 
     else :
@@ -166,31 +162,31 @@ def evaluateHealTarget(gameState: GameState, recorder: TrustRecorder, doctor: Pl
                 weights.append(normalizePoint(point))
 
         if len(candidates) > 0 :
-            logger.logCandidatesPlayerWithWeights(TAG.STRATEGY, candidates, weights)
+            gameState.logger.logCandidatesPlayerWithWeights(TAG.STRATEGY, candidates, weights)
             target: Player = random.choices(candidates, weights=weights, k=1)[0]
-            logger.log(TAG.STRATEGY, f'heal strategy result (sub): {target.info.name}')
+            gameState.logger.log(TAG.STRATEGY, f'heal strategy result (sub): {target.info.name}')
             return target
         else :
-            logger.log(TAG.STRATEGY, f'heal strategy result (self)')
+            gameState.logger.log(TAG.STRATEGY, f'heal strategy result (self)')
             return doctor
 
 def _getPolicePoiningMe(gameState: GameState, recorder: TrustRecorder, me: Player) -> tuple[Player, str] :
     for policeInfo in recorder.publicPolicePlayerInfos :
         police: Player = gameState.getPlayerByInfo(policeInfo)
         if me.info in police.estimationsAsPolice and police.estimationsAsPolice[me.info].role == Role.MAFIA :
-            logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getPolicePoiningMe')
+            gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getPolicePoiningMe')
             return police, 'He pointed me of being the mafia, but I am not.'
     return None, None
 
 def _getTargetFormTowPolice(gameState: GameState, recorder: TrustRecorder, me: Player) -> tuple[Player, str] :
     if len(recorder.publicPolicePlayerInfos) >= 2 :
-        logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getTargetFormTowPolice')
+        gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getTargetFormTowPolice')
         candidates: list[PlayerInfo] = []
         for policeInfo in recorder.publicPolicePlayerInfos :
             if policeInfo == me.info :
                 continue
             candidates.append(policeInfo)
-        logger.logCandidates(TAG.STRATEGY, candidates)
+        gameState.logger.logCandidates(TAG.STRATEGY, candidates)
 
         targetInfo: PlayerInfo = _choiceFromCandidates(gameState, recorder, me, candidates)
         targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
@@ -209,8 +205,8 @@ def _getTargetConfirmedMafia(gameState: GameState, recorder: TrustRecorder, me: 
             candidates.append(player.info)
 
     if len(candidates) > 0 :
-        logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getTargetConfirmedMafia')
-        logger.logCandidates(TAG.STRATEGY, candidates)
+        gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getTargetConfirmedMafia')
+        gameState.logger.logCandidates(TAG.STRATEGY, candidates)
 
         targetInfo: PlayerInfo = _choiceFromCandidates(gameState, recorder, me, candidates)
         targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
@@ -221,13 +217,13 @@ def _getTargetConfirmedMafia(gameState: GameState, recorder: TrustRecorder, me: 
 
 def _getTargetFormTowDoctor(gameState: GameState, recorder: TrustRecorder, me: Player) -> tuple[Player, str] :
     if len(recorder.publicDoctorPlayerInfos) >= 2 :
-        logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getTargetFormTowDoctor')
+        gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getTargetFormTowDoctor')
         candidates: list[PlayerInfo] = []
         for doctorInfo in recorder.publicDoctorPlayerInfos :
             if doctorInfo == me.info :
                 continue
             candidates.append(doctorInfo)
-        logger.logCandidates(TAG.STRATEGY, candidates)
+        gameState.logger.logCandidates(TAG.STRATEGY, candidates)
 
         targetInfo: PlayerInfo = _choiceFromCandidates(gameState, recorder, me, candidates)
         targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
@@ -239,7 +235,7 @@ def _getTargetFormTowDoctor(gameState: GameState, recorder: TrustRecorder, me: P
     return None, None
 
 def _getTargetByTrustConformityRandom(gameState: GameState, recorder: TrustRecorder, me: Player) -> tuple[Player, str] :
-    logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getTargetByTrustConformityRandom')
+    gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getTargetByTrustConformityRandom')
 
     candidates: list[PlayerInfo] = []
     for player in gameState.players :
@@ -247,7 +243,7 @@ def _getTargetByTrustConformityRandom(gameState: GameState, recorder: TrustRecor
         if player == me or not profile.isTargetable() :
             continue
         candidates.append(player.info)
-    logger.logCandidates(TAG.STRATEGY, candidates)
+    gameState.logger.logCandidates(TAG.STRATEGY, candidates)
 
     targetInfo: PlayerInfo = _choiceFromCandidates(gameState, recorder, me, candidates)
     targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
@@ -270,22 +266,22 @@ def _claimePoliceForPolice(gameState: GameState, recorder: TrustRecorder, me: Pl
     knownMafiaCount: int = len(list(filter(lambda p : p.isLive, me.testedMafias)))
     knownCitizenCount: int = len(list(filter(lambda p : p.isLive, me.testedCitizens)))
     knownRatio: float = max(knownMafiaCount / gameState.getMafiaCount(), knownCitizenCount / gameState.getCitizenCount())
-    logger.log(TAG.STRATEGY, f'{me.info.name}: _claimePoliceForPolice: knownRatio={knownRatio}')
+    gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: _claimePoliceForPolice: knownRatio={knownRatio}')
     if knownRatio * me.claimeFactorForReal > random.random() :
-        logger.log(TAG.STRATEGY, f'{me.info.name}: _claimePoliceForPolice: claime police (random)')
+        gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: _claimePoliceForPolice: claime police (random)')
         return _getTestResultsForPolice(gameState, recorder, me)
 
     return None
 
 def claimePoliceForPoliceResponse(gameState: GameState, recorder: TrustRecorder, me: Player) -> Strategy :
-    logger.log(TAG.STRATEGY, f'{me.info.name}: start evaluate claime police for police strategy')
+    gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: start evaluate claime police for police strategy')
 
     # 시민으로 조사되지 않은 플레이어가 경찰 주장을 한 경우
     for p in recorder.publicPolicePlayerInfos :
         if p not in me.testResults or me.testResults[p] != Role.CITIZEN :
             assumption: Assumption = _getTestResultsForPolice(gameState, recorder, me)
             strategy: Strategy = Strategy(Role.POLICE, [assumption])
-            logger.log(TAG.STRATEGY, f'{me.info.name}: claime police for police strategy result: {strategy}')
+            gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: claime police for police strategy result: {strategy}')
             return strategy
 
     return None
@@ -319,17 +315,17 @@ def _claimePoliceForMafia(gameState: GameState, recorder: TrustRecorder, me: Pla
         len(recorder.verifiedPoliceInfos) == 0 and
         len(list(filter(lambda info : info.role == Role.MAFIA, recorder.publicPolicePlayerInfos))) == 0
     ) :
-        logger.log(TAG.STRATEGY, f'{me.info.name}: _claimePoliceForMafia: condition satisfied')
+        gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: _claimePoliceForMafia: condition satisfied')
         # check trigger conditions
         # 경찰 주장 플레이어가 없을 때 확률에 따라 경찰 주장
         if len(recorder.publicPolicePlayerInfos) == 0 and me.claimeFactorForMafia > random.random() :
-            logger.log(TAG.STRATEGY, f'{me.info.name}: _claimePoliceForMafia: claime police (random)')
+            gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: _claimePoliceForMafia: claime police (random)')
             return _getTestResultsForMafia(gameState, recorder, me)
 
     return None
 
 def claimePoliceForMafiaResponse(gameState: GameState, recorder: TrustRecorder, me: Player) -> Strategy :
-    logger.log(TAG.STRATEGY, f'{me.info.name}: start evaluate claime police for mafia strategy')
+    gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: start evaluate claime police for mafia strategy')
 
     # check state condition
     if (
@@ -343,7 +339,7 @@ def claimePoliceForMafiaResponse(gameState: GameState, recorder: TrustRecorder, 
         len(recorder.verifiedPoliceInfos) == 0 and
         len(list(filter(lambda info : info.role == Role.MAFIA, recorder.publicPolicePlayerInfos))) == 0
     ) :
-        logger.log(TAG.STRATEGY, f'{me.info.name}: claime police for mafia strategy: condition satisfied')
+        gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: claime police for mafia strategy: condition satisfied')
 
         myTrustPoint: float = recorder.getTrustPoint(me.info)
         for otherPublicPoliceInfo in recorder.publicPolicePlayerInfos :
@@ -351,7 +347,7 @@ def claimePoliceForMafiaResponse(gameState: GameState, recorder: TrustRecorder, 
             if recorder.getTrustPoint(otherPublicPoliceInfo) < myTrustPoint and me.claimeFactorForMafia * 3.0 > random.random() :
                 assumption: Assumption = _getTestResultsForMafia(gameState, recorder, me, mainTargetInfo=otherPublicPoliceInfo)
                 strategy: Strategy = Strategy(Role.POLICE, [assumption])
-                logger.log(TAG.STRATEGY, f'{me.info.name}: claime police for mafia strategy result (trust): {strategy}')
+                gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: claime police for mafia strategy result (trust): {strategy}')
                 return strategy
 
             # 경찰이 나를 시민 또는 마피아로 지목했을 때 경찰 주장
@@ -359,13 +355,13 @@ def claimePoliceForMafiaResponse(gameState: GameState, recorder: TrustRecorder, 
             if me.info in otherPublicPolice.estimationsAsPolice :
                 assumption: Assumption = _getTestResultsForMafia(gameState, recorder, me, mainTargetInfo=otherPublicPoliceInfo)
                 strategy: Strategy = Strategy(Role.POLICE, [assumption])
-                logger.log(TAG.STRATEGY, f'{me.info.name}: claime police for mafia strategy result (targeted): {strategy}')
+                gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: claime police for mafia strategy result (targeted): {strategy}')
                 return strategy
 
     return None
 
 def _getTestResultsForMafia(gameState: GameState, recorder: TrustRecorder, me: Player, mainTargetInfo: PlayerInfo = None) -> Assumption :
-    logger.log(TAG.STRATEGY, f'{me.info.name}: start _getTestResultsForMafia: main target = {mainTargetInfo.name if mainTargetInfo != None else "none"}')
+    gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: start _getTestResultsForMafia: main target = {mainTargetInfo.name if mainTargetInfo != None else "none"}')
 
     estimationCount: int = gameState.round
 
@@ -379,7 +375,7 @@ def _getTestResultsForMafia(gameState: GameState, recorder: TrustRecorder, me: P
             if point < minPoint :
                 mainTargetInfo = player.info
                 minPoint = point
-                logger.log(TAG.STRATEGY, f'{me.info.name}: _getTestResultsForMafia: main target updated: {mainTargetInfo.name}')
+                gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: _getTestResultsForMafia: main target updated: {mainTargetInfo.name}')
 
     ### 결과를 공개할 플레이어 목록
     candidates: list[Player] = []
@@ -387,7 +383,7 @@ def _getTestResultsForMafia(gameState: GameState, recorder: TrustRecorder, me: P
         if player == me or player.info == mainTargetInfo :
             continue
         candidates.append(player)
-    logger.logCandidatesPlayer(TAG.STRATEGY, candidates)
+    gameState.logger.logCandidatesPlayer(TAG.STRATEGY, candidates)
 
     estimationTargets: list[Player] = []
     estimationTargets = random.sample(candidates, k=estimationCount-1)
@@ -423,7 +419,7 @@ def _getTestResultsForMafia(gameState: GameState, recorder: TrustRecorder, me: P
     )
 
 def claimeDoctorForDoctorResponse(gameState: GameState, recorder: TrustRecorder, me: Player) -> Strategy :
-    logger.log(TAG.STRATEGY, f'{me.info.name}: start evaluate claime doctor for doctor strategy')
+    gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: start evaluate claime doctor for doctor strategy')
 
     # 치료에 성공한 내역이 없으면 의사 주장을 하지 않음
     if len(me.healSuccesses) == 0 :
@@ -437,7 +433,7 @@ def claimeDoctorForDoctorResponse(gameState: GameState, recorder: TrustRecorder,
             if (count * 2.0 / playerCount) * me.claimeFactorForReal > random.random() :
                 assumption: Assumption = _getHealSuccessesForDoctor(gameState, recorder, me)
                 strategy: Strategy = Strategy(Role.DOCTOR, [assumption])
-                logger.log(TAG.STRATEGY, f'{me.info.name}: claime doctor for doctor strategy result (random): {strategy}')
+                gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: claime doctor for doctor strategy result (random): {strategy}')
                 return strategy
 
     # 다른 플레이어가 의사 주장을 한 경우
@@ -445,7 +441,7 @@ def claimeDoctorForDoctorResponse(gameState: GameState, recorder: TrustRecorder,
         if p not in me.healSuccesses :
             assumption: Assumption = _getHealSuccessesForDoctor(gameState, recorder, me)
             strategy: Strategy = Strategy(Role.DOCTOR, [assumption])
-            logger.log(TAG.STRATEGY, f'{me.info.name}: claime doctor for doctor strategy result (counter): {strategy}')
+            gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: claime doctor for doctor strategy result (counter): {strategy}')
             return strategy
 
     return None
@@ -482,7 +478,7 @@ def _updatePoliceForPolice(gameState: GameState, recorder: TrustRecorder, me: Pl
     return None
 
 def _updatePoliceForMafia(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
-    logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _updatePoliceForMafia')
+    gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _updatePoliceForMafia')
     citizenCount: int = gameState.getCitizenCount()
 
     for estimation in me.estimationsAsPolice.values() :
@@ -495,7 +491,7 @@ def _updatePoliceForMafia(gameState: GameState, recorder: TrustRecorder, me: Pla
         if player == me or player in me.estimationsAsPolice :
             continue
         candidates.append(player.info)
-    logger.logCandidates(TAG.STRATEGY, candidates)
+    gameState.logger.logCandidates(TAG.STRATEGY, candidates)
 
     if len(candidates) == 0 :
         return None
@@ -610,6 +606,6 @@ def _choiceFromCandidates(gameState: GameState, recorder: TrustRecorder, me: Pla
         weights.append(tw * cw)
 
     # choice
-    logger.log(TAG.STRATEGY, f'{me.info.name} _choiceFromCandidates: ')
-    logger.logCandidatesWithWeights(TAG.STRATEGY, candidates, weights)
+    gameState.logger.log(TAG.STRATEGY, f'{me.info.name} _choiceFromCandidates: ')
+    gameState.logger.logCandidatesWithWeights(TAG.STRATEGY, candidates, weights)
     return random.choices(candidates, weights=weights, k=1)[0]

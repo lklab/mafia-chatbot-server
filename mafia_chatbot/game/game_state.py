@@ -147,7 +147,7 @@ class GameState :
     def __init__(self, gameInfo: GameInfo) :
         self.gameInfo = gameInfo
         self.gameId = gameInfo.gameId
-        self.logger = FakeGameLogger() # GameLogger(self.gameId, 'log')
+        self.logger = GameLogger(self.gameId, 'log')
 
         ### l10n
         languageCode: str = languageToCodeDict.get(gameInfo.language)

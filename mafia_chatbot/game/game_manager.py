@@ -5,7 +5,6 @@ from mafia_chatbot.game.game_state import *
 from mafia_chatbot.game.game_result import *
 import mafia_chatbot.game.evaluator as evaluator
 from mafia_chatbot.game.llm import LLM
-from mafia_chatbot.game.client_player import ClientPlayer
 from mafia_chatbot.game.client_message_processor import ClientMessageProcessor
 from mafia_chatbot.game.game_end_info import GameEndInfo, GameEndReason, gameEndReasonToProtoDict
 from mafia_chatbot.game.trust_recorder import TrustRecorder
@@ -15,7 +14,6 @@ from mafia_chatbot.game.game_logger import TAG
 class GameManager :
     def __init__(self, gameInfo: GameInfo) :
         self.gameState = GameState(gameInfo)
-        evaluator.logger = self.gameState.logger
         self.trustRecorder: TrustRecorder = TrustRecorder(self.gameState)
         self.terminated: bool = False
 
