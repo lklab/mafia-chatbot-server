@@ -11,6 +11,8 @@ class TcpState(Enum) :
 delimiter = b'\xCA\xFE\xBA\xBE'
 maxPayloadSize = 10 * 1024 * 1024 # 10Mb
 
+MAX_FAIL_COUNT = 5
+
 class TcpHandler :
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) :
         self.state = TcpState.INITIALIZED
@@ -19,6 +21,8 @@ class TcpHandler :
         self.writer = writer
 
         self.addr = self.writer.get_extra_info('peername')
+
+        self.failCount: int = 0
 
     def listen(self, onData: Callable[[int, bytes], None], onDisconnected: Callable[[], None]) :
         asyncio.create_task(self._listen(onData, onDisconnected))
@@ -45,6 +49,7 @@ class TcpHandler :
                     cursor = buffer.find(delimiter)
                     if cursor == -1 :
                         buffer = b''
+                        self.addFailCount()
                         break
                     cursor += 4
 
@@ -59,6 +64,7 @@ class TcpHandler :
                     # check payload size
                     if payload_size > maxPayloadSize :
                         buffer = buffer[cursor:]
+                        self.addFailCount()
                         continue
 
                     # get payload
@@ -107,6 +113,14 @@ class TcpHandler :
             await self._close()
 
         return False
+
+    def addFailCount(self) :
+        self.failCount += 1
+        if self.failCount >= MAX_FAIL_COUNT :
+            asyncio.create_task(self._close())
+
+    def resetFailCount(self) :
+        self.failCount = 0
 
     async def _close(self) :
         if self.state == TcpState.DISCONNECTED :

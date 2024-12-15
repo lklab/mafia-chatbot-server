@@ -74,7 +74,12 @@ class MessageHandler :
     def _onData(self, msgType: int, data: bytes) :
         if self.state == MessageState.AUTHENTICATING :
             if msgType == messageTypeDict[auth_pb2.Auth] :
-                message = messageFactoryDict[msgType](data)
+                try :
+                    message = messageFactoryDict[msgType](data)
+                except :
+                    self.tcpHandler.addFailCount()
+                    return
+                self.tcpHandler.resetFailCount()
                 # print(f'[MessageHandler] {self.tcpHandler.addr} onData msgType={msgType}, message=<{message}>')
 
                 if self.onAuth(message) :
@@ -82,9 +87,17 @@ class MessageHandler :
                     authResponse.rqid = message.rqid
                     self._send(authResponse)
                     self.state = MessageState.CONNECTED
+            else :
+                self.tcpHandler.addFailCount()
+                return
         else :
             if msgType in messageFactoryDict :
-                message = messageFactoryDict[msgType](data)
+                try :
+                    message = messageFactoryDict[msgType](data)
+                except :
+                    self.tcpHandler.addFailCount()
+                    return
+                self.tcpHandler.resetFailCount()
                 # print(f'[MessageHandler] {self.tcpHandler.addr} onData msgType={msgType}, message=<{message}>')
 
                 if message.rqid in self.responseAwaiters :
