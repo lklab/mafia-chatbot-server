@@ -33,18 +33,20 @@ class ClientMessageProcessor :
             )
 
     def _onRequestGameStateMessage(self, message: game_pb2.RequestGameState) :
+        self.logger.log(TAG.NETWORK, f'[ClientMessageProcessor] {self.player.info.name}: received RequestGameState: message=<{message}>')
         response = self.gameState.toProtoGameStateMessage(self.player)
         response.rqid = message.rqid
         self.client.sendMessage(response)
 
     def _onRequestChatListMessage(self, message: game_pb2.RequestChatList) :
+        self.logger.log(TAG.NETWORK, f'[ClientMessageProcessor] {self.player.info.name}: received RequestChatList: message=<{message}>')
         response = game_pb2.ChatList()
         response.rqid = message.rqid
         response.chats.extend(list(map(lambda chat : chat.createProtoMessage(self.player.info), self.gameState.chatList)))
         self.client.sendMessage(response)
 
     def _onRequestAddChatMessage(self, message: game_pb2.RequestAddChat) :
-        self.logger.log(TAG.NETWORK, f'[ClientMessageProcessor] {self.player.info.name}: received RequestAddChat: content={message.chat.content}')
+        self.logger.log(TAG.NETWORK, f'[ClientMessageProcessor] {self.player.info.name}: received RequestAddChat: message=<{message}>')
 
         # check am I live
         if not self.player.isLive :
@@ -90,6 +92,8 @@ class ClientMessageProcessor :
         self.client.sendMessage(response)
 
     def _onGetChatMessage(self, message: game_pb2.GetChat) :
+        self.logger.log(TAG.NETWORK, f'[ClientMessageProcessor] {self.player.info.name}: received GetChat: message=<{message}>')
+
         index: int = message.index
 
         if index < 0 or index >= len(self.gameState.chatList) :
@@ -139,7 +143,7 @@ class ClientMessageProcessor :
     }
 
     def _onSetTargetMessage(self, message: game_pb2.SetTarget) :
-        self.logger.log(TAG.NETWORK, f'[ClientMessageProcessor] {self.player.info.name}: received SetTarget: type={message.type}, target={message.target}')
+        self.logger.log(TAG.NETWORK, f'[ClientMessageProcessor] {self.player.info.name}: received SetTarget: message=<{message}>')
 
         # check am I live
         if not self.player.isLive :
@@ -189,6 +193,8 @@ class ClientMessageProcessor :
         self.client.sendMessage(response)
 
     def _onGetVoteStateMessage(self, message: game_pb2.GetVoteState) :
+        self.logger.log(TAG.NETWORK, f'[ClientMessageProcessor] {self.player.info.name}: received GetVoteState: message=<{message}>')
+
         # check phase
         if self.gameState.currentPhase != Phase.EVENING :
             errorResponse = self._makeErrorResponse(message, 0, 'Not a valid phase.')

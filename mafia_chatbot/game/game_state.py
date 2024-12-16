@@ -175,6 +175,7 @@ class GameState :
                 isHuman=True,
                 client=client
             )
+            client.setLogger(self.logger)
             self.clientPlayers.append(clientPlayer)
 
             if client.clientId == observerClientId :

@@ -1,5 +1,6 @@
 from typing import Callable, Any
 
+from mafia_chatbot.game.game_logger import GameLogger, TAG
 from mafia_chatbot.network.message_handler import MessageHandler
 
 class ClientPlayer :
@@ -8,6 +9,8 @@ class ClientPlayer :
         self.name = name
 
         self.subscribers: dict[type, Callable[[Any], None]] = {}
+
+        self.logger: GameLogger = None
 
     def setMessageHandler(self, messageHandler: MessageHandler) :
         self.messageHandler = messageHandler
@@ -28,7 +31,12 @@ class ClientPlayer :
 
     def sendMessage(self, message: Any) :
         if self.messageHandler != None :
+            if self.logger != None :
+                self.logger.log(TAG.NETWORK, f'[ClientPlayer] send message to {self.name}: <{message}>')
             self.messageHandler.send(message)
 
     def clearSubscribers(self) :
         self.subscribers.clear()
+
+    def setLogger(self, logger: GameLogger) :
+        self.logger = logger
