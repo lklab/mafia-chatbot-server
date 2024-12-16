@@ -1,4 +1,4 @@
-from typing import Callable, Any
+from typing import Callable, Any, Awaitable
 
 from mafia_chatbot.game.client_player import ClientPlayer
 
@@ -11,7 +11,7 @@ class ClientHandler :
 class ClientHandler :
     def __init__(self,
                  tcpHandler: TcpHandler,
-                 onAuth: Callable[[ClientHandler, Any], bool],
+                 onAuth: Callable[[ClientHandler, Any], Awaitable[tuple[Any, bool]]],
                  onMessage: Callable[[ClientHandler, Any], None],
                  onDisconnected: Callable[[ClientHandler], None],) :
         self.addr = tcpHandler.addr
@@ -41,14 +41,13 @@ class ClientHandler :
             return self.player.forwardMessage(message)
         return False
 
-    def _onAuth(self, message) :
-        if self.onAuth(self, message) :
+    async def _onAuth(self, message) -> tuple[Any, bool] :
+        response, success = await self.onAuth(self, message)
+        if success :
             self.authorized = True
             self.clientId = message.clientId
             self.clientName = message.name
-            return True
-        else :
-            return False
+        return response, success
 
     def _onMessage(self, message) :
         self.onMessage(self, message)

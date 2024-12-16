@@ -81,7 +81,7 @@ class LLM :
         )
 
         self.logger.log(TAG.LLM, f'checkContainsEstimation response: {response}')
-        return response.lower() == "true"
+        return "true" in response.lower()
 
     async def analyzeHumanMessage(self, player: Player, message: str) -> Strategy :
         self.logger.log(TAG.LLM, f'{player.info.name}: analyzeHumanMessage input: {message}')
@@ -148,7 +148,7 @@ class LLM :
         )
 
         self.logger.log(TAG.LLM, f'isMessageQuestion response: {response}')
-        return response.lower() == "true"
+        return "true" in response.lower()
 
     async def generateResponse(self, speaker: Player, conversation: list[str]) -> tuple[Player, str] :
         self.logger.log(TAG.LLM, f'{speaker.info.name}: generateResponse')

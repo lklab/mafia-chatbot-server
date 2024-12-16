@@ -1,9 +1,7 @@
 import asyncio
 from multiprocessing import Process
 import uuid
-import logging
-import datetime
-import os
+from typing import Any
 
 from game_process import startGameProcess
 from client_handler import ClientHandler
@@ -13,6 +11,8 @@ from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.message_handler import MessageHandler
 from mafia_chatbot.network.messages import *
 from mafia_chatbot.network.messages.message_info import messageTypeDict
+
+import mafia_chatbot.utils.name_bank as NameBank
 
 from mafia_chatbot.utils.wands_logger import WandsLogger
 
@@ -155,9 +155,17 @@ class MainProcess :
             onDisconnected=self._onClientDisconnected,
         )
 
-    def _onClientAuth(self, client: ClientHandler, message) :
+    async def _onClientAuth(self, client: ClientHandler, message) -> tuple[Any, bool] :
         self.logger.debug(f'_onClientAuth addr={client.addr}, message=<{message}>')
-        return True # TODO check auth message
+        # TODO check auth message
+        name: str = message.name
+        result = await NameBank.checkName(name)
+
+        if result == NameBank.Result.SUCCESS :
+            return auth_pb2.AuthResponse(), True
+        else :
+            errorResponse = self._makeErrorResponse(message, 9999, 'This name is not suitable for use in a Mafia game.')
+            return errorResponse, False
 
     def _onClientMessage(self, client: ClientHandler, message) :
         self.logger.debug(f'_onClientMessage addr={client.addr}, name={client.clientName}, type={type(message)}, message=<{message}>')
@@ -235,7 +243,7 @@ class MainProcess :
             self._sendToClient(client, errorResponse, isError=True)
             return
 
-        asyncio.create_task(_newGame())
+        asyncio.create_task(_newGame()) # TODO 중복 호출에 대한 처리
 
     _switchClientMessage = {
         game_pb2.CheckCurrentGame : _switchClientMessageCheckCurrentGame,

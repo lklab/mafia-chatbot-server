@@ -1,7 +1,7 @@
 import asyncio
 from enum import Enum
 from collections import deque
-from typing import Callable, Deque, Any
+from typing import Callable, Deque, Any, Awaitable
 import uuid
 
 from mafia_chatbot.network.tcp_handler import TcpHandler
@@ -17,7 +17,7 @@ class MessageHandler :
     def __init__(
             self,
             tcpHandler: TcpHandler,
-            onAuth: Callable[[Any], bool],
+            onAuth: Callable[[Any], Awaitable[tuple[Any, bool]]],
             onMessage: Callable[[Any], None],
             onDisconnected: Callable[[], None],
         ) :
@@ -87,11 +87,14 @@ class MessageHandler :
                 self.tcpHandler.resetFailCount()
                 # print(f'[MessageHandler] {self.tcpHandler.addr} onData msgType={msgType}, message=<{message}>')
 
-                if self.onAuth(message) :
-                    authResponse = auth_pb2.AuthResponse()
-                    authResponse.rqid = message.rqid
-                    self._send(authResponse)
-                    self.state = MessageState.CONNECTED
+                async def _auth() :
+                    response, success = await self.onAuth(message)
+                    response.rqid = message.rqid
+                    self._send(response)
+                    if success :
+                        self.state = MessageState.CONNECTED
+
+                asyncio.create_task(_auth()) # TODO 중복 호출에 대한 처리
             else :
                 self.tcpHandler.addFailCount()
                 return

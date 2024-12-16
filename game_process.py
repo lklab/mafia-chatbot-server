@@ -4,7 +4,7 @@ import datetime
 import uuid
 import os
 import json
-from typing import Callable
+from typing import Callable, Any
 
 from client_handler import ClientHandler
 
@@ -205,7 +205,7 @@ class GameProcess :
             onDisconnected=self._onClientDisconnected,
         )
 
-    def _onClientAuth(self, client: ClientHandler, message) :
+    async def _onClientAuth(self, client: ClientHandler, message) -> tuple[Any, bool] :
         self.logger.debug(f'_onClientAuth addr={client.addr}, message=<{message}>')
         clientId: str = message.clientId
 
@@ -216,9 +216,10 @@ class GameProcess :
             game.connectClient(clientId, client.messageHandler)
             client.setPlayer(game.getPlayer(clientId))
 
-            return True
+            return auth_pb2.AuthResponse(), True
         else :
-            return False
+            errorResponse = self._makeErrorResponse(message, 0, 'This server does not contain your game. Please connect to the main server first to create a new game.')
+            return errorResponse, False
 
     def _onClientMessage(self, client: ClientHandler, message) :
         self.logger.debug(f'_onClientMessage addr={client.addr}, name={client.clientName}, type={type(message)}, message=<{message}>')

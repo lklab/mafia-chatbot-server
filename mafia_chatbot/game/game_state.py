@@ -1,7 +1,6 @@
 import random
 import time
 from typing import Callable
-import uuid
 import gettext
 
 from mafia_chatbot.game.game_info import *
@@ -13,19 +12,7 @@ from mafia_chatbot.game.game_logger import GameLogger, TAG, FakeGameLogger
 from mafia_chatbot.network.messages import *
 
 import mafia_chatbot.utils.utils as utils
-
-NAMES: dict[str, list[str]] = {
-    'english' : [
-        'Oliver', 'Emma', 'Noah', 'Ava', 'Liam', 'Sophia', 'Mason', 'Isabella',
-        'James', 'Mia', 'Benjamin', 'Amelia', 'Ethan', 'Harper', 'Lucas',
-        'Charlotte', 'Henry', 'Evelyn', 'Jack', 'Grace',
-    ],
-    'korean' : [
-        '지민', '수현', '서준', '민서', '도윤', '하늘', '지우',
-        '연우', '소윤', '유진', '성민', '은비', '재현', '예린',
-        '태윤', '민지', '시우', '세영', '아린', '진우',
-    ],
-}
+from mafia_chatbot.utils.name_bank import NAMES
 
 TONES: list[str] = [
     'Affable', 'Amiable', 'Blunt', 'Breezy', 'Casual', 'Charming',
