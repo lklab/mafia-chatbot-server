@@ -46,7 +46,7 @@ class ClientHandler :
         if success :
             self.authorized = True
             self.clientId = message.clientId
-            self.clientName = message.name
+            self.clientName = message.name.strip()
         return response, success
 
     def _onMessage(self, message) :

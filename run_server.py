@@ -158,13 +158,14 @@ class MainProcess :
     async def _onClientAuth(self, client: ClientHandler, message) -> tuple[Any, bool] :
         self.logger.debug(f'_onClientAuth addr={client.addr}, message=<{message}>')
         # TODO check auth message
-        name: str = message.name
+        name: str = message.name.strip()
         result = await NameBank.checkName(name)
 
         if result == NameBank.Result.SUCCESS :
             return auth_pb2.AuthResponse(), True
         else :
             errorResponse = self._makeErrorResponse(message, 9999, 'This name is not suitable for use in a Mafia game.')
+            self.logger.error(f'_onClientAuth failed addr={client.addr}, message=<{errorResponse}>')
             return errorResponse, False
 
     def _onClientMessage(self, client: ClientHandler, message) :

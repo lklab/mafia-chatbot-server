@@ -27,7 +27,8 @@ class WandsLogger:
             filename=self._generate_log_file(),
             when='h',  # Rotate by hour
             interval=interval_hours,  # Rotate every specified hours
-            backupCount=0  # Keep unlimited logs, modify if needed
+            backupCount=0,  # Keep unlimited logs, modify if needed
+            encoding='utf-8',
         )
 
         self.handler.setLevel(logging.DEBUG)

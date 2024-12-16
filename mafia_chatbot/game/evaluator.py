@@ -7,7 +7,7 @@ from mafia_chatbot.game.player_info import PlayerInfo, Role
 from mafia_chatbot.game.strategy import Strategy, VoteStrategy, Assumption, Estimation, AssumptionType
 from mafia_chatbot.game.trust_recorder import TrustRecorder
 from mafia_chatbot.game.trust_profile import TrustProfile, normalizePoint
-from mafia_chatbot.game.game_logger import TAG
+from mafia_chatbot.game.game_logger import GameLogger, TAG
 
 def getOneTargetStrategy(publicRole: Role, targetInfo: PlayerInfo, reason: str) -> Strategy :
     return Strategy(publicRole, [Assumption([Estimation(targetInfo, Role.MAFIA)], reason)])
@@ -101,7 +101,7 @@ def evaluateKillTarget(gameState: GameState, recorder: TrustRecorder) -> Player 
             candidates.append(p)
             weights.append(normalizePoint(point) + 0.01)
 
-    gameState.logger.logCandidatesPlayerWithWeights(TAG.STRATEGY, candidates, weights)
+    _logCandidatesPlayerWithWeights(gameState.logger, TAG.STRATEGY, candidates, weights)
     target: Player = random.choices(candidates, weights=weights, k=1)[0]
     gameState.logger.log(TAG.STRATEGY, f'kill strategy result (normal): {target.info.name}')
     return target
@@ -121,7 +121,7 @@ def evaluateTestTarget(gameState: GameState, recorder: TrustRecorder, police: Pl
         weights.append(1.0 - normalizePoint(point) + 0.01)
 
     if len(candidates) > 0 :
-        gameState.logger.logCandidatesPlayerWithWeights(TAG.STRATEGY, candidates, weights)
+        _logCandidatesPlayerWithWeights(gameState.logger, TAG.STRATEGY, candidates, weights)
         target: Player = random.choices(candidates, weights=weights, k=1)[0]
         gameState.logger.log(TAG.STRATEGY, f'test strategy result: {target.info.name}')
         return target
@@ -146,7 +146,7 @@ def evaluateHealTarget(gameState: GameState, recorder: TrustRecorder, doctor: Pl
         mainTargets = [doctor]
 
     if doctor.mainHealFactor > random.random() :
-        gameState.logger.logCandidatesPlayer(TAG.STRATEGY, mainTargets)
+        _logCandidatesPlayer(gameState.logger, TAG.STRATEGY, mainTargets)
         target: Player = random.choice(mainTargets)
         gameState.logger.log(TAG.STRATEGY, f'heal strategy result (main): {target.info.name}')
         return target
@@ -162,7 +162,7 @@ def evaluateHealTarget(gameState: GameState, recorder: TrustRecorder, doctor: Pl
                 weights.append(normalizePoint(point))
 
         if len(candidates) > 0 :
-            gameState.logger.logCandidatesPlayerWithWeights(TAG.STRATEGY, candidates, weights)
+            _logCandidatesPlayerWithWeights(gameState.logger, TAG.STRATEGY, candidates, weights)
             target: Player = random.choices(candidates, weights=weights, k=1)[0]
             gameState.logger.log(TAG.STRATEGY, f'heal strategy result (sub): {target.info.name}')
             return target
@@ -186,7 +186,7 @@ def _getTargetFormTowPolice(gameState: GameState, recorder: TrustRecorder, me: P
             if policeInfo == me.info :
                 continue
             candidates.append(policeInfo)
-        gameState.logger.logCandidates(TAG.STRATEGY, candidates)
+        _logCandidates(gameState.logger, TAG.STRATEGY, candidates)
 
         targetInfo: PlayerInfo = _choiceFromCandidates(gameState, recorder, me, candidates)
         targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
@@ -206,7 +206,7 @@ def _getTargetConfirmedMafia(gameState: GameState, recorder: TrustRecorder, me: 
 
     if len(candidates) > 0 :
         gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getTargetConfirmedMafia')
-        gameState.logger.logCandidates(TAG.STRATEGY, candidates)
+        _logCandidates(gameState.logger, TAG.STRATEGY, candidates)
 
         targetInfo: PlayerInfo = _choiceFromCandidates(gameState, recorder, me, candidates)
         targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
@@ -223,7 +223,7 @@ def _getTargetFormTowDoctor(gameState: GameState, recorder: TrustRecorder, me: P
             if doctorInfo == me.info :
                 continue
             candidates.append(doctorInfo)
-        gameState.logger.logCandidates(TAG.STRATEGY, candidates)
+        _logCandidates(gameState.logger, TAG.STRATEGY, candidates)
 
         targetInfo: PlayerInfo = _choiceFromCandidates(gameState, recorder, me, candidates)
         targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
@@ -243,7 +243,7 @@ def _getTargetByTrustConformityRandom(gameState: GameState, recorder: TrustRecor
         if player == me or not profile.isTargetable() :
             continue
         candidates.append(player.info)
-    gameState.logger.logCandidates(TAG.STRATEGY, candidates)
+    _logCandidates(gameState.logger, TAG.STRATEGY, candidates)
 
     targetInfo: PlayerInfo = _choiceFromCandidates(gameState, recorder, me, candidates)
     targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
@@ -383,7 +383,7 @@ def _getTestResultsForMafia(gameState: GameState, recorder: TrustRecorder, me: P
         if player == me or player.info == mainTargetInfo :
             continue
         candidates.append(player)
-    gameState.logger.logCandidatesPlayer(TAG.STRATEGY, candidates)
+    _logCandidatesPlayer(gameState.logger, TAG.STRATEGY, candidates)
 
     estimationTargets: list[Player] = []
     estimationTargets = random.sample(candidates, k=estimationCount-1)
@@ -491,7 +491,7 @@ def _updatePoliceForMafia(gameState: GameState, recorder: TrustRecorder, me: Pla
         if player == me or player in me.estimationsAsPolice :
             continue
         candidates.append(player.info)
-    gameState.logger.logCandidates(TAG.STRATEGY, candidates)
+    _logCandidates(gameState.logger, TAG.STRATEGY, candidates)
 
     if len(candidates) == 0 :
         return None
@@ -607,5 +607,19 @@ def _choiceFromCandidates(gameState: GameState, recorder: TrustRecorder, me: Pla
 
     # choice
     gameState.logger.log(TAG.STRATEGY, f'{me.info.name} _choiceFromCandidates: ')
-    gameState.logger.logCandidatesWithWeights(TAG.STRATEGY, candidates, weights)
+    _logCandidatesWithWeights(gameState.logger, TAG.STRATEGY, candidates, weights)
     return random.choices(candidates, weights=weights, k=1)[0]
+
+def _logCandidates(logger: GameLogger, tag: TAG, playerInfos: list[PlayerInfo]) :
+    logger.log(tag, f'candidates: {', '.join(map(lambda info : info.name, playerInfos))}')
+
+def _logCandidatesPlayer(logger: GameLogger, tag: TAG, players: list[Player]) :
+    logger.log(tag, f'candidates: {', '.join(map(lambda p : p.info.name, players))}')
+
+def _logCandidatesWithWeights(logger: GameLogger, tag: TAG, playerInfos: list[PlayerInfo], weights: list[float]) :
+    total: float = sum(weights)
+    logger.log(tag, f'candidates: {', '.join(map(lambda i : f'{playerInfos[i].name}({weights[i] * 100.0 / total:.2f})', range(len(playerInfos))))}')
+
+def _logCandidatesPlayerWithWeights(logger: GameLogger, tag: TAG, players: list[Player], weights: list[float]) :
+    total: float = sum(weights)
+    logger.log(tag, f'candidates: {', '.join(map(lambda i : f'{players[i].info.name}({weights[i] * 100.0 / total:.2f})', range(len(players))))}')

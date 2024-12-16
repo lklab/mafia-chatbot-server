@@ -219,6 +219,7 @@ class GameProcess :
             return auth_pb2.AuthResponse(), True
         else :
             errorResponse = self._makeErrorResponse(message, 0, 'This server does not contain your game. Please connect to the main server first to create a new game.')
+            self.logger.error(f'_onClientAuth failed addr={client.addr}, message=<{errorResponse}>')
             return errorResponse, False
 
     def _onClientMessage(self, client: ClientHandler, message) :
