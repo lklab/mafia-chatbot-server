@@ -47,6 +47,7 @@ class LLM :
 
         # setup chains and agents
         self._setupDiscussionChain(gameState.gameInfo)
+        self._setupTranslateChain()
         self._setupRemoveFirstPersonChain()
         self._setupHumanMessageAgent()
         self._setupCheckContainsEstimationChain()
@@ -86,10 +87,18 @@ class LLM :
     async def analyzeHumanMessage(self, player: Player, message: str) -> Strategy :
         self.logger.log(TAG.LLM, f'{player.info.name}: analyzeHumanMessage input: {message}')
 
+        if self.gameState.gameInfo.language != 'english' :
+            message = await self._ainvokeChain(
+                chain=self.translateChain,
+                input={
+                    'sentence' : message,
+                }
+            )
+
         message = await self._ainvokeChain(
             chain=self.removeFirstPersonChain,
             input={
-                'name' : player.info.name,
+                'name' : player.info.englishName,
                 'sentence' : message,
             }
         )
@@ -104,8 +113,8 @@ class LLM :
                 publicRole: Role = Role.CITIZEN
                 assumptionType: AssumptionType = AssumptionType.NORMAL
 
-                police: Player = self.gameState.getPlayerByName(data['police'])
-                doctor: Player = self.gameState.getPlayerByName(data['doctor'])
+                police: Player = self.gameState.getPlayerByEnglishName(data['police'])
+                doctor: Player = self.gameState.getPlayerByEnglishName(data['doctor'])
 
                 if police != None and police == player :
                     publicRole = Role.POLICE
@@ -116,7 +125,7 @@ class LLM :
 
                 estimations: list[Estimation] = []
                 for estimation in data['estimations'] :
-                    playerInfo: PlayerInfo = self.gameState.getPlayerInfoByName(estimation['name'])
+                    playerInfo: PlayerInfo = self.gameState.getPlayerInfoByEnglishName(estimation['name'])
                     role: Role = strToRole(estimation['role'])
                     if playerInfo != None :
                         if playerInfo == player.info and publicRole == Role.CITIZEN :
@@ -215,6 +224,37 @@ class LLM :
         # setup chain
         self.discussionChain = prompt | model
 
+    def _setupTranslateChain(self) :
+        # setup model
+        model = ChatOpenAI(
+            model="gpt-3.5-turbo",
+            temperature=0.1,
+        )
+
+        names = '\n'.join(map(lambda p: f'"{p.info.name}": "{p.info.englishName}"', self.gameState.players))
+        template = (
+            f"Translate the following ##sentence## into english. When translating, use the specified words from ##names## for proper nouns and the terms from ##terms## to ensure consistent vocabulary for similar or identical meanings."
+            "\n\n"
+            "##sentence##"
+            "\n"
+            "{sentence}"
+            "\n\n"
+            "##names##"
+            "\n"
+            f"{names}"
+            "\n\n"
+            "##terms##"
+            "\n"
+            "citizen, mafia, police, doctor, vote, execution, assassination, investigation, healing"
+        )
+        prompt = PromptTemplate.from_template(template)
+
+        # setup parser
+        parser = StrOutputParser()
+
+        # setup chain
+        self.translateChain = prompt | model | parser
+
     def _setupRemoveFirstPersonChain(self) :
         # setup model
         model = ChatOpenAI(
@@ -246,7 +286,7 @@ class LLM :
         )
 
         # setup tools
-        nameList = ', '.join(self.gameState.nameList)
+        nameList = ', '.join(self.gameState.englishNameList)
         estimationToolDescription = (
             "If a human participant claims someone to be a specific role, invoke this tool. The name must match one from the ##list##, and the role must be one of 'citizen,' 'police,' 'mafia,' or 'doctor.' If there is no exact match for the name or role, attempt to find the closest match considering case sensitivity or typos. If no sufficiently similar match exists, ignore the statement."
             "\n\n"
@@ -257,7 +297,7 @@ class LLM :
 
         class EstimationInput(BaseModel) :
             name: str = Field(description="The name of the person whose role the human is claiming.")
-            role: str = Field(description="The role (must be in English) of the individual with the specified name that the human is claiming.")
+            role: str = Field(description="The role of the individual with the specified name that the human is claiming.")
 
         class EstimationInputList(BaseModel):
             estimations: List[EstimationInput] = Field(description="A list of estimations.")

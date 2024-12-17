@@ -8,16 +8,46 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
 NAMES: dict[str, list[str]] = {
-    'english' : [
-        'Oliver', 'Emma', 'Noah', 'Ava', 'Liam', 'Sophia', 'Mason', 'Isabella',
-        'James', 'Mia', 'Benjamin', 'Amelia', 'Ethan', 'Harper', 'Lucas',
-        'Charlotte', 'Henry', 'Evelyn', 'Jack', 'Grace',
+    "english" : [
+        "Oliver", "Emma", "Noah", "Ava", "Liam", "Sophia", "Mason", "Isabella",
+        "James", "Mia", "Benjamin", "Amelia", "Ethan", "Harper", "Lucas",
+        "Charlotte", "Henry", "Evelyn", "Jack", "Grace",
+        "William", "Ella", "Logan", "Chloe", "Daniel", "Lily", "Alexander", "Hannah",
+        "Michael", "Emily", "Samuel", "Aria", "Matthew", "Scarlett", "Joseph", "Madison",
+        "David", "Abigail", "Sebastian", "Nora",
     ],
     'korean' : [
         '지민', '수현', '서준', '민서', '도윤', '하늘', '지우',
         '연우', '소윤', '유진', '성민', '은비', '재현', '예린',
         '태윤', '민지', '시우', '세영', '아린', '진우',
     ],
+    # 'korean' : [
+    #     '지민', '수현', '서준', '민서', '도윤', '하늘', '지우',
+    #     '연우', '소윤'
+    # ],
+}
+
+ENGLISH_NAMES = {
+    '지민': 'Jimin',
+    '수현': 'Suhyeon',
+    '서준': 'Seojun',
+    '민서': 'Minseo',
+    '도윤': 'Doyun',
+    '하늘': 'Haneul',
+    '지우': 'Jiwoo',
+    '연우': 'Yeonwoo',
+    '소윤': 'Soyoon',
+    '유진': 'Yujin',
+    '성민': 'Seongmin',
+    '은비': 'Eunbi',
+    '재현': 'Jaehyeon',
+    '예린': 'Yerin',
+    '태윤': 'Taeyun',
+    '민지': 'Minji',
+    '시우': 'Siwoo',
+    '세영': 'Seyoung',
+    '아린': 'Arin',
+    '진우': 'Jinwoo',
 }
 
 PROHIBITED_WORDS = [

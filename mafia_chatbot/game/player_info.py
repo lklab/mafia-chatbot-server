@@ -50,6 +50,7 @@ class PlayerInfo :
     def __init__(self, name: str, tone: str, isHuman: bool, isLocalPlayer: bool) :
         self.id: str = str(uuid.uuid4())
         self.name: str = name
+        self.englishName: str = name
         self.tone: str = tone
         self.isHuman: bool = isHuman
         self.isLocalPlayer: bool = isLocalPlayer

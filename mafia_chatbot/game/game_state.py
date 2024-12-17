@@ -12,7 +12,7 @@ from mafia_chatbot.game.game_logger import GameLogger, TAG, FakeGameLogger
 from mafia_chatbot.network.messages import *
 
 import mafia_chatbot.utils.utils as utils
-from mafia_chatbot.utils.name_bank import NAMES
+from mafia_chatbot.utils.name_bank import NAMES, ENGLISH_NAMES
 
 TONES: list[str] = [
     'Affable', 'Amiable', 'Blunt', 'Breezy', 'Casual', 'Charming',
@@ -131,10 +131,10 @@ languageToCodeDict: dict[str, str] = {
 }
 
 class GameState :
-    def __init__(self, gameInfo: GameInfo) :
+    def __init__(self, gameInfo: GameInfo, logger: GameLogger = None) :
         self.gameInfo = gameInfo
         self.gameId = gameInfo.gameId
-        self.logger = GameLogger(self.gameId, 'log')
+        self.logger = logger or GameLogger(self.gameId, 'log')
 
         ### l10n
         languageCode: str = languageToCodeDict.get(gameInfo.language)
@@ -270,22 +270,35 @@ class GameState :
         # shuffle players
         random.shuffle(self.players)
 
-        ### setup nameList
+        ### setup english name
+        if gameInfo.language != 'english' :
+            enIndex = 0
+            for player in self.players :
+                if player.info.name in ENGLISH_NAMES :
+                    player.info.englishName = ENGLISH_NAMES[player.info.name]
+                else :
+                    player.info.englishName = NAMES['english'][enIndex]
+                    enIndex += 1
+
+        ### setup nameLists
         self.nameList: list[str] = list(map(lambda p: p.info.name, self.players))
+        self.englishNameList: list[str] = list(map(lambda p: p.info.englishName, self.players))
 
         ### setup allPlayers
         self.allPlayers: list[Player] = self.players.copy()
         self.allMafiaPlayers: list[Player] = self.mafiaPlayers.copy()
 
-        ### setup allPlayerMapByInfo
+        ### setup player maps allPlayerMapByInfo
         self.allPlayerMapByInfo: dict[PlayerInfo, Player] = {}
+        self.allPlayerMapById: dict[str, Player] = {}
+        self.allPlayerByName: dict[str, Player] = {}
+        self.allPlayerByEnglishName: dict[str, Player] = {}
+
         for player in self.allPlayers :
             self.allPlayerMapByInfo[player.info] = player
-
-        ### setup allPlayerMapById
-        self.allPlayerMapById: dict[str, Player] = {}
-        for player in self.allPlayers :
             self.allPlayerMapById[player.info.id] = player
+            self.allPlayerByName[player.info.name.lower()] = player
+            self.allPlayerByEnglishName[player.info.englishName.lower()] = player
 
         ### history
         self.chatList: list[ChatData] = []
@@ -353,17 +366,28 @@ class GameState :
         return self.allPlayerMapById.get(id)
 
     def getPlayerByName(self, name: str) -> Player :
-        for player in self.allPlayers :
-            if name.lower() == player.info.name.lower() :
-                return player
+        name = name.lower()
+        if name in self.allPlayerByName :
+            return self.allPlayerByName[name]
         return None
 
     def getPlayerInfoByName(self, name: str) -> PlayerInfo :
-        player: Player = self.getPlayerByName(name)
-        if player != None :
-            return player.info
-        else :
-            return None
+        name = name.lower()
+        if name in self.allPlayerByName :
+            return self.allPlayerByName[name].info
+        return None
+
+    def getPlayerByEnglishName(self, name: str) -> Player :
+        name = name.lower()
+        if name in self.allPlayerByEnglishName :
+            return self.allPlayerByEnglishName[name]
+        return None
+
+    def getPlayerInfoByEnglishName(self, name: str) -> PlayerInfo :
+        name = name.lower()
+        if name in self.allPlayerByEnglishName :
+            return self.allPlayerByEnglishName[name].info
+        return None
 
     async def getPlayerFromCuiAsync(self, text) -> Player :
         player: Player = None

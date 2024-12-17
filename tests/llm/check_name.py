@@ -59,6 +59,7 @@ names = [
 ]
 names2 = [
     '경찰', '마피아', '아님', '바보', '몰라', '모름', 'killer', 'mafia',
+    '사바사',
 ]
 
 # for name in names2 :
@@ -70,8 +71,8 @@ names2 = [
 import mafia_chatbot.utils.name_bank as NameBank
 
 async def main() :
-    global names
-    for name in names :
+    global names2
+    for name in names2 :
         result = await NameBank.checkName(name)
         print(f'{name}: {result.name}')
 
