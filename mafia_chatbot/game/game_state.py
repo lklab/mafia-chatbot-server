@@ -160,7 +160,7 @@ class GameState :
         ### create players
         self.players: list[Player] = []
         self.clientPlayers: list[Player] = []
-        usedNames = set()
+        usedNames = set() # 사용된 이름 (인간 사용자의 이름만 들어감)
 
         # create human players
         self.observerPlayer: Player = None
@@ -272,13 +272,21 @@ class GameState :
 
         ### setup english name
         if gameInfo.language != 'english' :
-            enIndex = 0
+            enNameIndex = 0
+            predefinedEnglishNames: set[str] = set(ENGLISH_NAMES.values())
+
+            # 사전 정의된 이름일 경우
             for player in self.players :
                 if player.info.name in ENGLISH_NAMES :
                     player.info.englishName = ENGLISH_NAMES[player.info.name]
+
+                # 사전에 정의되지 않은 이름일 경우 임의의 영어 이름을 사용
                 else :
-                    player.info.englishName = NAMES['english'][enIndex]
-                    enIndex += 1
+                    # 미리 정의된 영어 이름(NAMES['english'])과 다른 언어에서 영어로 번역한 이름(ENGLISH_NAMES.values())이 중복될 가능성이 있으므로 중복 검사
+                    while NAMES['english'][enNameIndex] in predefinedEnglishNames :
+                        enNameIndex += 1
+                    player.info.englishName = NAMES['english'][enNameIndex]
+                    enNameIndex += 1
 
         ### setup nameLists
         self.nameList: list[str] = list(map(lambda p: p.info.name, self.players))
