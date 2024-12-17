@@ -108,41 +108,48 @@ class LLM :
 
         for message in reversed(response['messages']) :
             if isinstance(message, ToolMessage) :
-                data = json.loads(message.content)
+                try :
+                    data = json.loads(message.content)
 
-                publicRole: Role = Role.CITIZEN
-                assumptionType: AssumptionType = AssumptionType.NORMAL
+                    publicRole: Role = Role.CITIZEN
+                    assumptionType: AssumptionType = AssumptionType.NORMAL
 
-                police: Player = self.gameState.getPlayerByEnglishName(data['police'])
-                doctor: Player = self.gameState.getPlayerByEnglishName(data['doctor'])
+                    police: Player = self.gameState.getPlayerByEnglishName(data['police'])
+                    doctor: Player = self.gameState.getPlayerByEnglishName(data['doctor'])
 
-                if police != None and police == player :
-                    publicRole = Role.POLICE
-                    assumptionType = AssumptionType.TEST_RESULT
-                elif doctor != None and doctor == player :
-                    publicRole = Role.DOCTOR
-                    assumptionType = AssumptionType.HEAL_SUCCESS
+                    if police != None and police == player :
+                        publicRole = Role.POLICE
+                        assumptionType = AssumptionType.TEST_RESULT
+                    elif doctor != None and doctor == player :
+                        publicRole = Role.DOCTOR
+                        assumptionType = AssumptionType.HEAL_SUCCESS
 
-                estimations: list[Estimation] = []
-                for estimation in data['estimations'] :
-                    playerInfo: PlayerInfo = self.gameState.getPlayerInfoByEnglishName(estimation['name'])
-                    role: Role = strToRole(estimation['role'])
-                    if playerInfo != None :
-                        if playerInfo == player.info and publicRole == Role.CITIZEN :
-                            publicRole = role
-                            if role == Role.POLICE :
-                                assumptionType = AssumptionType.TEST_RESULT
-                            elif role == Role.DOCTOR :
-                                assumptionType = AssumptionType.HEAL_SUCCESS
-                        else :
-                            estimations.append(Estimation(playerInfo, role))
+                    estimations: list[Estimation] = []
+                    for estimation in data['estimations'] :
+                        playerInfo: PlayerInfo = self.gameState.getPlayerInfoByEnglishName(estimation['name'])
+                        role: Role = strToRole(estimation['role'])
+                        if role == None :
+                            role = Role.CITIZEN
 
-                assumptions: list[Assumption] = [Assumption(estimations, '', assumptionType=assumptionType)]
+                        if playerInfo != None :
+                            if playerInfo == player.info and publicRole == Role.CITIZEN :
+                                publicRole = role
+                                if role == Role.POLICE :
+                                    assumptionType = AssumptionType.TEST_RESULT
+                                elif role == Role.DOCTOR :
+                                    assumptionType = AssumptionType.HEAL_SUCCESS
+                            else :
+                                estimations.append(Estimation(playerInfo, role))
 
-                if publicRole == Role.CITIZEN :
-                    publicRole = player.publicRole
-                strategy: Strategy = Strategy(publicRole, assumptions)
-                return strategy
+                    assumptions: list[Assumption] = [Assumption(estimations, '', assumptionType=assumptionType)]
+
+                    if publicRole == Role.CITIZEN :
+                        publicRole = player.publicRole
+                    strategy: Strategy = Strategy(publicRole, assumptions)
+                    return strategy
+
+                except :
+                    continue
 
         return None
 

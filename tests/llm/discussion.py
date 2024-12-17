@@ -23,19 +23,22 @@ gameInfo = GameInfo(
     playerCount=10,
     mafiaCount=2,
     clients=None,
-    localPlayerName='Broccoli',
-    language='english',
+    localPlayerName='사바사',
+    language='korean',
 )
 gameState = GameState(gameInfo, FakeGameLogger())
 llm = LLM(gameState)
 
 async def main() :
     global gameState, llm
-    player: Player = gameState.getPlayerByName('Broccoli')
+    player: Player = gameState.getPlayerByName('사바사')
+
+    names: list[str] = list(map(lambda p: p.info.name, filter(lambda p: not p.info.isHuman, gameState.players)))
+
     # result = await llm.checkContainsEstimation('태윤이 더 마피아같아')
     # print(result)
     # strategy = await llm.analyzeHumanMessage(player, '나는 태윤의 의견에 동의해서 진우가 마피아라고 생각해')
-    strategy = await llm.analyzeHumanMessage(player, 'I think Mason is a mafia.')
+    strategy = await llm.analyzeHumanMessage(player, f'나는 {names[0]}의 의견에 반대해')
     print(strategy)
     # result = await llm._ainvokeChain(
     #     chain=llm.translateChain,
