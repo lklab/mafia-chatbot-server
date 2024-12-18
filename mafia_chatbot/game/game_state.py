@@ -329,9 +329,9 @@ class GameState :
 
         # phase data - debug
         if gameInfo.debugInfo != None :
-            self.daySeconds = gameInfo.debugInfo.daySeconds
-            self.eveningSeconds = gameInfo.debugInfo.eveningSeconds
-            self.nightSeconds = gameInfo.debugInfo.nightSeconds
+            self.daySeconds = 60 if gameInfo.debugInfo.daySeconds <= 0 else max(gameInfo.debugInfo.daySeconds, 5)
+            self.eveningSeconds = 30 if gameInfo.debugInfo.eveningSeconds <= 0 else max(gameInfo.debugInfo.eveningSeconds, 5)
+            self.nightSeconds = 30 if gameInfo.debugInfo.nightSeconds <= 0 else max(gameInfo.debugInfo.nightSeconds, 5)
 
         ## debug data
         self.continueOnlyBots: bool = False
@@ -354,9 +354,10 @@ class GameState :
         self.removedPlayers[player] = PlayerRemoveInfo(player, reason, self.getCurrentRoundInfo())
 
         # send player removed message
-        message = game_pb2.Removed()
-        message.reason = removeReasonToProtoDict[reason]
-        player.client.sendMessage(message)
+        if player.client != None :
+            message = game_pb2.Removed()
+            message.reason = removeReasonToProtoDict[reason]
+            player.client.sendMessage(message)
 
     def removePlayerByInfo(self, playerInfo: PlayerInfo, reason: RemoveReason) :
         self.removePlayer(self.getPlayerByInfo(playerInfo), reason)

@@ -290,13 +290,11 @@ class DiscussionManager :
             conversation: list[str] = self.gameState.chatLogs.copy()
 
             try :
-                containsEstimation: bool = await self.llm.checkContainsEstimation(discussion)
+                strategy: Strategy = await self.llm.analyzeHumanMessage(player, discussion)
 
-                if containsEstimation :
-                    strategy: Strategy = await self.llm.analyzeHumanMessage(player, discussion)
-                    if strategy == None :
-                        return None
+                if strategy != None and strategy.isEffective() :
                     discussionData = DiscussionData(player, strategy=strategy)
+
                 else :
                     isQuestion: bool = await self.llm.isMessageQuestion(discussion)
                     if not isQuestion and 0.5 > random.random() :

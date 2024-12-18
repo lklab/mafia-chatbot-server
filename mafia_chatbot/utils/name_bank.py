@@ -8,13 +8,13 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
 NAMES: dict[str, list[str]] = {
-    "english" : [
-        "Oliver", "Emma", "Noah", "Ava", "Liam", "Sophia", "Mason", "Isabella",
-        "James", "Mia", "Benjamin", "Amelia", "Ethan", "Harper", "Lucas",
-        "Charlotte", "Henry", "Evelyn", "Jack", "Grace",
-        "William", "Ella", "Logan", "Chloe", "Daniel", "Lily", "Alexander", "Hannah",
-        "Michael", "Emily", "Samuel", "Aria", "Matthew", "Scarlett", "Joseph", "Madison",
-        "David", "Abigail", "Sebastian", "Nora",
+    'english' : [
+        'Oliver', 'Emma', 'Noah', 'Ava', 'Liam', 'Sophia', 'Mason', 'Isabella',
+        'James', 'Mia', 'Benjamin', 'Amelia', 'Ethan', 'Harper', 'Lucas',
+        'Charlotte', 'Henry', 'Evelyn', 'Jack', 'Grace',
+        'William', 'Ella', 'Logan', 'Chloe', 'Daniel', 'Lily', 'Alexander', 'Hannah',
+        'Michael', 'Emily', 'Samuel', 'Aria', 'Matthew', 'Scarlett', 'Joseph', 'Madison',
+        'David', 'Abigail', 'Sebastian', 'Nora',
     ],
     'korean' : [
         '지민', '수현', '서준', '민서', '도윤', '하늘', '지우',

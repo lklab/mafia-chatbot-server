@@ -62,6 +62,9 @@ class Strategy :
         self.estimations: list[Estimation] = [estimation for assumption in assumptions for estimation in assumption.estimations]
         self.mafiaEstimations: list[Estimation] = [estimation for estimation in self.estimations if estimation.role == Role.MAFIA]
 
+    def isEffective(self) :
+        return self.publicRole != Role.CITIZEN or len(self.estimations) > 0
+
     def __str__(self) :
         return f'publicRole={self.publicRole.name.lower()}, assumptions={self.assumptions}'
 

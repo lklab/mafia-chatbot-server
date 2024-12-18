@@ -50,7 +50,7 @@ class LLM :
         self._setupTranslateChain()
         self._setupRemoveFirstPersonChain()
         self._setupHumanMessageAgent()
-        self._setupCheckContainsEstimationChain()
+        self._setupCheckClaimsMafiaChain()
         self._setupCheckQuestionChain()
         self._setupGenerateResponseChain()
 
@@ -71,7 +71,7 @@ class LLM :
         self.logger.log(TAG.LLM, f'{player.info.name}: getDiscussion response: {response}')
         return response.content
 
-    async def checkContainsEstimation(self, message: str) -> bool :
+    async def checkContainsEstimation(self, message: str) -> bool : # not used
         self.logger.log(TAG.LLM, f'checkContainsEstimation input: {message}')
 
         response: str = await self._ainvokeChain(
@@ -106,10 +106,12 @@ class LLM :
         response = await self.humanMessageAgent.ainvoke({'messages': [HumanMessage(message)]})
         self.logger.log(TAG.LLM, f'analyzeHumanMessage response: {response}')
 
-        for message in reversed(response['messages']) :
-            if isinstance(message, ToolMessage) :
+        strategy: Strategy = None
+
+        for llmMessage in reversed(response['messages']) :
+            if isinstance(llmMessage, ToolMessage) :
                 try :
-                    data = json.loads(message.content)
+                    data = json.loads(llmMessage.content)
 
                     publicRole: Role = Role.CITIZEN
                     assumptionType: AssumptionType = AssumptionType.NORMAL
@@ -145,13 +147,26 @@ class LLM :
 
                     if publicRole == Role.CITIZEN :
                         publicRole = player.publicRole
-                    strategy: Strategy = Strategy(publicRole, assumptions)
-                    return strategy
+                    strategy = Strategy(publicRole, assumptions)
+                    break
 
                 except :
                     continue
 
-        return None
+        # 플레이어가 자신이 마피아라고 주장한 것이 맞는지 다시 확인
+        if strategy != None and player.publicRole != Role.MAFIA and strategy.publicRole == Role.MAFIA :
+            response = await self._ainvokeChain(
+                chain=self.checkClaimsMafiaChain,
+                input={
+                    'name' : player.info.englishName,
+                    'sentence' : message,
+                }
+            )
+
+            if "false" in response.lower() :
+                strategy.publicRole = player.publicRole
+
+        return strategy
 
     async def isMessageQuestion(self, message: str) -> bool :
         self.logger.log(TAG.LLM, f'isMessageQuestion input: {message}')
@@ -295,7 +310,7 @@ class LLM :
         # setup tools
         nameList = ', '.join(self.gameState.englishNameList)
         estimationToolDescription = (
-            "If a human participant claims someone to be a specific role, invoke this tool. The name must match one from the ##list##, and the role must be one of 'citizen,' 'police,' 'mafia,' or 'doctor.' If there is no exact match for the name or role, attempt to find the closest match considering case sensitivity or typos. If no sufficiently similar match exists, ignore the statement."
+            "If a human participant claims someone to be a specific role, invoke this tool. The name must match one from the ##list##, and the role must be one of 'citizen,' 'police,' 'mafia,' or 'doctor.' Treat cases where someone is suspected as equivalent to them being claimed as a mafia. If there is no exact match for the name or role, attempt to find the closest match considering case sensitivity or typos. If no sufficiently similar match exists, ignore the statement."
             "\n\n"
             "##list##"
             "\n"
@@ -354,7 +369,28 @@ class LLM :
             model, tools, state_modifier=systemMessage
         )
 
-    def _setupCheckContainsEstimationChain(self) :
+    def _setupCheckClaimsMafiaChain(self) :
+        # setup model
+        model = ChatOpenAI(
+            model="gpt-3.5-turbo",
+            temperature=0.1,
+        )
+
+        # setup prompt
+        template = (
+            "Respond with \"true\" if the following sentence explicitly claims that {name}'s role is Mafia. Otherwise, respond with \"false\"."
+            "\n"
+            "{sentence}"
+        )
+        prompt = PromptTemplate.from_template(template)
+
+        # setup parser
+        parser = StrOutputParser()
+
+        # setup chain
+        self.checkClaimsMafiaChain = prompt | model | parser
+
+    def _setupCheckContainsEstimationChain(self) : # not used
         # setup model
         model = ChatOpenAI(
             model="gpt-3.5-turbo",
