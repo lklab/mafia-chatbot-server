@@ -97,7 +97,8 @@ class VoteData :
     def getVoteResultStr(self) -> list[str] :
         targets: list[PlayerInfo] = list(self.voteDict.keys())
         targets.sort(key=lambda target: self.voteCount[target], reverse=True)
-        return list(map(lambda t: f'{t.name}({self.voteCount[t]}): {', '.join(map(lambda v: v.info.name, self.voteDict[t]))}', filter(lambda t: self.voteCount[t] > 0, targets)))
+        voteResultText = ', '.join(map(lambda v: v.info.name, self.voteDict[t]))
+        return list(map(lambda t: f'{t.name}({self.voteCount[t]}): {voteResultText}', filter(lambda t: self.voteCount[t] > 0, targets)))
 
     def getVoteStateMessage(self) -> game_pb2.VoteState :
         message = game_pb2.VoteState()
