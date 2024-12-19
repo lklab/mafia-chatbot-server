@@ -223,7 +223,9 @@ class GameProcess :
             return errorResponse, False
 
     def _onClientMessage(self, client: ClientHandler, message) :
-        self.logger.debug(f'_onClientMessage addr={client.addr}, name={client.clientName}, type={type(message)}, message=<{message}>')
+        if type(message) != time_pb2.RequestTimeSync :
+            self.logger.debug(f'_onClientMessage addr={client.addr}, name={client.clientName}, type={type(message)}, message=<{message}>')
+
         if type(message) in GameProcess._switchClientMessage :
             GameProcess._switchClientMessage[type(message)](self, client, message)
         else :
@@ -241,7 +243,7 @@ class GameProcess :
         response = time_pb2.TimeSync()
         response.rqid = message.rqid
         response.time = int(time.monotonic() * 1000)
-        self._sendToClient(client, response)
+        self._sendToClient(client, response, log=False)
 
     def _switchClientMessageRequestGameInfo(self, client: ClientHandler, message) :
         if client.clientId not in self.gameByClientId :
@@ -359,11 +361,12 @@ class GameProcess :
         self.logger.debug(f'_sendAwaitResponseToMainProcess() response type={type(response)}, message=<{response}>')
         return response
 
-    def _sendToClient(self, client: ClientHandler, message, isError: bool = False) :
-        if isError :
-            self.logger.error(f'_sendToClient addr={client.addr}, name={client.clientName}, type={type(message)}, message=<{message}>')
-        else :
-            self.logger.debug(f'_sendToClient addr={client.addr}, name={client.clientName}, type={type(message)}, message=<{message}>')
+    def _sendToClient(self, client: ClientHandler, message, log: bool = True, isError: bool = False) :
+        if log :
+            if isError :
+                self.logger.error(f'_sendToClient addr={client.addr}, name={client.clientName}, type={type(message)}, message=<{message}>')
+            else :
+                self.logger.debug(f'_sendToClient addr={client.addr}, name={client.clientName}, type={type(message)}, message=<{message}>')
         client.messageHandler.send(message)
 
     def _makeErrorResponse(self, message, code: int, detail: str) :
