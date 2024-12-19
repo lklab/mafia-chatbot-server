@@ -230,7 +230,8 @@ class GameManager :
             print(text)
 
     def checkGameEnd(self) -> GameEndInfo :
-        self.gameState.logger.log(TAG.INFO, f'survivors list: {(', '.join(map(lambda p: str(p), self.gameState.players)))}')
+        survivorsListText = ', '.join(map(lambda p: str(p), self.gameState.players))
+        self.gameState.logger.log(TAG.INFO, f'survivors list: {survivorsListText}')
 
         mafiaCount = len(self.gameState.mafiaPlayers)
         civilCount = len(self.gameState.players) - mafiaCount
