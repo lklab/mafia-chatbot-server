@@ -240,7 +240,7 @@ class GameProcess :
     def _switchClientMessageRequestTimeSync(self, client: ClientHandler, message) :
         response = time_pb2.TimeSync()
         response.rqid = message.rqid
-        response.time = time.monotonic()
+        response.time = int(time.monotonic() * 1000)
         self._sendToClient(client, response)
 
     def _switchClientMessageRequestGameInfo(self, client: ClientHandler, message) :
