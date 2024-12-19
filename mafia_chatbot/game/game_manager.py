@@ -208,12 +208,12 @@ class GameManager :
 
             if nightTargetData.testTarget.info.role == Role.MAFIA :
                 self._addSystemChat(
-                    content=f'({self._('This message visible only to you')}) {self._('{name} is a Mafia.').format(name=_name)}',
+                    content=f'({(self._('This message visible only to you'))}) {(self._('{name} is a Mafia.').format(name=_name))}',
                     receiver=police.info,
                 )
             else :
                 self._addSystemChat(
-                    content=f'({self._('This message visible only to you')}) {self._('{name} is not a Mafia.').format(name=_name)}',
+                    content=f'({(self._('This message visible only to you'))}) {(self._('{name} is not a Mafia.').format(name=_name))}',
                     receiver=police.info,
                 )
         else :
