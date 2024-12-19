@@ -97,8 +97,11 @@ class VoteData :
     def getVoteResultStr(self) -> list[str] :
         targets: list[PlayerInfo] = list(self.voteDict.keys())
         targets.sort(key=lambda target: self.voteCount[target], reverse=True)
-        voteResultText = ', '.join(map(lambda v: v.info.name, self.voteDict[t]))
-        return list(map(lambda t: f'{t.name}({self.voteCount[t]}): {voteResultText}', filter(lambda t: self.voteCount[t] > 0, targets)))
+
+        def getVotersText(t: PlayerInfo) :
+            votersText = ', '.join(map(lambda v: v.info.name, self.voteDict[t]))
+            return f'{t.name}({self.voteCount[t]}): {votersText}'
+        return list(map(getVotersText, filter(lambda t: self.voteCount[t] > 0, targets)))
 
     def getVoteStateMessage(self) -> game_pb2.VoteState :
         message = game_pb2.VoteState()
@@ -472,7 +475,8 @@ class GameState :
         )
         self.chatList.append(chat)
         if receiver == None :
-            self.conversationLogs.append(f'{self._('System')}: {content}')
+            systemText = self._('System')
+            self.conversationLogs.append(f'{systemText}: {content}')
         self.logger.log(TAG.CHAT, f'SYSTEM - {chat.index} - for {"everyone" if receiver == None else receiver.name}: {content}')
         self.sendAddChatMessageToAllClient(chat)
 
