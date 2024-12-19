@@ -112,7 +112,9 @@ class GameManager :
 
         # evaluate vote data
         voteData.evaluate()
-        self._addSystemChat(f'[{self._('Voting results')}]\n{'\n'.join(voteData.getVoteResultStr())}')
+        votingResultsText = self._('Voting results')
+        votingResultsList = '\n'.join(voteData.getVoteResultStr())
+        self._addSystemChat(f'[{votingResultsText}]\n{votingResultsList}')
 
         if voteData.isTie :
             self._addSystemChat(self._('No one was executed due to a tie.'))
