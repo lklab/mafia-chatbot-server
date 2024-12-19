@@ -206,16 +206,18 @@ class GameManager :
             police.addTestResult(nightTargetData.testTarget, nightTargetData.testTarget.info.role)
             _name = nightTargetData.testTarget.info.name
 
+            visibleOnlyText = self._('This message visible only to you')
+            mafiaNoticeText = ''
+
             if nightTargetData.testTarget.info.role == Role.MAFIA :
-                self._addSystemChat(
-                    content=f'({(self._('This message visible only to you'))}) {(self._('{name} is a Mafia.').format(name=_name))}',
-                    receiver=police.info,
-                )
+                mafiaNoticeText = self._('{name} is a Mafia.').format(name=_name)
             else :
-                self._addSystemChat(
-                    content=f'({(self._('This message visible only to you'))}) {(self._('{name} is not a Mafia.').format(name=_name))}',
-                    receiver=police.info,
-                )
+                mafiaNoticeText = self._('{name} is not a Mafia.').format(name=_name)
+
+            self._addSystemChat(
+                content=f'({visibleOnlyText}) {mafiaNoticeText}',
+                receiver=police.info,
+            )
         else :
             police.addTestResult(None, None)
 
