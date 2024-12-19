@@ -23,7 +23,7 @@ gameInfo = GameInfo(
     playerCount=10,
     mafiaCount=2,
     clients=None,
-    localPlayerName='사바사',
+    localPlayerName='시우',
     language='korean',
 )
 gameState = GameState(gameInfo, FakeGameLogger())
@@ -31,7 +31,7 @@ llm = LLM(gameState)
 
 async def main() :
     global gameState, llm
-    player: Player = gameState.getPlayerByName('사바사')
+    player: Player = gameState.getPlayerByName('시우')
 
     names: list[str] = list(map(lambda p: p.info.name, filter(lambda p: not p.info.isHuman, gameState.players)))
 
@@ -42,6 +42,7 @@ async def main() :
     # strategy = await llm.analyzeHumanMessage(player, f'나는 마피아야.')
     strategy = await llm.analyzeHumanMessage(player, f'나도 {names[0]}이 의심스러워')
     # strategy = await llm.analyzeHumanMessage(player, f'{names[0]}에게 투표하자.')
+    # strategy = await llm.analyzeHumanMessage(player, f'{names[0]} 너 마피아잖아')
 
     print(strategy)
 

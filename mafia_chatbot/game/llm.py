@@ -286,7 +286,7 @@ class LLM :
 
         # setup prompt
         template = (
-            "If ##sentence## does not contain any first-person pronouns, return it as is without making any changes. If ##sentence## contains any first-person pronouns, replace them with the third-person proper noun \"{name}\" and provide the modified sentence. Do not modify any other parts of the sentence, including other names or the overall sentence structure."
+            "If ##sentence## contains any first-person pronouns (e.g., I, me, my, mine, myself), replace them with \"{name}\" and provide the modified sentence. Do not replace second-person pronouns (e.g., you, your) or any other words that are not first-person pronouns. Do not modify any other parts of the sentence, including other names or the overall sentence structure."
             "\n\n"
             "##sentence##"
             "\n"
