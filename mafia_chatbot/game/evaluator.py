@@ -611,15 +611,19 @@ def _choiceFromCandidates(gameState: GameState, recorder: TrustRecorder, me: Pla
     return random.choices(candidates, weights=weights, k=1)[0]
 
 def _logCandidates(logger: GameLogger, tag: TAG, playerInfos: list[PlayerInfo]) :
-    logger.log(tag, f'candidates: {', '.join(map(lambda info : info.name, playerInfos))}')
+    text = ', '.join(map(lambda info : info.name, playerInfos))
+    logger.log(tag, f'candidates: {text}')
 
 def _logCandidatesPlayer(logger: GameLogger, tag: TAG, players: list[Player]) :
-    logger.log(tag, f'candidates: {', '.join(map(lambda p : p.info.name, players))}')
+    text = ', '.join(map(lambda p : p.info.name, players))
+    logger.log(tag, f'candidates: {text}')
 
 def _logCandidatesWithWeights(logger: GameLogger, tag: TAG, playerInfos: list[PlayerInfo], weights: list[float]) :
     total: float = sum(weights)
-    logger.log(tag, f'candidates: {', '.join(map(lambda i : f'{playerInfos[i].name}({weights[i] * 100.0 / total:.2f})', range(len(playerInfos))))}')
+    text = ', '.join(map(lambda i : f'{playerInfos[i].name}({weights[i] * 100.0 / total:.2f})', range(len(playerInfos))))
+    logger.log(tag, f'candidates: {text}')
 
 def _logCandidatesPlayerWithWeights(logger: GameLogger, tag: TAG, players: list[Player], weights: list[float]) :
     total: float = sum(weights)
-    logger.log(tag, f'candidates: {', '.join(map(lambda i : f'{players[i].info.name}({weights[i] * 100.0 / total:.2f})', range(len(players))))}')
+    text = ', '.join(map(lambda i : f'{players[i].info.name}({weights[i] * 100.0 / total:.2f})', range(len(players))))
+    logger.log(tag, f'candidates: {text}')
