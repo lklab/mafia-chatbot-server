@@ -19,7 +19,6 @@ class TcpServer :
             ssl_context.load_cert_chain(
                 certfile='server.crt',
                 keyfile='server.key',
-                password='1227',
             )
 
             self.server = await asyncio.start_server(
