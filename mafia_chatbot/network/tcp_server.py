@@ -15,6 +15,7 @@ class TcpServer :
         self.onConnected = onConnected
 
         if self.useSSL :
+            # openssl req -x509 -nodes -newkey rsa:2048 -keyout server.key -out server.crt -days 365 -subj "/CN=211.47.119.124" -addext "subjectAltName=IP:211.47.119.124"
             ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             ssl_context.load_cert_chain(
                 certfile='server.crt',
