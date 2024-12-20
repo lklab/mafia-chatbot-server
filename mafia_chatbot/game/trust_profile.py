@@ -34,6 +34,14 @@ class TrustRecord :
     def __repr__(self) :
         return self.__str__()
 
+    def __eq__(self, other):
+        if isinstance(other, TrustRecord):
+            return self.point == other.point and self.reason == other.reason
+        return False
+
+    def __hash__(self):
+        return hash((self.point, self.reason))
+
 recordsByTrustStateDict: dict[TrustState, TrustRecord] = {
     TrustState.CONFIRMED_MAFIA   : TrustRecord(-100.0, 'He is definitely the Mafia.'),
     TrustState.CONFIRMED_CITIZEN : TrustRecord( 100.0, 'The police said he is a citizen.'),
@@ -91,6 +99,11 @@ class TrustProfile :
             record: TrustRecord = recordsByTrustStateDict[state]
             if reason != None :
                 record = TrustRecord(record.point, reason)
+
+            if self.state == state and self.mainRecord == record :
+                return
+
+            self.state = state
             self.mainRecord = record
             self.logger.log(TAG.TRUST, f'{self.playerInfo.name}: main record changed: state={self.state.name}, mainRecord={self.mainRecord}')
 
