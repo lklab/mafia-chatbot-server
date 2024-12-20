@@ -192,6 +192,12 @@ class TrustRecorder :
         else :
             return set()
 
+    def getTargetInfo(self, playerInfo: PlayerInfo) -> PlayerInfo :
+        if playerInfo in self.targetInfoByPointerOrVoterInfo :
+            return self.targetInfoByPointerOrVoterInfo[playerInfo]
+        else :
+            return None
+
     def getEffectiveCitizenCount(self) :
         return self.gameState.getPlayerCount() - 2 * self.gameState.getMafiaCount() + 1
 

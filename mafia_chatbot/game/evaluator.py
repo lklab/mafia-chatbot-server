@@ -542,28 +542,35 @@ def _choiceFromCandidates(gameState: GameState, recorder: TrustRecorder, me: Pla
 
     myPointerOrVotersCount: int = len(recorder.getPointerOrVoters(me.info))
     isIFocused: bool = myPointerOrVotersCount >= round(gameState.getPlayerCount() / 2.5)
+    myTargetInfo: PlayerInfo = recorder.getTargetInfo(me.info)
 
     for candidate in candidates :
         pointerOrVoters: set[PlayerInfo] = recorder.getPointerOrVoters(candidate)
 
-        # 마피아일 경우 아무도 지목하지 않은 마피아 동료를 지목하지 않음
-        if me.info.role == Role.MAFIA and candidate.role == Role.MAFIA and len(pointerOrVoters) == 0 and not isIFocused :
-            weights.append(0.0)
-            continue
-
-        # 경찰일 경우 조사된 마피아가 있다면 아무도 지목하지 않은 조사되지 않거나 시민으로 조사된 플레이어를 지목하지 않음
-        if me.info.role == Role.POLICE and len(pointerOrVoters) == 0 and len(list(filter(lambda p : p.isLive, me.testedMafias))) > 0 :
-            p: Player = gameState.getPlayerByInfo(candidate)
-            if p not in me.testResults or me.testResults[p] != Role.MAFIA :
+        if not isIFocused :
+            # 자신이 이미 지목한 플레이어가 있을 경우 아무도 지목하지 않은 플레이어를 지목하지 않음
+            if myTargetInfo != None and len(pointerOrVoters) == 0 :
                 weights.append(0.0)
                 continue
 
-        # 의사일 경우 아무도 지목하지 않은, 치료에 성공한 플레이어를 지목하지 않음
-        if me.info.role == Role.DOCTOR and len(pointerOrVoters) == 0 :
-            p: Player = gameState.getPlayerByInfo(candidate)
-            if p in me.healSuccesses :
+            # 마피아일 경우 아무도 지목하지 않은 마피아 동료를 지목하지 않음
+            if me.info.role == Role.MAFIA and candidate.role == Role.MAFIA and len(pointerOrVoters) == 0 :
                 weights.append(0.0)
                 continue
+
+            # 경찰일 경우 조사된 마피아가 있다면 아무도 지목하지 않은 조사되지 않거나 시민으로 조사된 플레이어를 지목하지 않음
+            if me.info.role == Role.POLICE and len(pointerOrVoters) == 0 and len(list(filter(lambda p : p.isLive, me.testedMafias))) > 0 :
+                p: Player = gameState.getPlayerByInfo(candidate)
+                if p not in me.testResults or me.testResults[p] != Role.MAFIA :
+                    weights.append(0.0)
+                    continue
+
+            # 의사일 경우 아무도 지목하지 않은, 치료에 성공한 플레이어를 지목하지 않음
+            if me.info.role == Role.DOCTOR and len(pointerOrVoters) == 0 :
+                p: Player = gameState.getPlayerByInfo(candidate)
+                if p in me.healSuccesses :
+                    weights.append(0.0)
+                    continue
 
         # calculate weights using trust
         point: float = normalizePoint(recorder.getTrustPoint(candidate))
