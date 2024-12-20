@@ -48,7 +48,6 @@ class Player :
 
         # strategy summary
         self.publicRole = Role.CITIZEN
-        self.isPublicRoleChanged = False
         # 모순되는 역할 변경을 한 이력이 있는지 여부, tuple[모순여부, tuple[기존 역할, 주장하는 역할]]
         self.isContradictoryRole: tuple[bool, tuple[Role, Role]] = (False, (None, None))
         self.voteHistory: list[PlayerInfo] = []
@@ -99,27 +98,9 @@ class Player :
         self.allDiscussionStrategies[round] = strategy
 
         # update publicRole
-        if self.publicRole != strategy.publicRole :
-            # 시민에서 다른 역할로의 변경 허용
-            if self.publicRole == Role.CITIZEN :
-                self.publicRole = strategy.publicRole
-                self.isPublicRoleChanged = True
-
-            # 다른 역할에서 시민으로의 역할 변경 무시
-            elif strategy.publicRole == Role.CITIZEN :
-                self.isPublicRoleChanged = False
-
-            # 마피아로 주장한 적이 있는 경우 무시
-            elif self.publicRole == Role.MAFIA :
-                self.isPublicRoleChanged = False
-
-            # 그 외의 경우(경찰 <-> 의사) 모순적인 역할 변경으로 처리
-            else :
-                self.isPublicRoleChanged = False
-                self.isContradictoryRole = (True, (self.publicRole, strategy.publicRole))
-
-        else :
-            self.isPublicRoleChanged = False
+        self.publicRole, isContradictory = self.getChangeRole(strategy.publicRole)
+        if isContradictory :
+            self.isContradictoryRole = (True, (self.publicRole, strategy.publicRole))
 
         for assumption in strategy.assumptions :
             # update estimationsAsPolice
@@ -130,6 +111,26 @@ class Player :
             if assumption.assumptionType == AssumptionType.HEAL_SUCCESS :
                 for estimation in assumption.estimations :
                     self.estimationsAsDoctor[estimation.playerInfo] = estimation
+
+    def getChangeRole(self, role: Role) -> tuple[Role, bool] : # 바뀐 역할, 역할 모순 여부
+        if self.publicRole != role :
+            # 시민에서 다른 역할로의 변경 허용
+            if self.publicRole == Role.CITIZEN :
+                return role, False
+
+            # 다른 역할에서 시민으로의 역할 변경 무시
+            elif role == Role.CITIZEN :
+                return self.publicRole, False
+
+            # 마피아로 주장한 적이 있는 경우 무시
+            elif self.publicRole == Role.MAFIA :
+                return self.publicRole, False
+
+            # 그 외의 경우(경찰 <-> 의사) 모순적인 역할 변경으로 처리
+            else :
+                return self.publicRole, True
+        else :
+            return self.publicRole, False
 
     def setVoteStrategy(self, round: int, strategy: VoteStrategy) :
         self.voteStrategy = strategy
@@ -176,12 +177,6 @@ class Player :
         if player != None :
             self.healSuccesses.add(player)
         self.lastHealSuccess = player
-
-    def getRolePrompt(self) -> str :
-        if self.isPublicRoleChanged :
-            return f'You must claim that your role is {self.info.role.name.lower()}.'
-        else :
-            return ''
 
     def reloadChatingCount(self) :
         self.remainChatingCount = self.maxChatingCount

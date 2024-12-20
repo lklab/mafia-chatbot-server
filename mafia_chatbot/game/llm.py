@@ -57,10 +57,13 @@ class LLM :
     async def getDiscussion(self, player: Player, strategy: Strategy) -> str :
         self.logger.log(TAG.LLM, f'{player.info.name}: getDiscussion input: {strategy}')
 
+        publicRole: Role = player.getChangeRole(strategy.publicRole)
+        isPublicRoleChanged: bool = player.publicRole != publicRole
+
         input: dict[str, str] = {
             'my_name' : player.info.name,
             'my_role' : roleToStrDict[player.info.role],
-            'claim_public_role' : f"You must claim that your role is {roleToStrDict[player.publicRole]}. " if player.isPublicRoleChanged else "",
+            'claim_public_role' : f"You must claim that your role is {publicRole}. " if isPublicRoleChanged else "",
             'estimations' : ', '.join(map(lambda e: f"{e.playerInfo.name}'s role is {roleToStrDict[e.role]}", strategy.assumptions[0].estimations)),
             'tone': player.info.tone,
             'conversation_logs' : '\n'.join(self.gameState.conversationLogs),
