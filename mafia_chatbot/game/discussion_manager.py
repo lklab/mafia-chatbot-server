@@ -159,25 +159,30 @@ class DiscussionManager :
     def _generateNormalDiscussion(self) :
         self._stopTask()
 
-        # select player
-        dPlayer: DiscussionPlayer = self.dPlayers[0]
-
         # decide discussion time
         discussionTime: float = self._lastDiscussionTime + random.uniform(5.0, 10.0)
 
         # start task
-        self._normalDiscussionTask = asyncio.create_task(self._generateNormalDiscussionTask(dPlayer, discussionTime))
+        self._normalDiscussionTask = asyncio.create_task(self._generateNormalDiscussionTask(discussionTime))
 
-    async def _generateNormalDiscussionTask(self, dPlayer: DiscussionPlayer, discussionTime: float) :
+    async def _generateNormalDiscussionTask(self, discussionTime: float) :
         # wait for discussion time
         waitTime: float = discussionTime - time.monotonic()
         await asyncio.sleep(waitTime)
         if not self._isRunning :
             return
 
-        # evaluate strategy
-        self.trustRecorder.updateTrustRecords()
-        strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, self.trustRecorder, dPlayer.player)
+        while True :
+            # select player
+            dPlayer: DiscussionPlayer = self.dPlayers[0]
+
+            # evaluate strategy
+            self.trustRecorder.updateTrustRecords()
+            strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, self.trustRecorder, dPlayer.player)
+
+            # check strategy is changed TODO
+            if True :
+                break
 
         # publish discussion
         await self._generateAndPublishDiscussion(dPlayer, strategy, discussionTime)
@@ -221,6 +226,9 @@ class DiscussionManager :
         self.gameState.appendDiscussionChat(dPlayer.player.info, discussion)
 
         # rearrange player
+        self._addDiscussionCount(dPlayer)
+
+    def _addDiscussionCount(self, dPlayer: DiscussionPlayer) :
         self._allDiscussionCount += 1
         dPlayer.addDiscussionCount()
         self.dPlayers.remove(dPlayer)
@@ -410,7 +418,7 @@ class DiscussionManager :
             point: float = self.trustRecorder.getTrustPoint(estimation.playerInfo)
             if point > 30.0 and (point / 100.0) > random.random() :
                 player: Player = None
-                for dPlayer in self.dPlayers :
+                for dPlayer in self.dPlayers : # TODO change to self.gameState.players
                     if dPlayer.player != data.speaker and dPlayer.player.info != estimation.playerInfo :
                         player = dPlayer.player
                         break
