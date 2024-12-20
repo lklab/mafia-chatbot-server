@@ -314,7 +314,6 @@ class GameState :
 
         ### history
         self.chatList: list[ChatData] = []
-        self.conversationLogs: list[str] = []
         self.chatLogs: list[str] = []
         self.voteHistory: list[VoteData] = []
         self.nightTargetHistory: list[NightTargetData] = []
@@ -461,7 +460,6 @@ class GameState :
             sender=sender,
         )
         self.chatList.append(chat)
-        self.conversationLogs.append(f'{sender.name}: {content}')
         self.chatLogs.append(f'{sender.name}: {content}')
         self.logger.log(TAG.CHAT, f'DISCUSSION - {chat.index} - {sender.name}: {content}')
         self.sendAddChatMessageToAllClient(chat)
@@ -474,9 +472,6 @@ class GameState :
             receiver=receiver,
         )
         self.chatList.append(chat)
-        if receiver == None :
-            systemText = self._('System')
-            self.conversationLogs.append(f'{systemText}: {content}')
         self.logger.log(TAG.CHAT, f'SYSTEM - {chat.index} - for {"everyone" if receiver == None else receiver.name}: {content}')
         self.sendAddChatMessageToAllClient(chat)
 
@@ -488,7 +483,6 @@ class GameState :
             sender=sender,
         )
         self.chatList.append(chat)
-        self.conversationLogs.append(f'{sender.name}: {chat.content}')
         self.chatLogs.append(f'{sender.name}: {chat.content}')
         self.logger.log(TAG.CHAT, f'DISCUSSION - {chat.index} - {sender.name}: {chat.content}')
 
@@ -496,6 +490,23 @@ class GameState :
             self.onHumanChat(chat)
 
         chat_out.index = chat.index
+
+    def getRecentConversationLogs(self, count: int) -> list[str] :
+        logs: list[str] = []
+        systemText = self._('System')
+
+        for chat in reversed(self.chatList) :
+            if count <= 0 :
+                logs.append('(The previous conversation is omitted.)')
+                break
+
+            if chat.type == ChatType.DISCUSSION :
+                logs.append(f'{chat.sender.name}: {chat.content}')
+                count -= 1
+            elif chat.receiver == None :
+                logs.append(f'{systemText}: {chat.content}')
+
+        return logs[::-1]
 
     def setOnHumanChatListener(self, listener: Callable[[ChatData], None]) :
         self.onHumanChat = listener

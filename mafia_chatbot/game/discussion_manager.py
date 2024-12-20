@@ -287,7 +287,7 @@ class DiscussionManager :
         discussionData: DiscussionData = None
 
         if self.gameState.gameInfo.useLLM :
-            conversation: list[str] = self.gameState.chatLogs.copy()
+            conversation: list[str] = self.gameState.chatLogs[-10:]
 
             try :
                 strategy: Strategy = await self.llm.analyzeHumanMessage(player, discussion)
