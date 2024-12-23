@@ -12,8 +12,7 @@ from enum import Enum
 
 from mafia_chatbot.game.player_info import PlayerInfo
 from mafia_chatbot.game.game_logger import GameLogger, TAG
-
-defaultReason = 'Due to a lack of information, you will suspect someone as the mafia, but it is only a guess. You might come up with a funny reason, or perhaps base your suspicion on something completely random like their tone of voice or the way they blinked.'
+from mafia_chatbot.game.strategy import defaultReason
 
 class TrustState(Enum) :
     NORMAL = 0
@@ -44,8 +43,8 @@ class TrustRecord :
     def __repr__(self) :
         return self.__str__()
 
-    def __eq__(self, other):
-        if isinstance(other, TrustRecord):
+    def __eq__(self, other) :
+        if isinstance(other, TrustRecord) :
             return self.point == other.point and self.reason == other.reason
         return False
 
@@ -128,3 +127,12 @@ if __name__ == "__main__" :
     r1 = TrustRecord(10.0, reason)
     r2 = TrustRecord(10.0, 'asd')
     print(r1 == r2)
+
+    rset = set()
+    rset.add(r1)
+    rset.add(r2)
+    print(list(rset))
+
+    rmap = {}
+    rmap[r1] = 'asd'
+    print(rmap[r2])

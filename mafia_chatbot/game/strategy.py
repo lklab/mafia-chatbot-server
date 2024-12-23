@@ -2,6 +2,8 @@ from enum import Enum
 
 from mafia_chatbot.game.player_info import *
 
+defaultReason = 'Due to a lack of information, you will suspect someone as the mafia, but it is only a guess. You might come up with a funny reason, or perhaps base your suspicion on something completely random like their tone of voice or the way they blinked.'
+
 class Estimation :
     def __init__(self,
             playerInfo: PlayerInfo,
@@ -16,6 +18,14 @@ class Estimation :
     def __repr__(self) :
         return self.__str__()
 
+    def __eq__(self, other) :
+        if isinstance(other, Estimation) :
+            return self.playerInfo.id == other.playerInfo.id and self.role == other.role
+        return False
+
+    def __hash__(self):
+        return hash((self.playerInfo.id, self.role))
+ 
     def getPrompt(self) :
         return f'{self.playerInfo.name}\'s role is {self.role.name.lower()}'
 
@@ -40,6 +50,19 @@ class Assumption :
     def getPrompt(self) :
         estimations = ', '.join(map(lambda estimation: estimation.getPrompt(), self.estimations)) 
         return f'{estimations} because {self.reason}.'
+
+    def __eq__(self, other) :
+        if not isinstance(other, Assumption) :
+            return False
+
+        return (
+            self.reason == other.reason and
+            self.assumptionType == other.assumptionType and
+            set(self.estimations) == set(other.estimations)
+        )
+
+    def __hash__(self):
+        return hash((self.reason, self.assumptionType, frozenset(self.estimations)))
 
 class Strategy :
     def __init__(self, publicRole: Role, assumptions: list[Assumption]) :
@@ -76,6 +99,24 @@ class Strategy :
 
     def assumptionsToPrompt(self) :
         return '\n'.join(map(lambda assumption: 'You must argue that ' + assumption.getPrompt(), self.assumptions))
+
+    def isDefaultReasonIncluded(self) -> bool :
+        for assumption in self.assumptions :
+            if assumption.reason == defaultReason :
+                return True
+        return False
+
+    def __eq__(self, other) :
+        if not isinstance(other, Strategy) :
+            return False
+
+        return (
+            self.publicRole == other.publicRole and
+            set(self.assumptions) == set(other.assumptions)
+        )
+
+    def __hash__(self):
+        return hash((self.publicRole, frozenset(self.assumptions)))
 
 class VoteStrategy(Strategy) :
     def __init__(self, playerInfo: PlayerInfo) :

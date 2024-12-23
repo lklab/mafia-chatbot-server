@@ -1,8 +1,8 @@
 from mafia_chatbot.game.game_state import GameState, VoteData, RemoveReason
-from mafia_chatbot.game.trust_profile import TrustProfile, TrustRecord, TrustState, defaultReason
+from mafia_chatbot.game.trust_profile import TrustProfile, TrustRecord, TrustState
 from mafia_chatbot.game.player import Player
 from mafia_chatbot.game.player_info import PlayerInfo, Role
-from mafia_chatbot.game.strategy import Strategy, VoteStrategy
+from mafia_chatbot.game.strategy import Strategy, VoteStrategy, defaultReason
 
 class TrustRecorder :
     def __init__(self, gameState: GameState) :

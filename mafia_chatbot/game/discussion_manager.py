@@ -172,17 +172,32 @@ class DiscussionManager :
         if not self._isRunning :
             return
 
-        while True :
+        # update trust records for evaluate strategy
+        self.trustRecorder.updateTrustRecords()
+
+        limit: int = 10
+        while limit > 0 :
+            limit -= 1
+
             # select player
             dPlayer: DiscussionPlayer = self.dPlayers[0]
 
+            # get player's past strategy
+            pastStrategy: Strategy = dPlayer.player.getDiscussionStrategy(self.gameState.round)
+
             # evaluate strategy
-            self.trustRecorder.updateTrustRecords()
             strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, self.trustRecorder, dPlayer.player)
 
-            # check strategy is changed TODO
-            if True :
-                break
+            # check strategy is changed
+            if (
+                limit > 0 and # 제한을 초과하지 않음
+                not strategy.isDefaultReasonIncluded() and # 전략에 default reason이 포함되지 않음
+                pastStrategy != None and # 현재 라운드에 이전 전략이 이미 존재
+                strategy == pastStrategy # 현재 라운드의 이전 전략과 동일
+            ) :
+                self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}\'s strategy is same, skip(limit={limit}). before={pastStrategy}, after={strategy}')
+                # rearrange player and select other player
+                self._addDiscussionCount(dPlayer)
 
         # publish discussion
         await self._generateAndPublishDiscussion(dPlayer, strategy, discussionTime)
