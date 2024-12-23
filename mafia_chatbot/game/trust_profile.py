@@ -1,3 +1,13 @@
+if __name__ == "__main__" :
+    from pathlib import Path
+    import sys
+
+    path_root = Path(__file__).resolve().parent
+    while path_root.name != 'mafia-chatbot-server' :
+        path_root = path_root.parent
+
+    sys.path.append(str(path_root))
+
 from enum import Enum
 
 from mafia_chatbot.game.player_info import PlayerInfo
@@ -112,3 +122,9 @@ class TrustProfile :
 
     def isMustTargeting(self) -> bool :
         return mustTargetingsByTrustStateDict[self.state]
+
+if __name__ == "__main__" :
+    reason = 'asd'
+    r1 = TrustRecord(10.0, reason)
+    r2 = TrustRecord(10.0, 'asd')
+    print(r1 == r2)
