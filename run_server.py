@@ -16,7 +16,7 @@ import mafia_chatbot.utils.name_bank as NameBank
 
 from mafia_chatbot.utils.wands_logger import WandsLogger
 
-GAME_PROCESS_COUNT = 1
+GAME_PROCESS_COUNT = 8
 MAIN_PORT = 10015
 GAME_PORT_FRIST = 10016
 GAME_PROCESS_PORT = 30000
