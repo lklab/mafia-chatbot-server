@@ -198,6 +198,8 @@ class DiscussionManager :
                 self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}\'s strategy is same, skip(limit={limit}). before={pastStrategy}, after={strategy}')
                 # rearrange player and select other player
                 self._addDiscussionCount(dPlayer)
+            else :
+                break
 
         # publish discussion
         await self._generateAndPublishDiscussion(dPlayer, strategy, discussionTime)
