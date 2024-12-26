@@ -312,7 +312,7 @@ class DiscussionManager :
         discussionData: DiscussionData = None
 
         if self.gameState.gameInfo.useLLM :
-            conversation: list[str] = self.gameState.chatLogs[-10:]
+            conversation: list[str] = self.gameState.chatLogs[-5:]
 
             try :
                 strategy: Strategy = await self.llm.analyzeHumanMessage(player, discussion)

@@ -66,7 +66,7 @@ class LLM :
             'claim_public_role' : f"You must claim that your role is {roleToStrDict[publicRole]}. " if isPublicRoleChanged else "",
             'estimations' : ', '.join(map(lambda e: f"{e.playerInfo.name}'s role is {roleToStrDict[e.role]}", strategy.assumptions[0].estimations)),
             'tone': player.info.tone,
-            'conversation_logs' : '\n'.join(self.gameState.getRecentConversationLogs(10)),
+            'conversation_logs' : '\n'.join(self.gameState.getRecentConversationLogs(5)),
             'evidence' : strategy.assumptions[0].reason,
         }
 
