@@ -458,7 +458,7 @@ class DiscussionManager :
         _getResponseContent_claimePoliceForMafia,
         _getResponseContent_claimePoliceForPolice,
         _getResponseContent_claimeDoctorForDoctor,
-        _getResponseContent_iampointed,
+        # _getResponseContent_iampointed,
         _getResponseContent_thePolicePointedMe,
         _getResponseContent_supportCitizen,
     ]
