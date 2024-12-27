@@ -32,6 +32,10 @@ pip install -U langchain langchain-openai langgraph protobuf
 }
 ```
 
+4. Compile l10n files
+    * run /mafia_chatbot/locales/tools/msgfmt.py file
+    * gettext required
+
 ### Run
 
 1. Move your working directory to the root of the repository:
