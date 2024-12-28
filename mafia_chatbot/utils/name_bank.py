@@ -63,9 +63,10 @@ PROHIBITED_WORDS = [
 
 class Result(Enum) :
     SUCCESS = 0             # 성공
-    TOO_LONG = 1            # 이름이 너무 긺
-    CONTAINS_WHITESPACE = 2 # 공백 문자를 포함하고 있음
-    INVALID_NAME = 3        # 적합하지 않은 이름임
+    TOO_SHORT = 1           # 이름이 너무 짧음
+    TOO_LONG = 2            # 이름이 너무 긺
+    CONTAINS_WHITESPACE = 3 # 공백 문자를 포함하고 있음
+    INVALID_NAME = 4        # 적합하지 않은 이름임
 
 _chain = None
 
@@ -75,6 +76,9 @@ async def checkName(name: str) -> Result :
     for names in NAMES.values() :
         if lowerName in names :
             return Result.SUCCESS
+
+    if len(lowerName) <= 1 :
+        return Result.TOO_SHORT
 
     if len(lowerName) > 10 :
         return Result.TOO_LONG
