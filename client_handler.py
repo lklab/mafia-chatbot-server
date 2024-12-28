@@ -61,8 +61,17 @@ class ClientHandler :
         result = await name_bank.checkName(name)
 
         if result == name_bank.Result.SUCCESS :
+            try :
+                userDB.upsert_user(self.clientId, name)
+            except :
+                errorResponse = error_pb2.RequestError()
+                errorResponse.rqid = message.rqid
+                errorResponse.rqtype = messageTypeDict[type(message)]
+                errorResponse.code = 0
+                errorResponse.detail = 'DB error occurred. try again.'
+                return errorResponse
+
             self.clientName = name
-            userDB.upsert_user(self.clientId, name)
 
             response = auth_pb2.UpdateUserInfoResponse()
             response.rqid = message.rqid

@@ -13,6 +13,7 @@ from mafia_chatbot.network.messages import *
 from mafia_chatbot.network.messages.message_info import messageTypeDict
 
 import mafia_chatbot.firebase.firebase as firebase
+from mafia_chatbot.db.user_db import userDB
 
 from mafia_chatbot.utils.wands_logger import WandsLogger
 
@@ -72,7 +73,10 @@ class MainProcess :
         gameProcessServer = TcpServer(port=GAME_PROCESS_PORT, host='127.0.0.1', useSSL=False)
         await gameProcessServer.start(onConnected=self._onGameProcessConnected)
         self._startGameProcesses()
+
         firebase.initialize()
+        userDB.enable_wal()
+
         await gameProcessServer.serve()
 
     def _startGameProcesses(self) :

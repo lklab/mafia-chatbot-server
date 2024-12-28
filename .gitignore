@@ -166,6 +166,8 @@ apikeys.json
 reports/
 firebase-adminsdk.json
 *.db
+*.db-shm
+*.db-wal
 
 # Custom - tls
 server.crt

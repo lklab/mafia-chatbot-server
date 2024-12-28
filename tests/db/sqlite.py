@@ -1,8 +1,10 @@
 import sqlite3
 
 def get_connection(db_name="example.db"):
-    """Helper function to create a connection to the SQLite database."""
-    return sqlite3.connect(db_name)
+    """Helper function to create a connection to the SQLite database with WAL mode."""
+    conn = sqlite3.connect(db_name)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    return conn
 
 def create_table():
     """Create the table if it doesn't already exist."""
@@ -32,7 +34,9 @@ def insert_user(uid, name):
     conn = get_connection()
     try:
         with conn:
+            conn.execute("BEGIN IMMEDIATE")
             conn.execute("INSERT INTO users (uid, name) VALUES (?, ?)", (uid, name))
+            conn.commit()
     except sqlite3.IntegrityError as e:
         print(f"Error inserting user: {e}")
     finally:
@@ -41,14 +45,20 @@ def insert_user(uid, name):
 def upsert_user(uid, name):
     """Insert a new row or update the name of the user with the given uid."""
     conn = get_connection()
-    with conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1 FROM users WHERE uid = ?", (uid,))
-        if cursor.fetchone():
-            conn.execute("UPDATE users SET name = ? WHERE uid = ?", (name, uid))
-        else:
-            conn.execute("INSERT INTO users (uid, name) VALUES (?, ?)", (uid, name))
-    conn.close()
+    try:
+        with conn:
+            conn.execute("BEGIN IMMEDIATE")
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1 FROM users WHERE uid = ?", (uid,))
+            if cursor.fetchone():
+                conn.execute("UPDATE users SET name = ? WHERE uid = ?", (name, uid))
+            else:
+                conn.execute("INSERT INTO users (uid, name) VALUES (?, ?)", (uid, name))
+            conn.commit()
+    except sqlite3.OperationalError as e:
+        print(f"Database operation failed: {e}")
+    finally:
+        conn.close()
 
 # Example usage
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import sqlite3
+import time
 
 class UserDB :
     def __init__(self) :
@@ -22,6 +23,11 @@ class UserDB :
             )
         conn.close()
 
+    def enable_wal(self) :
+        conn = self._get_connection()
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.close()
+
     def get_user_by_uid(self, uid: str):
         """Retrieve a row by uid. Return None if not found."""
         conn = self._get_connection()
@@ -33,14 +39,30 @@ class UserDB :
 
     def upsert_user(self, uid: str, name: str):
         """Insert a new row or update the name of the user with the given uid."""
-        conn = self._get_connection()
-        with conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT 1 FROM users WHERE uid = ?", (uid,))
-            if cursor.fetchone():
-                conn.execute("UPDATE users SET name = ? WHERE uid = ?", (name, uid))
-            else:
-                conn.execute("INSERT INTO users (uid, name) VALUES (?, ?)", (uid, name))
-        conn.close()
+        for _ in range(50) :
+            try:
+                conn = self._get_connection()
+                with conn:
+                    conn.execute("BEGIN IMMEDIATE")
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT 1 FROM users WHERE uid = ?", (uid,))
+                    if cursor.fetchone():
+                        conn.execute("UPDATE users SET name = ? WHERE uid = ?", (name, uid))
+                    else:
+                        conn.execute("INSERT INTO users (uid, name) VALUES (?, ?)", (uid, name))
+                    conn.commit()
+                    return
+
+            except sqlite3.OperationalError as e :
+                if "locked" in str(e).lower():
+                    time.sleep(0.1)
+                    continue
+                else :
+                    raise e
+
+            finally:
+                conn.close()
+
+        raise sqlite3.OperationalError("Max retries reached.")
 
 userDB: UserDB = UserDB()
