@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nauth.proto\"*\n\x08UserInfo\x12\x10\n\x08\x63lientId\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"&\n\x04\x41uth\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x10\n\x08\x63lientId\x18\x02 \x01(\t\"9\n\x0c\x41uthResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\";\n\x0eUpdateUserInfo\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\"&\n\x16UpdateUserInfoResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\tb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nauth.proto\"*\n\x08UserInfo\x12\x10\n\x08\x63lientId\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"#\n\x04\x41uth\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\r\n\x05token\x18\x02 \x01(\t\"9\n\x0c\x41uthResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\";\n\x0eUpdateUserInfo\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\"C\n\x16UpdateUserInfoResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfob\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,11 +34,11 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_USERINFO']._serialized_start=14
   _globals['_USERINFO']._serialized_end=56
   _globals['_AUTH']._serialized_start=58
-  _globals['_AUTH']._serialized_end=96
-  _globals['_AUTHRESPONSE']._serialized_start=98
-  _globals['_AUTHRESPONSE']._serialized_end=155
-  _globals['_UPDATEUSERINFO']._serialized_start=157
-  _globals['_UPDATEUSERINFO']._serialized_end=216
-  _globals['_UPDATEUSERINFORESPONSE']._serialized_start=218
-  _globals['_UPDATEUSERINFORESPONSE']._serialized_end=256
+  _globals['_AUTH']._serialized_end=93
+  _globals['_AUTHRESPONSE']._serialized_start=95
+  _globals['_AUTHRESPONSE']._serialized_end=152
+  _globals['_UPDATEUSERINFO']._serialized_start=154
+  _globals['_UPDATEUSERINFO']._serialized_end=213
+  _globals['_UPDATEUSERINFORESPONSE']._serialized_start=215
+  _globals['_UPDATEUSERINFORESPONSE']._serialized_end=282
 # @@protoc_insertion_point(module_scope)

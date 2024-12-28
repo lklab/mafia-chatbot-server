@@ -7,7 +7,7 @@ message UserInfo {
 
 message Auth {
   string rqid = 1;
-  string clientId = 2;
+  string token = 2;
 }
 
 message AuthResponse {
@@ -22,4 +22,5 @@ message UpdateUserInfo {
 
 message UpdateUserInfoResponse {
   string rqid = 1;
+  UserInfo userInfo = 2;
 }

@@ -21,6 +21,10 @@ source .venv/bin/activate  # On Windows use `.venv\Scripts\activate`
 pip install -U langchain langchain-openai langgraph protobuf
 ```
 
+``` bash
+pip install firebase-admin
+```
+
 3. In the root directory of the repository, create a file called `apikeys.json` and configure your API keys:
     * To get an OpenAI API key, visit [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys). Please note that payment is required to use the key.
     * (optional) To obtain a Langchain API key, log in at [https://smith.langchain.com](https://smith.langchain.com) and generate your key.

@@ -164,6 +164,7 @@ cython_debug/
 # Custom
 apikeys.json
 reports/
+firebase-adminsdk.json
 
 # Custom - tls
 server.crt

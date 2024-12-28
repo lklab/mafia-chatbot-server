@@ -12,7 +12,7 @@ from mafia_chatbot.network.message_handler import MessageHandler
 from mafia_chatbot.network.messages import *
 from mafia_chatbot.network.messages.message_info import messageTypeDict
 
-import mafia_chatbot.utils.name_bank as NameBank
+import mafia_chatbot.firebase.firebase as firebase
 
 from mafia_chatbot.utils.wands_logger import WandsLogger
 
@@ -72,6 +72,7 @@ class MainProcess :
         gameProcessServer = TcpServer(port=GAME_PROCESS_PORT, host='127.0.0.1', useSSL=False)
         await gameProcessServer.start(onConnected=self._onGameProcessConnected)
         self._startGameProcesses()
+        firebase.initialize()
         await gameProcessServer.serve()
 
     def _startGameProcesses(self) :
@@ -155,18 +156,9 @@ class MainProcess :
             onDisconnected=self._onClientDisconnected,
         )
 
-    async def _onClientAuth(self, client: ClientHandler, message) -> tuple[Any, bool] :
-        self.logger.debug(f'_onClientAuth addr={client.addr}, message=<{message}>')
-        # TODO check auth message
-        name: str = message.name.strip()
-        result = await NameBank.checkName(name)
-
-        if result == NameBank.Result.SUCCESS :
-            return auth_pb2.AuthResponse(), True
-        else :
-            errorResponse = self._makeErrorResponse(message, 9999, 'This name is not suitable for use in a Mafia game.')
-            self.logger.error(f'_onClientAuth failed addr={client.addr}, message=<{errorResponse}>')
-            return errorResponse, False
+    def _onClientAuth(self, client: ClientHandler, clientId: str) -> tuple[Any, bool] :
+        self.logger.debug(f'_onClientAuth addr={client.addr}, clientId={clientId}')
+        return None, True
 
     def _onClientMessage(self, client: ClientHandler, message) :
         self.logger.debug(f'_onClientMessage addr={client.addr}, name={client.clientName}, type={type(message)}, message=<{message}>')
@@ -178,6 +170,13 @@ class MainProcess :
 
     def _onClientDisconnected(self, client: ClientHandler) :
         self.logger.debug(f'_onClientDisconnected addr={client.addr}, name={client.clientName}')
+
+    def _switchClientMessageUpdateUserInfo(self, client: ClientHandler, message) :
+        async def _updateInfo() :
+            response = await client.updateInfo(message)
+            self._sendToClient(client, response, isError=isinstance(response, error_pb2.RequestError))
+
+        asyncio.create_task(_updateInfo()) # TODO 중복 호출에 대한 처리
 
     def _switchClientMessageCheckCurrentGame(self, client: ClientHandler, message) :
         if client.clientId in self.gameByClientId :
@@ -238,6 +237,12 @@ class MainProcess :
             newGameResponse.port = game.process.port
             self._sendToClient(client, newGameResponse)
 
+        # check ready
+        if not client.isReady() :
+            errorResponse = self._makeErrorResponse(message, 0, 'The player has not been fully configured.')
+            self._sendToClient(client, errorResponse, isError=True)
+            return
+
         # check exist game
         if client.clientId in self.gameByClientId :
             errorResponse = self._makeErrorResponse(message, 0, 'The game is already running.')
@@ -247,6 +252,7 @@ class MainProcess :
         asyncio.create_task(_newGame()) # TODO 중복 호출에 대한 처리
 
     _switchClientMessage = {
+        auth_pb2.UpdateUserInfo : _switchClientMessageUpdateUserInfo,
         game_pb2.CheckCurrentGame : _switchClientMessageCheckCurrentGame,
         game_pb2.NewGame : _switchClientMessageNewGame,
     }
