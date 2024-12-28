@@ -24,7 +24,9 @@
             "messages" :
             [
                 "Auth",
-                "AuthResponse"
+                "AuthResponse",
+                "UpdateUserInfo",
+                "UpdateUserInfoResponse"
             ]
         },
         {

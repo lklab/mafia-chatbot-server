@@ -12,6 +12,8 @@ messageTypeDict: dict[Type, int] = {
     ipc_pb2.GameEnded : 1004,
     auth_pb2.Auth : 2000,
     auth_pb2.AuthResponse : 2001,
+    auth_pb2.UpdateUserInfo : 2002,
+    auth_pb2.UpdateUserInfoResponse : 2003,
     time_pb2.RequestTimeSync : 3000,
     time_pb2.TimeSync : 3001,
     game_pb2.CheckCurrentGame : 4000,
@@ -80,6 +82,16 @@ def _AuthMessageFactory(data: bytes) -> auth_pb2.Auth :
 
 def _AuthResponseMessageFactory(data: bytes) -> auth_pb2.AuthResponse :
     message = auth_pb2.AuthResponse()
+    message.ParseFromString(data)
+    return message
+
+def _UpdateUserInfoMessageFactory(data: bytes) -> auth_pb2.UpdateUserInfo :
+    message = auth_pb2.UpdateUserInfo()
+    message.ParseFromString(data)
+    return message
+
+def _UpdateUserInfoResponseMessageFactory(data: bytes) -> auth_pb2.UpdateUserInfoResponse :
+    message = auth_pb2.UpdateUserInfoResponse()
     message.ParseFromString(data)
     return message
 
@@ -238,6 +250,8 @@ messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     1004 : _GameEndedMessageFactory,
     2000 : _AuthMessageFactory,
     2001 : _AuthResponseMessageFactory,
+    2002 : _UpdateUserInfoMessageFactory,
+    2003 : _UpdateUserInfoResponseMessageFactory,
     3000 : _RequestTimeSyncMessageFactory,
     3001 : _TimeSyncMessageFactory,
     4000 : _CheckCurrentGameMessageFactory,
