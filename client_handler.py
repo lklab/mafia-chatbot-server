@@ -8,6 +8,7 @@ from mafia_chatbot.network.messages import *
 from mafia_chatbot.network.messages.message_info import messageTypeDict
 
 import mafia_chatbot.firebase.firebase as firebase
+from mafia_chatbot.db.user_db import userDB
 
 import mafia_chatbot.utils.name_bank as name_bank
 
@@ -60,7 +61,8 @@ class ClientHandler :
         result = await name_bank.checkName(name)
 
         if result == name_bank.Result.SUCCESS :
-            self.clientName = name # TODO datebase
+            self.clientName = name
+            userDB.upsert_user(self.clientId, name)
 
             response = auth_pb2.UpdateUserInfoResponse()
             response.rqid = message.rqid
@@ -90,7 +92,10 @@ class ClientHandler :
         if success :
             self.authorized = True
             self.clientId = clientId
-            self.clientName = message.name.strip() # TODO database
+
+            dbData = userDB.get_user_by_uid(clientId)
+            if dbData != None :
+                self.clientName = dbData[1]
 
             response = auth_pb2.AuthResponse()
             response.rqid = message.rqid

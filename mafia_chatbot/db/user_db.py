@@ -1,0 +1,46 @@
+import sqlite3
+
+class UserDB :
+    def __init__(self) :
+        self._create_table()
+
+    def _get_connection(self):
+        """Helper function to create a connection to the SQLite database."""
+        return sqlite3.connect('user.db')
+
+    def _create_table(self):
+        """Create the table if it doesn't already exist."""
+        conn = self._get_connection()
+        with conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS users (
+                    uid TEXT PRIMARY KEY,
+                    name TEXT NOT NULL
+                )
+                """
+            )
+        conn.close()
+
+    def get_user_by_uid(self, uid: str):
+        """Retrieve a row by uid. Return None if not found."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT uid, name FROM users WHERE uid = ?", (uid,))
+        row = cursor.fetchone()
+        conn.close()
+        return row
+
+    def upsert_user(self, uid: str, name: str):
+        """Insert a new row or update the name of the user with the given uid."""
+        conn = self._get_connection()
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1 FROM users WHERE uid = ?", (uid,))
+            if cursor.fetchone():
+                conn.execute("UPDATE users SET name = ? WHERE uid = ?", (name, uid))
+            else:
+                conn.execute("INSERT INTO users (uid, name) VALUES (?, ?)", (uid, name))
+        conn.close()
+
+userDB: UserDB = UserDB()
