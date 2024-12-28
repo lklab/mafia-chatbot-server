@@ -5,14 +5,14 @@ class UserDB :
     def __init__(self) :
         self._create_table()
 
-    def _get_connection(self):
+    def _get_connection(self) :
         """Helper function to create a connection to the SQLite database."""
         return sqlite3.connect('user.db')
 
-    def _create_table(self):
+    def _create_table(self) :
         """Create the table if it doesn't already exist."""
         conn = self._get_connection()
-        with conn:
+        with conn :
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS users (
@@ -28,7 +28,7 @@ class UserDB :
         conn.execute("PRAGMA journal_mode=WAL;")
         conn.close()
 
-    def get_user_by_uid(self, uid: str):
+    def get_user_by_uid(self, uid: str) :
         """Retrieve a row by uid. Return None if not found."""
         conn = self._get_connection()
         cursor = conn.cursor()
@@ -37,30 +37,30 @@ class UserDB :
         conn.close()
         return row
 
-    def upsert_user(self, uid: str, name: str):
+    def upsert_user(self, uid: str, name: str) :
         """Insert a new row or update the name of the user with the given uid."""
         for _ in range(50) :
             try:
                 conn = self._get_connection()
-                with conn:
+                with conn :
                     conn.execute("BEGIN IMMEDIATE")
                     cursor = conn.cursor()
                     cursor.execute("SELECT 1 FROM users WHERE uid = ?", (uid,))
-                    if cursor.fetchone():
+                    if cursor.fetchone() :
                         conn.execute("UPDATE users SET name = ? WHERE uid = ?", (name, uid))
-                    else:
+                    else :
                         conn.execute("INSERT INTO users (uid, name) VALUES (?, ?)", (uid, name))
                     conn.commit()
                     return
 
             except sqlite3.OperationalError as e :
-                if "locked" in str(e).lower():
+                if "locked" in str(e).lower() :
                     time.sleep(0.1)
                     continue
                 else :
                     raise e
 
-            finally:
+            finally :
                 conn.close()
 
         raise sqlite3.OperationalError("Max retries reached.")
