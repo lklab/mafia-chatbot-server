@@ -53,12 +53,9 @@ class UserDB :
                     conn.commit()
                     return
 
-            except sqlite3.OperationalError as e :
-                if "locked" in str(e).lower() :
-                    time.sleep(0.1)
-                    continue
-                else :
-                    raise e
+            except sqlite3.OperationalError :
+                time.sleep(0.1)
+                continue
 
             finally :
                 conn.close()
