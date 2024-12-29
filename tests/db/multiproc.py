@@ -24,6 +24,9 @@ db_instance.enable_wal()
 # 프로세스 함수: 데이터 읽기 작업 수행
 def reader_process():
     for i in range(100000):
+        if i % 10000 == 0 :
+            print(f'reader i={i}')
+
         a = (i % 100) + 1
         uid = str(a)
         try:
@@ -36,6 +39,9 @@ def reader_process():
 # 프로세스 함수: 데이터 읽기/쓰기 작업 수행
 def writer_process():
     for i in range(100000):
+        if i % 1000 == 0 :
+            print(f'writer i={i}')
+
         a = (i % 100) + 1
         b = (i // 100) + 1
         uid = str(a)
