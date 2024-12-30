@@ -1,11 +1,34 @@
 syntax = "proto3";
 
+message UserInfo {
+  string clientId = 1;
+  string name = 2;
+}
+
 message Auth {
   string rqid = 1;
-  string clientId = 2;
-  string name = 3;
+  string token = 2;
 }
 
 message AuthResponse {
+  string rqid = 1;
+  UserInfo userInfo = 2;
+}
+
+message UpdateUserInfo {
+  string rqid = 1;
+  UserInfo userInfo = 2;
+}
+
+message UpdateUserInfoResponse {
+  string rqid = 1;
+  UserInfo userInfo = 2;
+}
+
+message DeleteUser {
+  string rqid = 1;
+}
+
+message DeleteUserResponse {
   string rqid = 1;
 }

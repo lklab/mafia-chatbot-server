@@ -24,7 +24,11 @@
             "messages" :
             [
                 "Auth",
-                "AuthResponse"
+                "AuthResponse",
+                "UpdateUserInfo",
+                "UpdateUserInfoResponse",
+                "DeleteUser",
+                "DeleteUserResponse"
             ]
         },
         {

@@ -18,6 +18,8 @@ from mafia_chatbot.network.message_handler import MessageHandler
 from mafia_chatbot.network.messages import *
 from mafia_chatbot.network.messages.message_info import messageTypeDict
 
+import mafia_chatbot.firebase.firebase as firebase
+
 from mafia_chatbot.utils.wands_logger import WandsLogger
 
 MAIN_PROCESS_PORT = 30000
@@ -136,6 +138,9 @@ class GameProcess :
         self.logger = WandsLogger('network', f'game-{self.port}')
 
     async def run(self) :
+        # initialize firebase
+        firebase.initialize()
+
         # start game server
         while True :
             try :
@@ -205,9 +210,8 @@ class GameProcess :
             onDisconnected=self._onClientDisconnected,
         )
 
-    async def _onClientAuth(self, client: ClientHandler, message) -> tuple[Any, bool] :
-        self.logger.debug(f'_onClientAuth addr={client.addr}, message=<{message}>')
-        clientId: str = message.clientId
+    def _onClientAuth(self, client: ClientHandler, clientId: str) -> tuple[Any, bool] :
+        self.logger.debug(f'_onClientAuth addr={client.addr}, clientId={clientId}')
 
         if clientId in self.gameByClientId :
             self.clients[clientId] = client
@@ -216,10 +220,14 @@ class GameProcess :
             game.connectClient(clientId, client.messageHandler)
             client.setPlayer(game.getPlayer(clientId))
 
-            return auth_pb2.AuthResponse(), True
+            return None, True
+
         else :
-            errorResponse = self._makeErrorResponse(message, 0, 'This server does not contain your game. Please connect to the main server first to create a new game.')
+            errorResponse = error_pb2.RequestError()
+            errorResponse.code = 0
+            errorResponse.detail = 'This server does not contain your game. Please connect to the main server first to create a new game.'
             self.logger.error(f'_onClientAuth failed addr={client.addr}, message=<{errorResponse}>')
+
             return errorResponse, False
 
     def _onClientMessage(self, client: ClientHandler, message) :

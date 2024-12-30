@@ -174,7 +174,7 @@ class GameState :
 
         for client in gameInfo.clients :
             clientPlayer: Player = Player(
-                name=client.name,
+                name=client.name, # TODO 멀티플레이어 이름이 중복된 경우 임의 이름으로 바꾸기
                 tone='',
                 isHuman=True,
                 client=client
