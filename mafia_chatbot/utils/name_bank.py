@@ -73,9 +73,10 @@ _chain = None
 async def checkName(name: str) -> Result :
     lowerName = name.lower()
 
-    for names in NAMES.values() :
-        if lowerName in names :
-            return Result.SUCCESS
+    for recommends in NAMES.values() :
+        for recommend in recommends :
+            if lowerName == recommend.lower() :
+                return Result.SUCCESS
 
     if len(lowerName) <= 1 :
         return Result.TOO_SHORT
