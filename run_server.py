@@ -182,6 +182,15 @@ class MainProcess :
 
         asyncio.create_task(_updateInfo()) # TODO 중복 호출에 대한 처리
 
+    def _switchClientMessageDeleteUser(self, client: ClientHandler, message) :
+        client.deleteUser()
+
+        response = auth_pb2.DeleteUserResponse()
+        response.rqid = message.rqid
+        self._sendToClient(client, response)
+
+        client.disconnect()
+
     def _switchClientMessageCheckCurrentGame(self, client: ClientHandler, message) :
         if client.clientId in self.gameByClientId :
             response = game_pb2.CurrentGame()
@@ -257,6 +266,7 @@ class MainProcess :
 
     _switchClientMessage = {
         auth_pb2.UpdateUserInfo : _switchClientMessageUpdateUserInfo,
+        auth_pb2.DeleteUser : _switchClientMessageDeleteUser,
         game_pb2.CheckCurrentGame : _switchClientMessageCheckCurrentGame,
         game_pb2.NewGame : _switchClientMessageNewGame,
     }
