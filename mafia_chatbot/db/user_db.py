@@ -69,4 +69,13 @@ class UserDB :
             conn.execute("DELETE FROM users WHERE uid = ?", (uid,))
         conn.close()
 
+    def get_all_users(self) :
+        """Retrieve all rows from the users table."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT uid, name FROM users")
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
 userDB: UserDB = UserDB()
