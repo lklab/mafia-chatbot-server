@@ -55,6 +55,10 @@ class ClientHandler :
     def isReady(self) -> bool :
         return isinstance(self.clientName, str) and len(self.clientName) > 0
 
+    def deleteUser(self) :
+        firebase.deleteUser(self.clientId)
+        userDB.delete_user_by_uid(self.clientId)
+
     async def updateInfo(self, message: auth_pb2.UpdateUserInfo) -> Any :
         name = message.userInfo.name.strip()
 
@@ -85,6 +89,9 @@ class ClientHandler :
             errorResponse.code = 0
             errorResponse.detail = 'This name is not suitable for use in a Mafia game.'
             return errorResponse
+
+    def disconnect(self) :
+        self.messageHandler.disconnect()
 
     def _onAuth(self, message) -> tuple[Any, bool] :
         clientId = firebase.verifyIdToken(message.token)

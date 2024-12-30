@@ -24,3 +24,11 @@ message UpdateUserInfoResponse {
   string rqid = 1;
   UserInfo userInfo = 2;
 }
+
+message DeleteUser {
+  string rqid = 1;
+}
+
+message DeleteUserResponse {
+  string rqid = 1;
+}

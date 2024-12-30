@@ -69,6 +69,9 @@ class MessageHandler :
     def setDesc(self, desc: str) :
         self.desc = desc
 
+    def disconnect(self) :
+        asyncio.create_task(self.tcpHandler.close())
+
     def _send(self, message) :
         if type(message) in messageTypeDict :
             msgType = messageTypeDict[type(message)]

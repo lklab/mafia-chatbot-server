@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nauth.proto\"*\n\x08UserInfo\x12\x10\n\x08\x63lientId\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"#\n\x04\x41uth\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\r\n\x05token\x18\x02 \x01(\t\"9\n\x0c\x41uthResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\";\n\x0eUpdateUserInfo\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\"C\n\x16UpdateUserInfoResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfob\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nauth.proto\"*\n\x08UserInfo\x12\x10\n\x08\x63lientId\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"#\n\x04\x41uth\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\r\n\x05token\x18\x02 \x01(\t\"9\n\x0c\x41uthResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\";\n\x0eUpdateUserInfo\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\"C\n\x16UpdateUserInfoResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\"\x1a\n\nDeleteUser\x12\x0c\n\x04rqid\x18\x01 \x01(\t\"\"\n\x12\x44\x65leteUserResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\tb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -41,4 +41,8 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_UPDATEUSERINFO']._serialized_end=213
   _globals['_UPDATEUSERINFORESPONSE']._serialized_start=215
   _globals['_UPDATEUSERINFORESPONSE']._serialized_end=282
+  _globals['_DELETEUSER']._serialized_start=284
+  _globals['_DELETEUSER']._serialized_end=310
+  _globals['_DELETEUSERRESPONSE']._serialized_start=312
+  _globals['_DELETEUSERRESPONSE']._serialized_end=346
 # @@protoc_insertion_point(module_scope)

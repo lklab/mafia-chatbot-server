@@ -19,13 +19,14 @@ class TcpHandler :
 
         self.reader = reader
         self.writer = writer
+        self.listenTask: asyncio.Task = None
 
         self.addr = self.writer.get_extra_info('peername')
 
         self.failCount: int = 0
 
     def listen(self, onData: Callable[[int, bytes], None], onDisconnected: Callable[[], None]) :
-        asyncio.create_task(self._listen(onData, onDisconnected))
+        self.listenTask = asyncio.create_task(self._listen(onData, onDisconnected))
 
     async def _listen(self, onData: Callable[[int, bytes], None], onDisconnected: Callable[[], None]) :
         if self.state != TcpState.INITIALIZED :
@@ -82,12 +83,14 @@ class TcpHandler :
                     except Exception as e:
                         print(f"[TcpHandler] {self.addr} onData error: {e}")
                         traceback.print_exc()
-
+        except asyncio.CancelledError:
+            print("[TcpHandler] listen task is cancelled.")
         except Exception as e:
             print(f"[TcpHandler] {self.addr} comm error: {e}")
 
         print(f"[TcpHandler] {self.addr} Closing connection")
-        await self._close()
+        self.listenTask = None
+        await self.close()
 
     async def sendStr(self, type: int, payload: str) -> bool :
         return await self.send(type, payload.encode())
@@ -110,24 +113,30 @@ class TcpHandler :
 
         except (OSError, asyncio.CancelledError) as e:
             print(f"[TcpHandler] {self.addr} fail to send data: {e}")
-            await self._close()
+            await self.close()
 
         return False
 
     def addFailCount(self) :
         self.failCount += 1
         if self.failCount >= MAX_FAIL_COUNT :
-            asyncio.create_task(self._close())
+            asyncio.create_task(self.close())
 
     def resetFailCount(self) :
         self.failCount = 0
 
-    async def _close(self) :
+    async def close(self) :
         if self.state == TcpState.DISCONNECTED :
             return
         self.state = TcpState.DISCONNECTED
 
         try :
+            if self.listenTask != None :
+                task = self.listenTask
+                self.listenTask = None
+                task.cancel()
+                await task
+
             self.writer.close()
             await self.writer.wait_closed()
         except Exception as e :

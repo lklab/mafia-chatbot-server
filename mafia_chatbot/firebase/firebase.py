@@ -21,6 +21,9 @@ def verifyIdToken(token: str) -> str :
         return None
     return uid
 
+def deleteUser(uid: str) :
+    auth.delete_user(uid)
+
 if __name__ == '__main__' :
     initialize()
     print(verifyIdToken('asd'))

@@ -62,4 +62,11 @@ class UserDB :
 
         raise sqlite3.OperationalError("Max retries reached.")
 
+    def delete_user_by_uid(self, uid: str) :
+        """Delete a row by uid."""
+        conn = self._get_connection()
+        with conn :
+            conn.execute("DELETE FROM users WHERE uid = ?", (uid,))
+        conn.close()
+
 userDB: UserDB = UserDB()
