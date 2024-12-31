@@ -5,16 +5,20 @@ from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.client_handler import ClientHandler
 from mafia_chatbot.network.client_user import ClientUser
 
+from mafia_chatbot.utils.wands_logger import WandsLogger
+
 class ClientServer :
     def __init__(self,
                  port: int,
                  onAuth: Callable[[ClientUser, Any], tuple[Any, bool]],
                  onMessage: Callable[[ClientUser, Any], None],
                  onDisconnected: Callable[[ClientUser], None],
+                 logger: WandsLogger,
         ) :
         self.onAuth = onAuth
         self.onMessage = onMessage
         self.onDisconnected = onDisconnected
+        self.logger = logger
 
         self.tcpServer = TcpServer(port)
         self.users: dict[str, ClientUser] = {}
@@ -37,6 +41,7 @@ class ClientServer :
             return user
 
     def _onConnected(self, tcpHandler: TcpHandler) :
+        self.logger.debug(f'[ClientServer] _onConnected() addr={tcpHandler.addr}')
         ClientHandler(
             tcpHandler=tcpHandler,
             onAuth=self._onAuth,
@@ -45,6 +50,8 @@ class ClientServer :
         )
 
     def _onAuth(self, client: ClientHandler, clientId: str, message) -> tuple[Any, ClientUser] :
+        self.logger.debug(f'[ClientServer] _onAuth addr={client.addr}, clientId={clientId}')
+
         # get user
         isUserExists = clientId in self.users
         if isUserExists :

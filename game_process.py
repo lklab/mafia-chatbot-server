@@ -130,6 +130,7 @@ class GameProcess :
                     onAuth=self._onClientAuth,
                     onMessage=self._onClientMessage,
                     onDisconnected=self._onClientDisconnected,
+                    logger=self.logger,
                 )
                 await self.gameServer.start()
             except OSError as e :
