@@ -35,10 +35,10 @@ phaseToProtoDict: dict[Phase, game_pb2.Phase] = {
 }
 
 class VoteData :
-    def __init__(self, round: int, players: list[Player], clientPlayers: list[Player]) :
+    def __init__(self, round: int, players: list[Player], userPlayers: list[Player]) :
         self.round = round
         self.players = players
-        self.clientPlayers = clientPlayers
+        self.userPlayers = userPlayers
 
         self.voteDict: dict[PlayerInfo, list[Player]] = {}
         self.voteCount: dict[PlayerInfo, int] = {}
@@ -71,8 +71,8 @@ class VoteData :
             voter.setVoteStrategy(self.round, strategy)
 
             message = self.getVoteStateMessage()
-            for player in self.clientPlayers :
-                player.client.sendMessage(message)
+            for player in self.userPlayers :
+                player.user.send(message)
 
     def evaluate(self) :
         maxVoteCount = 0
@@ -163,7 +163,7 @@ class GameState :
 
         ### create players
         self.players: list[Player] = []
-        self.clientPlayers: list[Player] = []
+        self.userPlayers: list[Player] = []
         usedNames = set() # 사용된 이름 (인간 사용자의 이름만 들어감)
 
         # create human players
@@ -172,29 +172,29 @@ class GameState :
         if gameInfo.debugInfo != None :
             observerClientId: str = gameInfo.debugInfo.observerClientId
 
-        for client in gameInfo.clients :
-            clientPlayer: Player = Player(
-                name=client.name, # TODO 멀티플레이어 이름이 중복된 경우 임의 이름으로 바꾸기
+        for user in gameInfo.users :
+            userPlayer: Player = Player(
+                name=user.clientName, # TODO 멀티플레이어 이름이 중복된 경우 임의 이름으로 바꾸기
                 tone='',
                 isHuman=True,
-                client=client
+                user=user
             )
-            client.setLogger(self.logger)
-            self.clientPlayers.append(clientPlayer)
+            user.setLogger(self.logger)
+            self.userPlayers.append(userPlayer)
 
-            if client.clientId == observerClientId :
-                self.observerPlayer = clientPlayer
-                clientPlayer.setRemoved(RemoveReason.OBSERVER)
+            if user.clientId == observerClientId :
+                self.observerPlayer = userPlayer
+                userPlayer.setRemoved(RemoveReason.OBSERVER)
             else :
-                self.players.append(clientPlayer)
-                usedNames.add(client.name.lower())
+                self.players.append(userPlayer)
+                usedNames.add(user.clientName.lower())
 
         if gameInfo.localPlayerName != None :
             self.localPlayer: Player = Player(
                 name=gameInfo.localPlayerName,
                 tone='',
                 isHuman=True,
-                client=None
+                user=None
             )
             self.players.append(self.localPlayer)
             usedNames.add(gameInfo.localPlayerName.lower())
@@ -223,7 +223,7 @@ class GameState :
                 name=names[nameIndex],
                 tone=tones[toneIndex],
                 isHuman=False,
-                client=None
+                user=None
             ))
 
             nameIndex += 1
@@ -237,8 +237,8 @@ class GameState :
         # assign debug role
         if gameInfo.debugInfo != None and gameInfo.debugInfo.fixedRole != None :
             fixedRolePlayer: Player = None
-            for player in self.clientPlayers :
-                if player.client.clientId == gameInfo.debugInfo.fixedRoleClientId :
+            for player in self.userPlayers :
+                if player.user.clientId == gameInfo.debugInfo.fixedRoleClientId :
                     fixedRolePlayer = player
                     self.players.remove(fixedRolePlayer)
                     break
@@ -357,10 +357,10 @@ class GameState :
         self.removedPlayers[player] = PlayerRemoveInfo(player, reason, self.getCurrentRoundInfo())
 
         # send player removed message
-        if player.client != None :
+        if player.user != None :
             message = game_pb2.Removed()
             message.reason = removeReasonToProtoDict[reason]
-            player.client.sendMessage(message)
+            player.user.send(message)
 
     def removePlayerByInfo(self, playerInfo: PlayerInfo, reason: RemoveReason) :
         self.removePlayer(self.getPlayerByInfo(playerInfo), reason)
@@ -447,7 +447,7 @@ class GameState :
 
         if phase != Phase.NOT_PLAYING :
             GameState._switchPhase[phase](self)
-            self.sendGameStateMessageToAllClient()
+            self.sendGameStateMessageToAllUsers()
 
     def getCurrentRoundInfo(self) -> RoundInfo :
         return RoundInfo(self.round, len(self.players), len(self.mafiaPlayers))
@@ -462,7 +462,7 @@ class GameState :
         self.chatList.append(chat)
         self.chatLogs.append(f'{sender.name}: {content}')
         self.logger.log(TAG.CHAT, f'DISCUSSION - {chat.index} - {sender.name}: {content}')
-        self.sendAddChatMessageToAllClient(chat)
+        self.sendAddChatMessageToAllUsers(chat)
 
     def appendSystemChat(self, content: str, receiver: PlayerInfo = None) :
         chat: ChatData = ChatData(
@@ -473,7 +473,7 @@ class GameState :
         )
         self.chatList.append(chat)
         self.logger.log(TAG.CHAT, f'SYSTEM - {chat.index} - for {"everyone" if receiver == None else receiver.name}: {content}')
-        self.sendAddChatMessageToAllClient(chat)
+        self.sendAddChatMessageToAllUsers(chat)
 
     def addHumanChat(self, sender: PlayerInfo, chat_out: game_pb2.Chat) :
         chat: ChatData = ChatData(
@@ -517,7 +517,7 @@ class GameState :
 
         voteData: VoteData = None
         if self.voteHistory[self.round] == None :
-            voteData = VoteData(self.round, self.players, self.clientPlayers)
+            voteData = VoteData(self.round, self.players, self.userPlayers)
             self.voteHistory[self.round] = voteData
         else :
             voteData = self.voteHistory[self.round]
@@ -575,18 +575,25 @@ class GameState :
         message_out.phaseEndTime = self.timeLimit
         message_out.phaseRemainTime = self.timeLimit - time.monotonic()
 
-    def sendGameStateMessageToAllClient(self) :
-        for player in self.clientPlayers :
+    def sendGameStateMessageToAllUsers(self) :
+        for player in self.userPlayers :
             message = self.toProtoGameStateMessage(player)
-            player.client.sendMessage(message)
+            player.user.send(message)
 
-    def sendAddChatMessageToAllClient(self, chat: ChatData) :
-        for player in self.clientPlayers :
+    def sendAddChatMessageToAllUsers(self, chat: ChatData) :
+        for player in self.userPlayers :
             message = game_pb2.AddChat()
             chat.toProtoMessage(player.info, message.chat)
             message.remainMyChat = player.remainChatingCount
             message.maxMyChat = player.maxChatingCount
-            player.client.sendMessage(message)
+            player.user.send(message)
+
+    def removeUser(self, user: ClientUser) :
+        for userPlayer in self.userPlayers :
+            if userPlayer.user == user :
+                userPlayer.user = None
+                self.userPlayers.remove(userPlayer)
+                break
 
     def expandList(self, l: list, size: int, fillValue = None) :
         for _ in range(len(l), size) :

@@ -38,7 +38,7 @@ class ClientUser :
             return
         self.refCount += 1
 
-    def removeRef(self) :
+    def releaseRef(self) :
         self.refCount -= 1
         self._checkReleasable()
 

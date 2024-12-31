@@ -1,5 +1,6 @@
-from mafia_chatbot.game.client_player import ClientPlayer
 from mafia_chatbot.game.player_info import Role, protoToRoleDict
+
+from mafia_chatbot.network.client_user import ClientUser
 from mafia_chatbot.network.messages import *
 
 class DebugInfo :
@@ -22,7 +23,7 @@ class GameInfo :
         gameId: str,
         playerCount: int,
         mafiaCount: int,
-        clients: list[ClientPlayer],
+        users: list[ClientUser],
         localPlayerName: str,
         language: str = 'english',
         debugInfo: DebugInfo = None) :
@@ -33,7 +34,7 @@ class GameInfo :
         self.citizenCount = playerCount - mafiaCount
         self.mafiaCount = mafiaCount
 
-        self.clients = clients or []
+        self.users = users or []
         self.localPlayerName = localPlayerName
 
         self.language = language
@@ -57,7 +58,7 @@ class GameInfo :
         if self.mafiaCount <= 0 :
             return False
 
-        humanCount: int = len(self.clients)
+        humanCount: int = len(self.users)
         if (self.localPlayerName != None) :
             humanCount += 1
 

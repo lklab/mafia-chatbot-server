@@ -25,6 +25,17 @@ class ClientServer :
     async def serve(self) :
         await self.tcpServer.serve()
 
+    def getUser(self, clientId: str) :
+        if clientId in self.users :
+            return self.users[clientId]
+        else :
+            user: ClientUser = ClientUser(
+                clientId=clientId,
+                onRelease=self._onUserRelease,
+            )
+            self.users[clientId] = user
+            return user
+
     def _onConnected(self, tcpHandler: TcpHandler) :
         ClientHandler(
             tcpHandler=tcpHandler,

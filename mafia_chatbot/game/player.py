@@ -1,10 +1,10 @@
 import random
 import numpy as np
 
-from mafia_chatbot.game.client_player import ClientPlayer
 from mafia_chatbot.game.player_info import PlayerInfo, roleToProtoDict
 from mafia_chatbot.game.strategy import *
 
+from mafia_chatbot.network.client_user import ClientUser
 from mafia_chatbot.network.messages import *
 
 class Player :
@@ -24,10 +24,10 @@ removeReasonToProtoDict: dict[RemoveReason, game_pb2.RemoveReason] = {
 }
 
 class Player :
-    def __init__(self, name: str, tone: str, isHuman: bool, client: ClientPlayer) :
+    def __init__(self, name: str, tone: str, isHuman: bool, user: ClientUser) :
         # player data
-        self.info = PlayerInfo(name, tone, isHuman, isHuman and client == None)
-        self.client = client
+        self.info = PlayerInfo(name, tone, isHuman, isHuman and user == None)
+        self.user = user
         self.isLive = True
         self.removeReason = RemoveReason.LIVE
 

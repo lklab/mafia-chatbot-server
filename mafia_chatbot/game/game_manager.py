@@ -5,11 +5,13 @@ from mafia_chatbot.game.game_state import *
 from mafia_chatbot.game.game_result import *
 import mafia_chatbot.game.evaluator as evaluator
 from mafia_chatbot.game.llm import LLM
-from mafia_chatbot.game.client_message_processor import ClientMessageProcessor
+from mafia_chatbot.game.user_message_processor import UserMessageProcessor
 from mafia_chatbot.game.game_end_info import GameEndInfo, GameEndReason, gameEndReasonToProtoDict
 from mafia_chatbot.game.trust_recorder import TrustRecorder
 from mafia_chatbot.game.discussion_manager import DiscussionManager
 from mafia_chatbot.game.game_logger import TAG
+
+from mafia_chatbot.network.client_user import ClientUser
 
 class GameManager :
     def __init__(self, gameInfo: GameInfo) :
@@ -17,8 +19,8 @@ class GameManager :
         self.trustRecorder: TrustRecorder = TrustRecorder(self.gameState)
         self.terminated: bool = False
 
-        for player in self.gameState.clientPlayers :
-            self._subscribeClient(player)
+        for player in self.gameState.userPlayers :
+            self._subscribeUser(player)
 
         self.llm = LLM(self.gameState)
 
@@ -32,8 +34,12 @@ class GameManager :
     def terminate(self) :
         self.terminated = True
 
-    def _subscribeClient(self, player: Player) :
-        ClientMessageProcessor(self.gameState, self.trustRecorder, player)
+    def removeUser(self, user: ClientUser) :
+        user.clearSubscribers()
+        self.gameState.removeUser(user)
+
+    def _subscribeUser(self, player: Player) :
+        UserMessageProcessor(self.gameState, self.trustRecorder, player)
 
     async def start(self) :
         await self._mainLogic()
@@ -64,10 +70,11 @@ class GameManager :
 
         self.gameState.setPhase(Phase.NOT_PLAYING)
 
-        for player in self.gameState.clientPlayers :
+        for player in self.gameState.userPlayers :
             message = game_pb2.GameEnd()
             message.reason = gameEndReasonToProtoDict[gameEndInfo.reason]
-            player.client.sendMessage(message)
+            player.user.send(message)
+            player.user.clearSubscribers()
 
     async def _processDay(self) :
         self._addSystemChat(self._("It is now morning. Please begin your discussion."))

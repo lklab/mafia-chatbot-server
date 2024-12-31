@@ -6,16 +6,14 @@ import os
 import json
 from typing import Callable, Any
 
-from client_handler import ClientHandler
-
 from mafia_chatbot.game.game_manager import GameManager
 from mafia_chatbot.game.game_info import GameInfo, DebugInfo
-from mafia_chatbot.game.client_player import ClientPlayer
 
-from mafia_chatbot.network.tcp_server import TcpServer
 from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.message_handler import MessageHandler
 from mafia_chatbot.network.messages import *
+from mafia_chatbot.network.client_server import ClientServer
+from mafia_chatbot.network.client_user import ClientUser
 from mafia_chatbot.network.utils import makeErrorResponse
 
 import mafia_chatbot.firebase.firebase as firebase
@@ -28,15 +26,16 @@ class GameInstance :
     pass
 
 class GameInstance :
-    def __init__(self, id: str, players: list[ClientPlayer], onGameEnded: Callable[[GameInstance], None], logger: WandsLogger) :
+    def __init__(self, id: str, users: list[ClientUser], onGameEnded: Callable[[GameInstance], None], logger: WandsLogger) :
         self.id = id
 
-        self.players: dict[str, ClientPlayer] = {}
+        self.users: dict[str, ClientUser] = {}
         self.clientIds: list[str] = []
-        for player in players :
-            clientId: str = player.clientId
-            self.players[clientId] = player
+        for user in users :
+            clientId: str = user.clientId
+            self.users[clientId] = user
             self.clientIds.append(clientId)
+            user.addRef()
 
         self.onGameEnded = onGameEnded
 
@@ -74,25 +73,11 @@ class GameInstance :
     def isRunning(self) :
         return self.gameManager != None
 
-    def connectClient(self, clientId: str, messageHandler: MessageHandler) :
-        if clientId in self.players :
-            self.players[clientId].setMessageHandler(messageHandler)
-
-    def disconnectClient(self, clientId: str) :
-        if clientId in self.players :
-            self.players[clientId].clearMessageHandler()
-
-    def removeClient(self, clientId: str) :
-        if clientId in self.players :
-            self.players[clientId].clearMessageHandler()
-            self.players[clientId].clearSubscribers()
-            del self.players[clientId]
-
-    def getPlayer(self, clientId: str) -> ClientPlayer :
-        if clientId in self.players :
-            return self.players[clientId]
-        else :
-            return None
+    def removeUser(self, user: ClientUser) :
+        if user.clientId in self.users :
+            if self.gameManager != None :
+                self.gameManager.removeUser(user)
+            del self.users[user.clientId]
 
     def terminate(self) :
         self.isTerminated = True
@@ -100,10 +85,8 @@ class GameInstance :
         if self.gameManager != None :
             self.gameManager.terminate()
 
-        for player in self.players.values() :
-            player.clearMessageHandler()
-            player.clearSubscribers()
-        self.players.clear()
+        for user in self.users.values() :
+            user.releaseRef()
 
         self.onGameEnded(self)
 
@@ -112,7 +95,7 @@ class GameInstance :
             gameId=self.id,
             playerCount=self.gameInfoMessage.playerCount,
             mafiaCount=self.gameInfoMessage.mafiaCount,
-            clients=list(self.players.values()),
+            users=list(self.users.values()),
             localPlayerName=None,
             language=self.gameInfoMessage.language,
             debugInfo=DebugInfo(self.gameInfoMessage.debugInfo) if self.gameInfoMessage.debugInfo.isDebug else None,
@@ -130,8 +113,6 @@ class GameInstance :
 class GameProcess :
     def __init__(self, port: int) :
         self.port: int = port
-
-        self.clients: dict[str, ClientHandler] = {}
         self.gameByClientId: dict[str, GameInstance] = {}
 
         # setup logger
@@ -144,8 +125,13 @@ class GameProcess :
         # start game server
         while True :
             try :
-                gameServer = TcpServer(port=self.port)
-                await gameServer.start(onConnected=self._onClientConnected)
+                self.gameServer = ClientServer(
+                    port=self.port,
+                    onAuth=self._onClientAuth,
+                    onMessage=self._onClientMessage,
+                    onDisconnected=self._onClientDisconnected,
+                )
+                await self.gameServer.start()
             except OSError as e :
                 self.port += 1
                 await asyncio.sleep(0.3)
@@ -168,7 +154,7 @@ class GameProcess :
         self._sendToMainProcess(message)
 
         # serve game server
-        await gameServer.serve()
+        await self.gameServer.serve()
 
     ### Handle main process ###
     def _onMainProcessMessage(self, message) :
@@ -183,13 +169,13 @@ class GameProcess :
         # prepare game
         gameId: str = message.gameId
 
-        players: list[ClientPlayer] = []
+        users: list[ClientUser] = []
         for client in message.clients :
-            players.append(ClientPlayer(client.id, client.name))
+            users.append(self.gameServer.getUser(client.id))
 
-        game: GameInstance = GameInstance(gameId, players, self._clearGame, self.logger)
-        for player in players :
-            self.gameByClientId[player.clientId] = game
+        game: GameInstance = GameInstance(gameId, users, self._clearGame, self.logger)
+        for user in users :
+            self.gameByClientId[user.clientId] = game
 
         # send response to main process
         response = ipc_pb2.StartNewGameResponse()
@@ -201,83 +187,63 @@ class GameProcess :
     }
 
     ### Handle client ###
-    def _onClientConnected(self, tcpHandler: TcpHandler) :
-        self.logger.debug(f'_onClientConnected() addr={tcpHandler.addr}')
-        ClientHandler(
-            tcpHandler=tcpHandler,
-            onAuth=self._onClientAuth,
-            onMessage=self._onClientMessage,
-            onDisconnected=self._onClientDisconnected,
-        )
+    def _onClientAuth(self, user: ClientUser, message) -> tuple[Any, bool] :
+        self.logger.debug(f'_onClientAuth clientId={user.clientId}')
 
-    def _onClientAuth(self, client: ClientHandler, clientId: str, message) -> tuple[Any, bool] :
-        self.logger.debug(f'_onClientAuth addr={client.addr}, clientId={clientId}')
-
-        if clientId in self.gameByClientId :
-            self.clients[clientId] = client
-
-            game: GameInstance = self.gameByClientId[clientId]
-            game.connectClient(clientId, client.messageHandler)
-            client.setPlayer(game.getPlayer(clientId))
-
+        if user.clientId in self.gameByClientId :
             return None, True
 
         else :
             errorResponse = makeErrorResponse(message, 0, 'This server does not contain your game. Please connect to the main server first to create a new game.')
-            self.logger.error(f'_onClientAuth failed addr={client.addr}, message=<{errorResponse}>')
+            self.logger.error(f'_onClientAuth failed clientId={user.clientId}, message=<{errorResponse}>')
 
             return errorResponse, False
 
-    def _onClientMessage(self, client: ClientHandler, message) :
+    def _onClientMessage(self, user: ClientUser, message) :
         if type(message) != time_pb2.RequestTimeSync :
-            self.logger.debug(f'_onClientMessage addr={client.addr}, name={client.clientName}, type={type(message)}, message=<{message}>')
+            self.logger.debug(f'_onClientMessage name={user.clientName}, type={type(message)}, message=<{message}>')
 
         if type(message) in GameProcess._switchClientMessage :
-            GameProcess._switchClientMessage[type(message)](self, client, message)
+            GameProcess._switchClientMessage[type(message)](self, user, message)
         else :
-            client.forwardMessage(message)
+            user.forward(message)
 
-    def _onClientDisconnected(self, client: ClientHandler) :
-        self.logger.debug(f'_onClientDisconnected addr={client.addr}, name={client.clientName}')
-        if client.clientId in self.clients :
-            del self.clients[client.clientId]
-        if client.clientId in self.gameByClientId :
-            game: GameInstance = self.gameByClientId[client.clientId]
-            game.disconnectClient(client.clientId)
+    def _onClientDisconnected(self, user: ClientUser) :
+        self.logger.debug(f'_onClientDisconnected name={user.clientName}')
 
-    def _switchClientMessageRequestTimeSync(self, client: ClientHandler, message) :
+    def _switchClientMessageRequestTimeSync(self, user: ClientUser, message) :
         response = time_pb2.TimeSync()
         response.rqid = message.rqid
         response.time = int(time.monotonic() * 1000)
-        self._sendToClient(client, response, log=False)
+        self._sendToUser(user, response, log=False)
 
-    def _switchClientMessageRequestGameInfo(self, client: ClientHandler, message) :
-        if client.clientId not in self.gameByClientId :
+    def _switchClientMessageRequestGameInfo(self, user: ClientUser, message) :
+        if user.clientId not in self.gameByClientId :
             errorResponse = makeErrorResponse(message, 0, 'There are no participating games.')
-            self._sendToClient(client, errorResponse, isError=True)
+            self._sendToUser(user, errorResponse, isError=True)
             return
 
-        game: GameInstance = self.gameByClientId[client.clientId]
+        game: GameInstance = self.gameByClientId[user.clientId]
         if game.gameInfoMessage == None :
             errorResponse = makeErrorResponse(message, 0, 'Game info not set yet.')
-            self._sendToClient(client, errorResponse, isError=True)
+            self._sendToUser(user, errorResponse, isError=True)
             return
 
         response = game_pb2.GameInfo()
         response.CopyFrom(game.gameInfoMessage)
         response.rqid = message.rqid
-        self._sendToClient(client, response)
+        self._sendToUser(user, response)
 
-    def _switchClientMessageGameStart(self, client: ClientHandler, message) :
-        if client.clientId not in self.gameByClientId :
+    def _switchClientMessageGameStart(self, user: ClientUser, message) :
+        if user.clientId not in self.gameByClientId :
             errorResponse = makeErrorResponse(message, 0, 'There are no participating games.')
-            self._sendToClient(client, errorResponse, isError=True)
+            self._sendToUser(user, errorResponse, isError=True)
             return
 
-        game: GameInstance = self.gameByClientId[client.clientId]
+        game: GameInstance = self.gameByClientId[user.clientId]
         if game.isRunning() :
             errorResponse = makeErrorResponse(message, 0, 'The game is already running.')
-            self._sendToClient(client, errorResponse, isError=True)
+            self._sendToUser(user, errorResponse, isError=True)
             return
 
         game.setGameInfoMessage(message.info)
@@ -285,7 +251,7 @@ class GameProcess :
         isValid: bool = game.prepareGame()
         if not isValid :
             errorResponse = makeErrorResponse(message, 0, 'GameInfo is invalid.')
-            self._sendToClient(client, errorResponse, isError=True)
+            self._sendToUser(user, errorResponse, isError=True)
             game.terminate()
             return
 
@@ -293,21 +259,21 @@ class GameProcess :
 
         response = game_pb2.GameStartResponse()
         response.rqid = message.rqid
-        self._sendToClient(client, response)
+        self._sendToUser(user, response)
 
-    def _switchClientMessageQuitGame(self, client: ClientHandler, message) :
-        if client.clientId not in self.gameByClientId :
+    def _switchClientMessageQuitGame(self, user: ClientUser, message) :
+        if user.clientId not in self.gameByClientId :
             errorResponse = makeErrorResponse(message, 0, 'There are no participating games.')
-            self._sendToClient(client, errorResponse, isError=True)
+            self._sendToUser(user, errorResponse, isError=True)
             return
 
-        game: GameInstance = self.gameByClientId[client.clientId]
-        game.removeClient(client.clientId)
-        del self.gameByClientId[client.clientId]
+        game: GameInstance = self.gameByClientId[user.clientId]
+        game.removeUser(user)
+        del self.gameByClientId[user.clientId]
 
         clientExited = ipc_pb2.ClientExited()
         clientExited.gameId = game.id
-        clientExited.clientId = client.clientId
+        clientExited.clientId = user.clientId
         self._sendToMainProcess(clientExited)
 
         if len(game.clientIds) == 0 :
@@ -315,11 +281,11 @@ class GameProcess :
 
         response = game_pb2.QuitGameResponse()
         response.rqid = message.rqid
-        self._sendToClient(client, response)
+        self._sendToUser(user, response)
 
-    def _switchClientMessageReportChat(self, client: ClientHandler, message) :
-        if client.clientId in self.gameByClientId :
-            gameId: str = self.gameByClientId[client.clientId].id
+    def _switchClientMessageReportChat(self, user: ClientUser, message) :
+        if user.clientId in self.gameByClientId :
+            gameId: str = self.gameByClientId[user.clientId].id
 
             content: dict[str, str] = {}
             content['gameId'] = gameId
@@ -338,7 +304,7 @@ class GameProcess :
 
         response = game_pb2.ReportChatResponse()
         response.rqid = message.rqid
-        self._sendToClient(client, response)
+        self._sendToUser(user, response)
 
     _switchClientMessage = {
         time_pb2.RequestTimeSync : _switchClientMessageRequestTimeSync,
@@ -367,13 +333,13 @@ class GameProcess :
         self.logger.debug(f'_sendAwaitResponseToMainProcess() response type={type(response)}, message=<{response}>')
         return response
 
-    def _sendToClient(self, client: ClientHandler, message, log: bool = True, isError: bool = False) :
+    def _sendToUser(self, user: ClientUser, message, log: bool = True, isError: bool = False) :
         if log :
             if isError :
-                self.logger.error(f'_sendToClient addr={client.addr}, name={client.clientName}, type={type(message)}, message=<{message}>')
+                self.logger.error(f'_sendToClient id={user.clientId}, name={user.clientName}, type={type(message)}, message=<{message}>')
             else :
-                self.logger.debug(f'_sendToClient addr={client.addr}, name={client.clientName}, type={type(message)}, message=<{message}>')
-        client.messageHandler.send(message)
+                self.logger.debug(f'_sendToClient id={user.clientId}, name={user.clientName}, type={type(message)}, message=<{message}>')
+        user.send(message)
 
 def startGameProcess(port: int) :
     gameProcess = GameProcess(port)
