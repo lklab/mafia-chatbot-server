@@ -7,7 +7,7 @@ from mafia_chatbot.game.trust_recorder import TrustRecorder
 from mafia_chatbot.game.game_logger import GameLogger, TAG
 
 from mafia_chatbot.network.messages import *
-from mafia_chatbot.network.messages.message_info import messageTypeDict
+from mafia_chatbot.network.utils import makeErrorResponse
 
 class ClientMessageProcessor :
     def __init__(self, gameState: GameState, trustRecorder: TrustRecorder, player: Player) :
@@ -211,9 +211,4 @@ class ClientMessageProcessor :
         self.logger.log(TAG.ERROR, f'[ClientMessageProcessor] {self.player.info.name}: response error message: code={code}, detail={detail}')
         self.logger.log(TAG.ERROR, f'[ClientMessageProcessor] {self.player.info.name}: received message: {message}')
 
-        errorResponse = error_pb2.RequestError()
-        errorResponse.rqid = message.rqid
-        errorResponse.rqtype = messageTypeDict[type(message)]
-        errorResponse.code = code
-        errorResponse.detail = detail
-        return errorResponse
+        return makeErrorResponse(message, code, detail)

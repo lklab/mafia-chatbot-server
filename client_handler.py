@@ -5,7 +5,7 @@ from mafia_chatbot.game.client_player import ClientPlayer
 from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.message_handler import MessageHandler
 from mafia_chatbot.network.messages import *
-from mafia_chatbot.network.messages.message_info import messageTypeDict
+from mafia_chatbot.network.utils import makeErrorResponse
 
 import mafia_chatbot.firebase.firebase as firebase
 from mafia_chatbot.db.user_db import userDB
@@ -18,7 +18,7 @@ class ClientHandler :
 class ClientHandler :
     def __init__(self,
                  tcpHandler: TcpHandler,
-                 onAuth: Callable[[ClientHandler, str], tuple[Any, bool]],
+                 onAuth: Callable[[ClientHandler, str, Any], tuple[Any, bool]],
                  onMessage: Callable[[ClientHandler, Any], None],
                  onDisconnected: Callable[[ClientHandler], None],) :
         self.addr = tcpHandler.addr
@@ -68,11 +68,7 @@ class ClientHandler :
             try :
                 userDB.upsert_user(self.clientId, name)
             except :
-                errorResponse = error_pb2.RequestError()
-                errorResponse.rqid = message.rqid
-                errorResponse.rqtype = messageTypeDict[type(message)]
-                errorResponse.code = 0
-                errorResponse.detail = 'DB error occurred. try again.'
+                errorResponse = makeErrorResponse(message, 0, 'DB error occurred. try again.')
                 return errorResponse
 
             self.clientName = name
@@ -83,11 +79,7 @@ class ClientHandler :
             return response
 
         else :
-            errorResponse = error_pb2.RequestError()
-            errorResponse.rqid = message.rqid
-            errorResponse.rqtype = messageTypeDict[type(message)]
-            errorResponse.code = 0
-            errorResponse.detail = 'This name is not suitable for use in a Mafia game.'
+            errorResponse = makeErrorResponse(message, 0, 'This name is not suitable for use in a Mafia game.')
             return errorResponse
 
     def disconnect(self) :
@@ -96,14 +88,10 @@ class ClientHandler :
     def _onAuth(self, message) -> tuple[Any, bool] :
         clientId = firebase.verifyIdToken(message.token)
         if clientId == None :
-            errorResponse = error_pb2.RequestError()
-            errorResponse.rqid = message.rqid
-            errorResponse.rqtype = messageTypeDict[type(message)]
-            errorResponse.code = 0
-            errorResponse.detail = 'Invalid ID token.'
+            errorResponse = makeErrorResponse(message, 0, 'Invalid ID token.')
             return errorResponse, False
 
-        response, success = self.onAuth(self, clientId)
+        response, success = self.onAuth(self, clientId, message)
 
         if success :
             self.authorized = True
@@ -119,12 +107,7 @@ class ClientHandler :
 
         else :
             if response == None :
-                response = error_pb2.RequestError()
-                response.code = 0
-                response.detail = 'Auth failed'
-
-            response.rqid = message.rqid
-            response.rqtype = messageTypeDict[type(message)]
+                response = makeErrorResponse(message, 0, 'Auth failed')
 
         return response, success
 

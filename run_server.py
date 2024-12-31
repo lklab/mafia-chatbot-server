@@ -10,7 +10,7 @@ from mafia_chatbot.network.tcp_server import TcpServer
 from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.message_handler import MessageHandler
 from mafia_chatbot.network.messages import *
-from mafia_chatbot.network.messages.message_info import messageTypeDict
+from mafia_chatbot.network.utils import makeErrorResponse
 
 import mafia_chatbot.firebase.firebase as firebase
 from mafia_chatbot.db.user_db import userDB
@@ -160,7 +160,7 @@ class MainProcess :
             onDisconnected=self._onClientDisconnected,
         )
 
-    def _onClientAuth(self, client: ClientHandler, clientId: str) -> tuple[Any, bool] :
+    def _onClientAuth(self, client: ClientHandler, clientId: str, message) -> tuple[Any, bool] :
         self.logger.debug(f'_onClientAuth addr={client.addr}, clientId={clientId}')
         return None, True
 
@@ -169,7 +169,7 @@ class MainProcess :
         if type(message) in MainProcess._switchClientMessage :
             MainProcess._switchClientMessage[type(message)](self, client, message)
         else :
-            errorResponse = self._makeErrorResponse(message, 0, f'Cannot process the message.')
+            errorResponse = makeErrorResponse(message, 0, f'Cannot process the message.')
             self._sendToClient(client, errorResponse, isError=True)
 
     def _onClientDisconnected(self, client: ClientHandler) :
@@ -235,7 +235,7 @@ class MainProcess :
                 await self._sendAwaitResponseToGameProcess(targetProcess.messageHandler, startNewGame)
             except Exception as e :
                 self.logger.error(f'startNewGame failed for {client.addr}: {e}')
-                errorResponse = self._makeErrorResponse(message, 0, f'startNewGame failed {e}')
+                errorResponse = makeErrorResponse(message, 0, f'startNewGame failed {e}')
                 self._sendToClient(client, errorResponse, isError=True)
                 return
 
@@ -252,13 +252,13 @@ class MainProcess :
 
         # check ready
         if not client.isReady() :
-            errorResponse = self._makeErrorResponse(message, 0, 'The player has not been fully configured.')
+            errorResponse = makeErrorResponse(message, 0, 'The player has not been fully configured.')
             self._sendToClient(client, errorResponse, isError=True)
             return
 
         # check exist game
         if client.clientId in self.gameByClientId :
-            errorResponse = self._makeErrorResponse(message, 0, 'The game is already running.')
+            errorResponse = makeErrorResponse(message, 0, 'The game is already running.')
             self._sendToClient(client, errorResponse, isError=True)
             return
 
@@ -287,14 +287,6 @@ class MainProcess :
         else :
             self.logger.debug(f'_sendToClient addr={client.addr}, name={client.clientName}, type={type(message)}, message=<{message}>')
         client.messageHandler.send(message)
-
-    def _makeErrorResponse(self, message, code: int, detail: str) :
-        errorResponse = error_pb2.RequestError()
-        errorResponse.rqid = message.rqid
-        errorResponse.rqtype = messageTypeDict[type(message)]
-        errorResponse.code = code
-        errorResponse.detail = detail
-        return errorResponse
 
 if __name__ == "__main__" :
     mainProcess = MainProcess()
