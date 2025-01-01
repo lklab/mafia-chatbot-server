@@ -202,23 +202,23 @@ class GameProcess :
 
     def _onClientMessage(self, user: ClientUser, message) :
         if type(message) != time_pb2.RequestTimeSync :
-            self.logger.debug(f'_onClientMessage name={user.clientName}, type={type(message)}, message=<{message}>')
+            self.logger.debug(f'_onClientMessage clientId={user.clientId} name={user.clientName}, type={type(message)}, message=<{message}>')
 
-        if type(message) in GameProcess._switchClientMessage :
-            GameProcess._switchClientMessage[type(message)](self, user, message)
+        if type(message) in GameProcess._switchUserMessage :
+            GameProcess._switchUserMessage[type(message)](self, user, message)
         else :
             user.forward(message)
 
     def _onClientDisconnected(self, user: ClientUser) :
-        self.logger.debug(f'_onClientDisconnected name={user.clientName}')
+        self.logger.debug(f'_onClientDisconnected clientId={user.clientId} name={user.clientName}')
 
-    def _switchClientMessageRequestTimeSync(self, user: ClientUser, message) :
+    def _switchUserMessageRequestTimeSync(self, user: ClientUser, message) :
         response = time_pb2.TimeSync()
         response.rqid = message.rqid
         response.time = int(time.monotonic() * 1000)
         self._sendToUser(user, response, log=False)
 
-    def _switchClientMessageRequestGameInfo(self, user: ClientUser, message) :
+    def _switchUserMessageRequestGameInfo(self, user: ClientUser, message) :
         if user.clientId not in self.gameByClientId :
             errorResponse = makeErrorResponse(message, 0, 'There are no participating games.')
             self._sendToUser(user, errorResponse, isError=True)
@@ -235,7 +235,7 @@ class GameProcess :
         response.rqid = message.rqid
         self._sendToUser(user, response)
 
-    def _switchClientMessageGameStart(self, user: ClientUser, message) :
+    def _switchUserMessageGameStart(self, user: ClientUser, message) :
         if user.clientId not in self.gameByClientId :
             errorResponse = makeErrorResponse(message, 0, 'There are no participating games.')
             self._sendToUser(user, errorResponse, isError=True)
@@ -262,7 +262,7 @@ class GameProcess :
         response.rqid = message.rqid
         self._sendToUser(user, response)
 
-    def _switchClientMessageQuitGame(self, user: ClientUser, message) :
+    def _switchUserMessageQuitGame(self, user: ClientUser, message) :
         if user.clientId not in self.gameByClientId :
             errorResponse = makeErrorResponse(message, 0, 'There are no participating games.')
             self._sendToUser(user, errorResponse, isError=True)
@@ -284,7 +284,7 @@ class GameProcess :
         response.rqid = message.rqid
         self._sendToUser(user, response)
 
-    def _switchClientMessageReportChat(self, user: ClientUser, message) :
+    def _switchUserMessageReportChat(self, user: ClientUser, message) :
         if user.clientId in self.gameByClientId :
             gameId: str = self.gameByClientId[user.clientId].id
 
@@ -307,12 +307,12 @@ class GameProcess :
         response.rqid = message.rqid
         self._sendToUser(user, response)
 
-    _switchClientMessage = {
-        time_pb2.RequestTimeSync : _switchClientMessageRequestTimeSync,
-        game_pb2.RequestGameInfo : _switchClientMessageRequestGameInfo,
-        game_pb2.GameStart : _switchClientMessageGameStart,
-        game_pb2.QuitGame : _switchClientMessageQuitGame,
-        game_pb2.ReportChat : _switchClientMessageReportChat,
+    _switchUserMessage = {
+        time_pb2.RequestTimeSync : _switchUserMessageRequestTimeSync,
+        game_pb2.RequestGameInfo : _switchUserMessageRequestGameInfo,
+        game_pb2.GameStart : _switchUserMessageGameStart,
+        game_pb2.QuitGame : _switchUserMessageQuitGame,
+        game_pb2.ReportChat : _switchUserMessageReportChat,
     }
 
     def _clearGame(self, game: GameInstance) :

@@ -63,7 +63,7 @@ class ClientServer :
             )
 
         # auth by upper layer
-        response, success = self.onAuth(self, clientId, message)
+        response, success = self.onAuth(user, message)
 
         # success
         if success :
