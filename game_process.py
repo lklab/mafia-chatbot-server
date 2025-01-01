@@ -77,6 +77,7 @@ class GameInstance :
         if user.clientId in self.users :
             if self.gameManager != None :
                 self.gameManager.removeUser(user)
+            user.releaseRef()
             del self.users[user.clientId]
 
     def terminate(self) :
@@ -337,9 +338,9 @@ class GameProcess :
     def _sendToUser(self, user: ClientUser, message, log: bool = True, isError: bool = False) :
         if log :
             if isError :
-                self.logger.error(f'_sendToClient id={user.clientId}, name={user.clientName}, type={type(message)}, message=<{message}>')
+                self.logger.error(f'_sendToUser id={user.clientId}, name={user.clientName}, type={type(message)}, message=<{message}>')
             else :
-                self.logger.debug(f'_sendToClient id={user.clientId}, name={user.clientName}, type={type(message)}, message=<{message}>')
+                self.logger.debug(f'_sendToUser id={user.clientId}, name={user.clientName}, type={type(message)}, message=<{message}>')
         user.send(message)
 
 def startGameProcess(port: int) :
