@@ -4,12 +4,13 @@ import uuid
 from typing import Any
 
 from game_process import startGameProcess
-from client_handler import ClientHandler
 
 from mafia_chatbot.network.tcp_server import TcpServer
 from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.message_handler import MessageHandler
 from mafia_chatbot.network.messages import *
+from mafia_chatbot.network.client_server import ClientServer
+from mafia_chatbot.network.client_user import ClientUser
 from mafia_chatbot.network.utils import makeErrorResponse
 
 import mafia_chatbot.firebase.firebase as firebase
@@ -94,8 +95,14 @@ class MainProcess :
 
     async def _runMainServer(self) :
         self.logger.debug('_runMainServer()')
-        mainServer = TcpServer(port=MAIN_PORT)
-        await mainServer.start(onConnected=self._onClientConnected)
+        mainServer = ClientServer(
+            port=MAIN_PORT,
+            onAuth=self._onClientAuth,
+            onMessage=self._onClientMessage,
+            onDisconnected=self._onClientDisconnected,
+            logger=self.logger,
+        )
+        await mainServer.start()
         await mainServer.serve()
 
     ### Handle game process ###
@@ -151,60 +158,51 @@ class MainProcess :
     }
 
     ### Handle client ###
-    def _onClientConnected(self, tcpHandler: TcpHandler) :
-        self.logger.debug(f'_onClientConnected() addr={tcpHandler.addr}')
-        ClientHandler(
-            tcpHandler=tcpHandler,
-            onAuth=self._onClientAuth,
-            onMessage=self._onClientMessage,
-            onDisconnected=self._onClientDisconnected,
-        )
-
-    def _onClientAuth(self, client: ClientHandler, clientId: str, message) -> tuple[Any, bool] :
-        self.logger.debug(f'_onClientAuth addr={client.addr}, clientId={clientId}')
+    def _onClientAuth(self, user: ClientUser, message) -> tuple[Any, bool] :
+        self.logger.debug(f'_onClientAuth clientId={user.clientId}')
         return None, True
 
-    def _onClientMessage(self, client: ClientHandler, message) :
-        self.logger.debug(f'_onClientMessage addr={client.addr}, name={client.clientName}, type={type(message)}, message=<{message}>')
-        if type(message) in MainProcess._switchClientMessage :
-            MainProcess._switchClientMessage[type(message)](self, client, message)
+    def _onClientMessage(self, user: ClientUser, message) :
+        self.logger.debug(f'_onClientMessage clientId={user.clientId} name={user.clientName}, type={type(message)}, message=<{message}>')
+        if type(message) in MainProcess._switchUserMessage :
+            MainProcess._switchUserMessage[type(message)](self, user, message)
         else :
             errorResponse = makeErrorResponse(message, 0, f'Cannot process the message.')
-            self._sendToClient(client, errorResponse, isError=True)
+            self._sendToUser(user, errorResponse, isError=True)
 
-    def _onClientDisconnected(self, client: ClientHandler) :
-        self.logger.debug(f'_onClientDisconnected addr={client.addr}, name={client.clientName}')
+    def _onClientDisconnected(self, user: ClientUser) :
+        self.logger.debug(f'_onClientDisconnected clientId={user.clientId} name={user.clientName}')
 
-    def _switchClientMessageUpdateUserInfo(self, client: ClientHandler, message) :
+    def _switchUserMessageUpdateUserInfo(self, user: ClientUser, message) :
         async def _updateInfo() :
-            response = await client.updateInfo(message)
-            self._sendToClient(client, response, isError=isinstance(response, error_pb2.RequestError))
+            response = await user.updateInfo(message)
+            self._sendToUser(user, response, isError=isinstance(response, error_pb2.RequestError))
 
         asyncio.create_task(_updateInfo()) # TODO 중복 호출에 대한 처리
 
-    def _switchClientMessageDeleteUser(self, client: ClientHandler, message) :
-        client.deleteUser()
+    def _switchUserMessageDeleteUser(self, user: ClientUser, message) :
+        user.delete()
 
         response = auth_pb2.DeleteUserResponse()
         response.rqid = message.rqid
-        self._sendToClient(client, response)
+        self._sendToUser(user, response)
 
-        client.disconnect()
+        user.disconnect()
 
-    def _switchClientMessageCheckCurrentGame(self, client: ClientHandler, message) :
-        if client.clientId in self.gameByClientId :
+    def _switchUserMessageCheckCurrentGame(self, user: ClientUser, message) :
+        if user.clientId in self.gameByClientId :
             response = game_pb2.CurrentGame()
             response.rqid = message.rqid
             response.isGameExists = True
-            response.port = self.gameByClientId[client.clientId].process.port
-            self._sendToClient(client, response)
+            response.port = self.gameByClientId[user.clientId].process.port
+            self._sendToUser(user, response)
         else :
             response = game_pb2.CurrentGame()
             response.rqid = message.rqid
             response.isGameExists = False
-            self._sendToClient(client, response)
+            self._sendToUser(user, response)
 
-    def _switchClientMessageNewGame(self, client: ClientHandler, message) :
+    def _switchUserMessageNewGame(self, user: ClientUser, message) :
         async def _newGame() :
             # find free game process
             targetProcess: GameProcessHandler = None
@@ -223,8 +221,8 @@ class MainProcess :
 
             # TODO multiplay
             clientInfo = ipc_pb2.Client()
-            clientInfo.id = client.clientId
-            clientInfo.name = client.clientName
+            clientInfo.id = user.clientId
+            clientInfo.name = user.clientName
             clients: list[ipc_pb2.Client] = [clientInfo]
 
             startNewGame = ipc_pb2.StartNewGame()
@@ -234,41 +232,41 @@ class MainProcess :
             try :
                 await self._sendAwaitResponseToGameProcess(targetProcess.messageHandler, startNewGame)
             except Exception as e :
-                self.logger.error(f'startNewGame failed for {client.addr}: {e}')
+                self.logger.error(f'startNewGame failed for {user.clientId}: {e}')
                 errorResponse = makeErrorResponse(message, 0, f'startNewGame failed {e}')
-                self._sendToClient(client, errorResponse, isError=True)
+                self._sendToUser(user, errorResponse, isError=True)
                 return
 
             # assign game
-            game: GameHandler = GameHandler(gameId, targetProcess, [client.clientId]) # TODO multiplay
+            game: GameHandler = GameHandler(gameId, targetProcess, [user.clientId]) # TODO multiplay
             self.gameDict[gameId] = game
-            self.gameByClientId[client.clientId] = game # TODO multiplay
+            self.gameByClientId[user.clientId] = game # TODO multiplay
 
             # response port to client
             newGameResponse = game_pb2.NewGameResponse()
             newGameResponse.rqid = message.rqid
             newGameResponse.port = game.process.port
-            self._sendToClient(client, newGameResponse)
+            self._sendToUser(user, newGameResponse)
 
         # check ready
-        if not client.isReady() :
+        if user.isNeedToSignUp() :
             errorResponse = makeErrorResponse(message, 0, 'The player has not been fully configured.')
-            self._sendToClient(client, errorResponse, isError=True)
+            self._sendToUser(user, errorResponse, isError=True)
             return
 
         # check exist game
-        if client.clientId in self.gameByClientId :
+        if user.clientId in self.gameByClientId :
             errorResponse = makeErrorResponse(message, 0, 'The game is already running.')
-            self._sendToClient(client, errorResponse, isError=True)
+            self._sendToUser(user, errorResponse, isError=True)
             return
 
         asyncio.create_task(_newGame()) # TODO 중복 호출에 대한 처리
 
-    _switchClientMessage = {
-        auth_pb2.UpdateUserInfo : _switchClientMessageUpdateUserInfo,
-        auth_pb2.DeleteUser : _switchClientMessageDeleteUser,
-        game_pb2.CheckCurrentGame : _switchClientMessageCheckCurrentGame,
-        game_pb2.NewGame : _switchClientMessageNewGame,
+    _switchUserMessage = {
+        auth_pb2.UpdateUserInfo : _switchUserMessageUpdateUserInfo,
+        auth_pb2.DeleteUser : _switchUserMessageDeleteUser,
+        game_pb2.CheckCurrentGame : _switchUserMessageCheckCurrentGame,
+        game_pb2.NewGame : _switchUserMessageNewGame,
     }
 
     def _sendToGameProcess(self, messageHandler: MessageHandler, message) :
@@ -281,12 +279,12 @@ class MainProcess :
         self.logger.debug(f'_sendAwaitResponseToGameProcess() response addr={messageHandler.addr}, desc={messageHandler.desc}, type={type(response)}, message=<{response}>')
         return response
 
-    def _sendToClient(self, client: ClientHandler, message, isError: bool = False) :
+    def _sendToUser(self, user: ClientUser, message, isError: bool = False) :
         if isError :
-            self.logger.error(f'_sendToClient addr={client.addr}, name={client.clientName}, type={type(message)}, message=<{message}>')
+            self.logger.error(f'_sendToUser id={user.clientId}, name={user.clientName}, type={type(message)}, message=<{message}>')
         else :
-            self.logger.debug(f'_sendToClient addr={client.addr}, name={client.clientName}, type={type(message)}, message=<{message}>')
-        client.messageHandler.send(message)
+            self.logger.debug(f'_sendToClient id={user.clientId}, name={user.clientName}, type={type(message)}, message=<{message}>')
+        user.send(message)
 
 if __name__ == "__main__" :
     mainProcess = MainProcess()
