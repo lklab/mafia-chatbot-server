@@ -23,16 +23,6 @@ message CurrentGame {
   int32 port = 3;
 }
 
-message NewGame {
-  string rqid = 1;
-  repeated string clients = 2;
-}
-
-message NewGameResponse {
-  string rqid = 1;
-  int32 port = 2;
-}
-
 message RequestGameInfo {
   string rqid = 1;
 }

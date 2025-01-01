@@ -18,33 +18,44 @@ messageTypeDict: dict[Type, int] = {
     auth_pb2.DeleteUserResponse : 2005,
     time_pb2.RequestTimeSync : 3000,
     time_pb2.TimeSync : 3001,
-    game_pb2.CheckCurrentGame : 4000,
-    game_pb2.CurrentGame : 4001,
-    game_pb2.NewGame : 4002,
-    game_pb2.NewGameResponse : 4003,
-    game_pb2.RequestGameInfo : 4004,
-    game_pb2.GameInfo : 4005,
-    game_pb2.GameStart : 4006,
-    game_pb2.GameStartResponse : 4007,
-    game_pb2.RequestGamePhase : 4008,
-    game_pb2.GamePhase : 4009,
-    game_pb2.RequestGameState : 4010,
-    game_pb2.GameState : 4011,
-    game_pb2.RequestChatList : 4012,
-    game_pb2.ChatList : 4013,
-    game_pb2.RequestAddChat : 4014,
-    game_pb2.GetChat : 4015,
-    game_pb2.AddChat : 4016,
-    game_pb2.SetTarget : 4017,
-    game_pb2.SetTargetResponse : 4018,
-    game_pb2.GetVoteState : 4019,
-    game_pb2.VoteState : 4020,
-    game_pb2.Removed : 4021,
-    game_pb2.GameEnd : 4022,
-    game_pb2.QuitGame : 4023,
-    game_pb2.QuitGameResponse : 4024,
-    game_pb2.ReportChat : 4025,
-    game_pb2.ReportChatResponse : 4026,
+    room_pb2.RequestMyRoomInfo : 4000,
+    room_pb2.MyRoomInfo : 4001,
+    room_pb2.CreateRoom : 4002,
+    room_pb2.CreateRoomResponse : 4003,
+    room_pb2.JoinRoom : 4004,
+    room_pb2.JoinRoomResponse : 4005,
+    room_pb2.QuitRoom : 4006,
+    room_pb2.QuitRoomResponse : 4007,
+    room_pb2.RoomInfoUpdated : 4008,
+    room_pb2.RoomDestroyed : 4009,
+    room_pb2.NewGame : 4010,
+    room_pb2.NewGameResponse : 4011,
+    room_pb2.GameStarted : 4012,
+    game_pb2.CheckCurrentGame : 5000,
+    game_pb2.CurrentGame : 5001,
+    game_pb2.RequestGameInfo : 5002,
+    game_pb2.GameInfo : 5003,
+    game_pb2.GameStart : 5004,
+    game_pb2.GameStartResponse : 5005,
+    game_pb2.RequestGamePhase : 5006,
+    game_pb2.GamePhase : 5007,
+    game_pb2.RequestGameState : 5008,
+    game_pb2.GameState : 5009,
+    game_pb2.RequestChatList : 5010,
+    game_pb2.ChatList : 5011,
+    game_pb2.RequestAddChat : 5012,
+    game_pb2.GetChat : 5013,
+    game_pb2.AddChat : 5014,
+    game_pb2.SetTarget : 5015,
+    game_pb2.SetTargetResponse : 5016,
+    game_pb2.GetVoteState : 5017,
+    game_pb2.VoteState : 5018,
+    game_pb2.Removed : 5019,
+    game_pb2.GameEnd : 5020,
+    game_pb2.QuitGame : 5021,
+    game_pb2.QuitGameResponse : 5022,
+    game_pb2.ReportChat : 5023,
+    game_pb2.ReportChatResponse : 5024,
 }
 
 def _RequestErrorMessageFactory(data: bytes) -> error_pb2.RequestError :
@@ -117,6 +128,71 @@ def _TimeSyncMessageFactory(data: bytes) -> time_pb2.TimeSync :
     message.ParseFromString(data)
     return message
 
+def _RequestMyRoomInfoMessageFactory(data: bytes) -> room_pb2.RequestMyRoomInfo :
+    message = room_pb2.RequestMyRoomInfo()
+    message.ParseFromString(data)
+    return message
+
+def _MyRoomInfoMessageFactory(data: bytes) -> room_pb2.MyRoomInfo :
+    message = room_pb2.MyRoomInfo()
+    message.ParseFromString(data)
+    return message
+
+def _CreateRoomMessageFactory(data: bytes) -> room_pb2.CreateRoom :
+    message = room_pb2.CreateRoom()
+    message.ParseFromString(data)
+    return message
+
+def _CreateRoomResponseMessageFactory(data: bytes) -> room_pb2.CreateRoomResponse :
+    message = room_pb2.CreateRoomResponse()
+    message.ParseFromString(data)
+    return message
+
+def _JoinRoomMessageFactory(data: bytes) -> room_pb2.JoinRoom :
+    message = room_pb2.JoinRoom()
+    message.ParseFromString(data)
+    return message
+
+def _JoinRoomResponseMessageFactory(data: bytes) -> room_pb2.JoinRoomResponse :
+    message = room_pb2.JoinRoomResponse()
+    message.ParseFromString(data)
+    return message
+
+def _QuitRoomMessageFactory(data: bytes) -> room_pb2.QuitRoom :
+    message = room_pb2.QuitRoom()
+    message.ParseFromString(data)
+    return message
+
+def _QuitRoomResponseMessageFactory(data: bytes) -> room_pb2.QuitRoomResponse :
+    message = room_pb2.QuitRoomResponse()
+    message.ParseFromString(data)
+    return message
+
+def _RoomInfoUpdatedMessageFactory(data: bytes) -> room_pb2.RoomInfoUpdated :
+    message = room_pb2.RoomInfoUpdated()
+    message.ParseFromString(data)
+    return message
+
+def _RoomDestroyedMessageFactory(data: bytes) -> room_pb2.RoomDestroyed :
+    message = room_pb2.RoomDestroyed()
+    message.ParseFromString(data)
+    return message
+
+def _NewGameMessageFactory(data: bytes) -> room_pb2.NewGame :
+    message = room_pb2.NewGame()
+    message.ParseFromString(data)
+    return message
+
+def _NewGameResponseMessageFactory(data: bytes) -> room_pb2.NewGameResponse :
+    message = room_pb2.NewGameResponse()
+    message.ParseFromString(data)
+    return message
+
+def _GameStartedMessageFactory(data: bytes) -> room_pb2.GameStarted :
+    message = room_pb2.GameStarted()
+    message.ParseFromString(data)
+    return message
+
 def _CheckCurrentGameMessageFactory(data: bytes) -> game_pb2.CheckCurrentGame :
     message = game_pb2.CheckCurrentGame()
     message.ParseFromString(data)
@@ -124,16 +200,6 @@ def _CheckCurrentGameMessageFactory(data: bytes) -> game_pb2.CheckCurrentGame :
 
 def _CurrentGameMessageFactory(data: bytes) -> game_pb2.CurrentGame :
     message = game_pb2.CurrentGame()
-    message.ParseFromString(data)
-    return message
-
-def _NewGameMessageFactory(data: bytes) -> game_pb2.NewGame :
-    message = game_pb2.NewGame()
-    message.ParseFromString(data)
-    return message
-
-def _NewGameResponseMessageFactory(data: bytes) -> game_pb2.NewGameResponse :
-    message = game_pb2.NewGameResponse()
     message.ParseFromString(data)
     return message
 
@@ -268,31 +334,42 @@ messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     2005 : _DeleteUserResponseMessageFactory,
     3000 : _RequestTimeSyncMessageFactory,
     3001 : _TimeSyncMessageFactory,
-    4000 : _CheckCurrentGameMessageFactory,
-    4001 : _CurrentGameMessageFactory,
-    4002 : _NewGameMessageFactory,
-    4003 : _NewGameResponseMessageFactory,
-    4004 : _RequestGameInfoMessageFactory,
-    4005 : _GameInfoMessageFactory,
-    4006 : _GameStartMessageFactory,
-    4007 : _GameStartResponseMessageFactory,
-    4008 : _RequestGamePhaseMessageFactory,
-    4009 : _GamePhaseMessageFactory,
-    4010 : _RequestGameStateMessageFactory,
-    4011 : _GameStateMessageFactory,
-    4012 : _RequestChatListMessageFactory,
-    4013 : _ChatListMessageFactory,
-    4014 : _RequestAddChatMessageFactory,
-    4015 : _GetChatMessageFactory,
-    4016 : _AddChatMessageFactory,
-    4017 : _SetTargetMessageFactory,
-    4018 : _SetTargetResponseMessageFactory,
-    4019 : _GetVoteStateMessageFactory,
-    4020 : _VoteStateMessageFactory,
-    4021 : _RemovedMessageFactory,
-    4022 : _GameEndMessageFactory,
-    4023 : _QuitGameMessageFactory,
-    4024 : _QuitGameResponseMessageFactory,
-    4025 : _ReportChatMessageFactory,
-    4026 : _ReportChatResponseMessageFactory,
+    4000 : _RequestMyRoomInfoMessageFactory,
+    4001 : _MyRoomInfoMessageFactory,
+    4002 : _CreateRoomMessageFactory,
+    4003 : _CreateRoomResponseMessageFactory,
+    4004 : _JoinRoomMessageFactory,
+    4005 : _JoinRoomResponseMessageFactory,
+    4006 : _QuitRoomMessageFactory,
+    4007 : _QuitRoomResponseMessageFactory,
+    4008 : _RoomInfoUpdatedMessageFactory,
+    4009 : _RoomDestroyedMessageFactory,
+    4010 : _NewGameMessageFactory,
+    4011 : _NewGameResponseMessageFactory,
+    4012 : _GameStartedMessageFactory,
+    5000 : _CheckCurrentGameMessageFactory,
+    5001 : _CurrentGameMessageFactory,
+    5002 : _RequestGameInfoMessageFactory,
+    5003 : _GameInfoMessageFactory,
+    5004 : _GameStartMessageFactory,
+    5005 : _GameStartResponseMessageFactory,
+    5006 : _RequestGamePhaseMessageFactory,
+    5007 : _GamePhaseMessageFactory,
+    5008 : _RequestGameStateMessageFactory,
+    5009 : _GameStateMessageFactory,
+    5010 : _RequestChatListMessageFactory,
+    5011 : _ChatListMessageFactory,
+    5012 : _RequestAddChatMessageFactory,
+    5013 : _GetChatMessageFactory,
+    5014 : _AddChatMessageFactory,
+    5015 : _SetTargetMessageFactory,
+    5016 : _SetTargetResponseMessageFactory,
+    5017 : _GetVoteStateMessageFactory,
+    5018 : _VoteStateMessageFactory,
+    5019 : _RemovedMessageFactory,
+    5020 : _GameEndMessageFactory,
+    5021 : _QuitGameMessageFactory,
+    5022 : _QuitGameResponseMessageFactory,
+    5023 : _ReportChatMessageFactory,
+    5024 : _ReportChatResponseMessageFactory,
 }

@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+message Participant {
+  string clientId = 1;
+  string name = 2;
+}
+
+message RoomInfo {
+  string code = 1;
+  string language = 2;
+  int32 maxHumans = 3;
+  repeated Participant participants = 4;
+  string hostId = 5;
+}
+
+message RequestMyRoomInfo {
+  string rqid = 1;
+}
+
+message MyRoomInfo {
+  string rqid = 1;
+  bool isRoomExists = 2;
+  RoomInfo info = 3;
+}
+
+message CreateRoom {
+  string rqid = 1;
+  string language = 2;
+  int32 maxHumans = 3;
+  string password = 4;
+}
+
+message CreateRoomResponse {
+  string rqid = 1;
+  RoomInfo roomInfo = 2;
+}
+
+message JoinRoom {
+  string rqid = 1;
+  string code = 2;
+  string password = 3;
+}
+
+message JoinRoomResponse {
+  string rqid = 1;
+  RoomInfo roomInfo = 2;
+}
+
+message QuitRoom {
+  string rqid = 1;
+}
+
+message QuitRoomResponse {
+  string rqid = 1;
+}
+
+message RoomInfoUpdated {
+  string rqid = 1;
+  RoomInfo info = 2;
+}
+
+message RoomDestroyed {
+  string rqid = 1;
+}
+
+message NewGame {
+  string rqid = 1;
+}
+
+message NewGameResponse {
+  string rqid = 1;
+  int32 port = 2;
+}
+
+message GameStarted {
+  string rqid = 1;
+  int32 port = 2;
+}
