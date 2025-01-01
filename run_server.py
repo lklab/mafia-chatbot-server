@@ -6,6 +6,7 @@ from typing import Any
 from game_process import startGameProcess
 
 from mafia_chatbot.main.room_manager import RoomManager
+from mafia_chatbot.main.room import Room
 
 from mafia_chatbot.network.tcp_server import TcpServer
 from mafia_chatbot.network.tcp_handler import TcpHandler
@@ -219,7 +220,7 @@ class MainProcess :
         self.roomManager.processMessageQuitRoom(user, message)
 
     def _switchUserMessageNewGame(self, user: ClientUser, message) :
-        async def _newGame() :
+        async def _newGame(room: Room) :
             # find free game process
             targetProcess: GameProcessHandler = None
             gameCount: int = 0
@@ -232,15 +233,24 @@ class MainProcess :
                 if count == 0 :
                     break
 
-            # send new game
+            # create new game
             gameId: str = str(uuid.uuid4())
 
-            # TODO multiplay
-            clientInfo = ipc_pb2.Client()
-            clientInfo.id = user.clientId
-            clientInfo.name = user.clientName
-            clients: list[ipc_pb2.Client] = [clientInfo]
+            # setup users
+            users: list[ClientUser]
+            if room == None :
+                users = [user]
+            else :
+                users = room.users
 
+            clients: list[ipc_pb2.Client] = []
+            for u in users :
+                clientInfo = ipc_pb2.Client()
+                clientInfo.id = u.clientId
+                clientInfo.name = u.clientName
+                clients.append(clientInfo)
+
+            # send new game
             startNewGame = ipc_pb2.StartNewGame()
             startNewGame.gameId = gameId
             startNewGame.clients.extend(clients)
@@ -254,14 +264,19 @@ class MainProcess :
                 return
 
             # assign game
-            game: GameHandler = GameHandler(gameId, targetProcess, [user]) # TODO multiplay
+            game: GameHandler = GameHandler(gameId, targetProcess, users)
             self.gameDict[gameId] = game
 
-            # response port to client
-            newGameResponse = game_pb2.NewGameResponse()
+            # response port to users
+            newGameResponse = room_pb2.NewGameResponse()
             newGameResponse.rqid = message.rqid
             newGameResponse.port = game.process.port
             self._sendToUser(user, newGameResponse)
+
+            gameStartedMessage = room_pb2.GameStarted()
+            gameStartedMessage.port = game.process.port
+            for u in users :
+                self._sendToUser(u, gameStartedMessage)
 
         # check ready
         if user.isNeedToSignUp() :
@@ -275,7 +290,14 @@ class MainProcess :
             self._sendToUser(user, errorResponse, isError=True)
             return
 
-        asyncio.create_task(_newGame()) # TODO 중복 호출에 대한 처리
+        # check room
+        room: Room = user.getHolder('room')
+        if room != None and not room.isHostUser(user) :
+            errorResponse = makeErrorResponse(message, 0, 'You are not the host of the room.')
+            self._sendToUser(user, errorResponse, isError=True)
+            return
+
+        asyncio.create_task(_newGame(room)) # TODO 중복 호출에 대한 처리
 
     def _switchUserMessageCheckCurrentGame(self, user: ClientUser, message) :
         game: GameHandler = user.getHolder('gamehandler')

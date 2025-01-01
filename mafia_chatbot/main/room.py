@@ -74,6 +74,9 @@ class Room :
                 self.destroy()
                 self.onDestroy(self)
 
+    def isHostUser(self, user: ClientUser) :
+        return self.hostUser.clientId == user.clientId
+
     def destroy(self, sendMessage: bool = False) :
         if self.isDestroyed :
             return

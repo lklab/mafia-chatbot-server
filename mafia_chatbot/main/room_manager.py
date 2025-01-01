@@ -100,11 +100,9 @@ class RoomManager :
         response.rqid = message.rqid
         self._sendToUser(user, response)
 
-    def destroyRoom(self, code: str) :
-        if code in self.roomByCode :
-            room: Room = self.roomByCode[code]
-            room.destroy()
-            self._onRoomDestroyed(room)
+    def destroyRoom(self, room: Room) :
+        room.destroy()
+        self._onRoomDestroyed(room)
 
     def _onRoomDestroyed(self, room: Room) :
         self.codeGenerator.returnCode(room.code)
