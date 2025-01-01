@@ -47,17 +47,26 @@ class GameProcessHandler :
         return self.gameCount
 
 class GameHandler :
-    def __init__(self, id: str, process: GameProcessHandler, clientIds: list[str]) :
+    def __init__(self, id: str, process: GameProcessHandler, users: list[ClientUser]) :
         self.id = id
         self.process = process
-        self.clientIds = clientIds
+        self.users = users
+
+        for user in self.users :
+            user.setHolder('gamehandler', self)
 
         process.addGame(id)
 
-    def removeClient(self, clientId: str) :
-        self.clientIds.remove(clientId)
+    def removeUser(self, user: ClientUser) :
+        if user in self.users :
+            self.users.remove(user)
+            user.releaseHolder('gamehandler')
 
     def terminate(self) :
+        for user in self.users :
+            user.releaseHolder('gamehandler')
+        self.users.clear()
+
         self.process.removeGame(self.id)
 
 class MainProcess :
@@ -69,7 +78,6 @@ class MainProcess :
         self.mainServerTask = None
 
         self.gameDict: dict[str, GameHandler] = {}
-        self.gameByClientId: dict[str, GameHandler] = {}
 
         self.roomManager: RoomManager = RoomManager(self.logger)
 
@@ -98,15 +106,15 @@ class MainProcess :
 
     async def _runMainServer(self) :
         self.logger.debug('_runMainServer()')
-        mainServer = ClientServer(
+        self.mainServer = ClientServer(
             port=MAIN_PORT,
             onAuth=self._onClientAuth,
             onMessage=self._onClientMessage,
             onDisconnected=self._onClientDisconnected,
             logger=self.logger,
         )
-        await mainServer.start()
-        await mainServer.serve()
+        await self.mainServer.start()
+        await self.mainServer.serve()
 
     ### Handle game process ###
     def _onGameProcessConnected(self, tcpHandler: TcpHandler) :
@@ -134,13 +142,13 @@ class MainProcess :
         self._startMainServer()
 
     def _switchGameProcessMessageClientExited(self, messageHandler: MessageHandler, message) :
-        # gameId: str = message.gameId
-        clientId: str = message.clientId
+        user: ClientUser = self.mainServer.getUser(message.clientId, onlyExists=True)
+        if user == None :
+            return
 
-        if clientId in self.gameByClientId :
-            game: GameHandler = self.gameByClientId[clientId]
-            game.removeClient(clientId)
-            del self.gameByClientId[clientId]
+        game: GameHandler = user.getHolder('gamehandler')
+        if game != None :
+            game.removeUser(user)
 
     def _switchGameProcessMessageGameEnded(self, messageHandler: MessageHandler, message) :
         gameId: str = message.gameId
@@ -149,10 +157,6 @@ class MainProcess :
             game: GameHandler = self.gameDict[gameId]
             del self.gameDict[gameId]
             game.terminate()
-
-            for clientId in game.clientIds :
-                if clientId in self.gameByClientId :
-                    del self.gameByClientId[clientId]
 
     _switchGameProcessMessage = {
         ipc_pb2.GameServerStarted : _switchGameProcessMessageGameServerStarted,
@@ -196,7 +200,7 @@ class MainProcess :
         self.roomManager.processMessageRequestMyRoomInfo(user, message)
 
     def _switchUserMessageCreateRoom(self, user: ClientUser, message) :
-        if user.clientId in self.gameByClientId :
+        if user.getHolder('gamehandler') != None :
             errorResponse = makeErrorResponse(message, 0, 'The game is already running.')
             self._sendToUser(user, errorResponse, isError=True)
             return
@@ -204,7 +208,7 @@ class MainProcess :
         self.roomManager.processMessageCreateRoom(user, message)
 
     def _switchUserMessageJoinRoom(self, user: ClientUser, message) :
-        if user.clientId in self.gameByClientId :
+        if user.getHolder('gamehandler') != None :
             errorResponse = makeErrorResponse(message, 0, 'The game is already running.')
             self._sendToUser(user, errorResponse, isError=True)
             return
@@ -250,9 +254,8 @@ class MainProcess :
                 return
 
             # assign game
-            game: GameHandler = GameHandler(gameId, targetProcess, [user.clientId]) # TODO multiplay
+            game: GameHandler = GameHandler(gameId, targetProcess, [user]) # TODO multiplay
             self.gameDict[gameId] = game
-            self.gameByClientId[user.clientId] = game # TODO multiplay
 
             # response port to client
             newGameResponse = game_pb2.NewGameResponse()
@@ -267,7 +270,7 @@ class MainProcess :
             return
 
         # check exist game
-        if user.clientId in self.gameByClientId :
+        if user.getHolder('gamehandler') != None :
             errorResponse = makeErrorResponse(message, 0, 'The game is already running.')
             self._sendToUser(user, errorResponse, isError=True)
             return
@@ -275,11 +278,12 @@ class MainProcess :
         asyncio.create_task(_newGame()) # TODO 중복 호출에 대한 처리
 
     def _switchUserMessageCheckCurrentGame(self, user: ClientUser, message) :
-        if user.clientId in self.gameByClientId :
+        game: GameHandler = user.getHolder('gamehandler')
+        if game != None :
             response = game_pb2.CurrentGame()
             response.rqid = message.rqid
             response.isGameExists = True
-            response.port = self.gameByClientId[user.clientId].process.port
+            response.port = game.process.port
             self._sendToUser(user, response)
         else :
             response = game_pb2.CurrentGame()

@@ -11,7 +11,6 @@ class RoomManager :
     def __init__(self, logger: WandsLogger) :
         self.logger = logger
 
-        self.roomByClientId: dict[str, Room] = {}
         self.roomByCode: dict[str, Room] = {}
         self.codeGenerator: CodeGenerator = CodeGenerator(min_digits=4)
 
@@ -19,9 +18,10 @@ class RoomManager :
         message = room_pb2.MyRoomInfo()
         message.rqid = message.rqid
 
-        if user.clientId in self.roomByClientId :
+        room: Room = user.getHolder('room')
+        if room != None :
             message.isRoomExists = True
-            self.roomByClientId[user.clientId].infoToProtoMessage(message.info)
+            room.infoToProtoMessage(message.info)
         else :
             message.isRoomExists = False
 
@@ -33,7 +33,7 @@ class RoomManager :
             self._sendToUser(user, errorResponse, isError=True)
             return
 
-        if user.clientId in self.roomByClientId :
+        if user.getHolder('room') != None :
             errorResponse = makeErrorResponse(message, 0, 'You are already participating in another room.')
             self._sendToUser(user, errorResponse, isError=True)
             return
@@ -45,7 +45,6 @@ class RoomManager :
 
         code: str = self.codeGenerator.issueCode()
         room = Room(message, code, user, self.logger, self._onRoomDestroyed)
-        self.roomByClientId[user.clientId] = room
         self.roomByCode[code] = room
 
         response = room_pb2.CreateRoomResponse()
@@ -59,7 +58,7 @@ class RoomManager :
             self._sendToUser(user, errorResponse, isError=True)
             return
 
-        if user.clientId in self.roomByClientId :
+        if user.getHolder('room') != None :
             errorResponse = makeErrorResponse(message, 0, 'You are already participating in another room.')
             self._sendToUser(user, errorResponse, isError=True)
             return
@@ -78,20 +77,17 @@ class RoomManager :
             self._sendToUser(user, errorResponse, isError=True)
             return
 
-        self.roomByClientId[user.clientId] = room
-
         response = room_pb2.JoinRoomResponse()
         response.rqid = message.rqid
         room.infoToProtoMessage(response.roomInfo)
         self._sendToUser(user, response)
 
     def processMessageQuitRoom(self, user: ClientUser, message) :
-        if user.clientId not in self.roomByClientId :
+        room: Room = user.getHolder('room')
+        if room == None :
             errorResponse = makeErrorResponse(message, 0, 'You are not participating in any room.')
             self._sendToUser(user, errorResponse, isError=True)
             return
-
-        room: Room = self.roomByClientId[user.clientId]
 
         try :
             room.quit(user)
@@ -99,8 +95,6 @@ class RoomManager :
             errorResponse = e.makeResponse(message)
             self._sendToUser(user, errorResponse, isError=True)
             return
-
-        del self.roomByClientId[user.clientId]
 
         response = room_pb2.QuitRoomResponse()
         response.rqid = message.rqid
@@ -114,10 +108,6 @@ class RoomManager :
 
     def _onRoomDestroyed(self, room: Room) :
         self.codeGenerator.returnCode(room.code)
-
-        for user in room.users :
-            if user.clientId in self.roomByClientId :
-                del self.roomByClientId[user.clientId]
         if room.code in self.roomByCode :
             del self.roomByCode[room.code]
 

@@ -30,12 +30,9 @@ class GameInstance :
         self.id = id
 
         self.users: dict[str, ClientUser] = {}
-        self.clientIds: list[str] = []
         for user in users :
-            clientId: str = user.clientId
-            self.users[clientId] = user
-            self.clientIds.append(clientId)
-            user.addRef()
+            self.users[user.clientId] = user
+            user.setHolder('game', self)
 
         self.onGameEnded = onGameEnded
 
@@ -77,7 +74,7 @@ class GameInstance :
         if user.clientId in self.users :
             if self.gameManager != None :
                 self.gameManager.removeUser(user)
-            user.releaseRef()
+            user.releaseHolder('game')
             del self.users[user.clientId]
 
     def terminate(self) :
@@ -87,7 +84,7 @@ class GameInstance :
             self.gameManager.terminate()
 
         for user in self.users.values() :
-            user.releaseRef()
+            user.releaseHolder('game')
 
         self.onGameEnded(self)
 
@@ -114,7 +111,6 @@ class GameInstance :
 class GameProcess :
     def __init__(self, port: int) :
         self.port: int = port
-        self.gameByClientId: dict[str, GameInstance] = {}
 
         # setup logger
         self.logger = WandsLogger('network', f'game-{self.port}')
@@ -175,9 +171,7 @@ class GameProcess :
         for client in message.clients :
             users.append(self.gameServer.getUser(client.id))
 
-        game: GameInstance = GameInstance(gameId, users, self._clearGame, self.logger)
-        for user in users :
-            self.gameByClientId[user.clientId] = game
+        GameInstance(gameId, users, self._clearGame, self.logger)
 
         # send response to main process
         response = ipc_pb2.StartNewGameResponse()
@@ -192,7 +186,7 @@ class GameProcess :
     def _onClientAuth(self, user: ClientUser, message) -> tuple[Any, bool] :
         self.logger.debug(f'_onClientAuth clientId={user.clientId}')
 
-        if user.clientId in self.gameByClientId :
+        if user.getHolder('game') != None :
             return None, True
 
         else :
@@ -220,12 +214,12 @@ class GameProcess :
         self._sendToUser(user, response, log=False)
 
     def _switchUserMessageRequestGameInfo(self, user: ClientUser, message) :
-        if user.clientId not in self.gameByClientId :
+        game: GameInstance = user.getHolder('game')
+        if game == None :
             errorResponse = makeErrorResponse(message, 0, 'There are no participating games.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
-        game: GameInstance = self.gameByClientId[user.clientId]
         if game.gameInfoMessage == None :
             errorResponse = makeErrorResponse(message, 0, 'Game info not set yet.')
             self._sendToUser(user, errorResponse, isError=True)
@@ -237,12 +231,12 @@ class GameProcess :
         self._sendToUser(user, response)
 
     def _switchUserMessageGameStart(self, user: ClientUser, message) :
-        if user.clientId not in self.gameByClientId :
+        game: GameInstance = user.getHolder('game')
+        if game == None :
             errorResponse = makeErrorResponse(message, 0, 'There are no participating games.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
-        game: GameInstance = self.gameByClientId[user.clientId]
         if game.isRunning() :
             errorResponse = makeErrorResponse(message, 0, 'The game is already running.')
             self._sendToUser(user, errorResponse, isError=True)
@@ -264,30 +258,30 @@ class GameProcess :
         self._sendToUser(user, response)
 
     def _switchUserMessageQuitGame(self, user: ClientUser, message) :
-        if user.clientId not in self.gameByClientId :
+        game: GameInstance = user.getHolder('game')
+        if game == None :
             errorResponse = makeErrorResponse(message, 0, 'There are no participating games.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
-        game: GameInstance = self.gameByClientId[user.clientId]
         game.removeUser(user)
-        del self.gameByClientId[user.clientId]
 
         clientExited = ipc_pb2.ClientExited()
         clientExited.gameId = game.id
         clientExited.clientId = user.clientId
         self._sendToMainProcess(clientExited)
 
-        if len(game.clientIds) == 0 :
-            game.terminate()
+        if len(game.users) == 0 :
+            game.terminate() # terminate에서 _clearGame이 호출되는데 ClientExited를 GameEnded보다 먼저 보내야 하므로 이 위치에 있어야 함
 
         response = game_pb2.QuitGameResponse()
         response.rqid = message.rqid
         self._sendToUser(user, response)
 
     def _switchUserMessageReportChat(self, user: ClientUser, message) :
-        if user.clientId in self.gameByClientId :
-            gameId: str = self.gameByClientId[user.clientId].id
+        game: GameInstance = user.getHolder('game')
+        if game != None :
+            gameId: str = game.id
 
             content: dict[str, str] = {}
             content['gameId'] = gameId
@@ -317,10 +311,6 @@ class GameProcess :
     }
 
     def _clearGame(self, game: GameInstance) :
-        for clientId in game.clientIds :
-            if clientId in self.gameByClientId :
-                del self.gameByClientId[clientId]
-
         gameEnded = ipc_pb2.GameEnded()
         gameEnded.gameId = game.id
         self._sendToMainProcess(gameEnded)

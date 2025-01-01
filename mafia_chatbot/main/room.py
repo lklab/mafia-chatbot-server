@@ -31,7 +31,7 @@ class Room :
 
         self.hostUser: ClientUser = hostUser
         self.users: list[ClientUser] = [hostUser]
-        hostUser.addRef()
+        hostUser.setHolder('room', self)
 
         self.logger = logger
         self.onDestroy = onDestroy
@@ -52,7 +52,7 @@ class Room :
         if len(self.users) >= self.maxHumans :
             raise MessageException(0, 'This room is full.')
 
-        user.addRef()
+        user.setHolder('room', self)
         self.users.append(user)
         self._sendInfoToAllUsers()
 
@@ -64,7 +64,7 @@ class Room :
             raise MessageException(0, 'You are not participating in this room.')
 
         self.users.remove(user)
-        user.releaseRef()
+        user.releaseHolder('room')
 
         if user.clientId == self.hostUser.clientId :
             if len(self.users) > 0 :
@@ -84,7 +84,7 @@ class Room :
             self.timeoutTask = None
 
         for user in self.users :
-            user.releaseRef()
+            user.releaseHolder('room')
 
         if sendMessage :
             self._sendDestroyedToAllUsers()

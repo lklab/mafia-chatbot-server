@@ -27,23 +27,25 @@ class ClientUser :
 
         # variables
         self.handler = None
-        self.refCount: int = 0
+        self.holders: dict[str, object] = {}
         self.logger: GameLogger = None
         self.subscribers: dict[type, Callable[[Any], None]] = {}
         self.isReleased: bool = False
 
-    ### ref count ###
-    def addRef(self) :
-        if self.isReleased :
-            return
-        self.refCount += 1
+    ### holder ###
+    def setHolder(self, key: str, holder: object) :
+        self.holders[key] = holder
 
-    def releaseRef(self) :
-        self.refCount -= 1
-        self._checkReleasable()
+    def getHolder(self, key: str) -> object :
+        return self.holders.get(key)
+
+    def releaseHolder(self, key) :
+        if key in self.holders :
+            del self.holders[key]
+            self._checkReleasable()
 
     def _checkReleasable(self) :
-        if self.refCount <= 0 and self.handler == None and not self.isReleased :
+        if len(self.holders) <= 0 and self.handler == None and not self.isReleased :
             self.isReleased = True
             self.onRelease(self)
 
