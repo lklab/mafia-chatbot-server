@@ -5,6 +5,8 @@ from typing import Any
 
 from game_process import startGameProcess
 
+from mafia_chatbot.main.room_manager import RoomManager
+
 from mafia_chatbot.network.tcp_server import TcpServer
 from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.message_handler import MessageHandler
@@ -60,6 +62,8 @@ class GameHandler :
 
 class MainProcess :
     def __init__(self) :
+        self.logger = WandsLogger('network', 'main')
+
         self.gameProcesses: list[Process] = []
         self.gameProcessHandlers: list[GameProcessHandler] = []
         self.mainServerTask = None
@@ -67,8 +71,7 @@ class MainProcess :
         self.gameDict: dict[str, GameHandler] = {}
         self.gameByClientId: dict[str, GameHandler] = {}
 
-        # setup logger
-        self.logger = WandsLogger('network', 'main')
+        self.roomManager: RoomManager = RoomManager(self.logger)
 
     async def run(self) :
         gameProcessServer = TcpServer(port=GAME_PROCESS_PORT, host='127.0.0.1', useSSL=False)
@@ -189,18 +192,27 @@ class MainProcess :
 
         user.disconnect()
 
-    def _switchUserMessageCheckCurrentGame(self, user: ClientUser, message) :
+    def _switchUserMessageRequestMyRoomInfo(self, user: ClientUser, message) :
+        self.roomManager.processMessageRequestMyRoomInfo(user, message)
+
+    def _switchUserMessageCreateRoom(self, user: ClientUser, message) :
         if user.clientId in self.gameByClientId :
-            response = game_pb2.CurrentGame()
-            response.rqid = message.rqid
-            response.isGameExists = True
-            response.port = self.gameByClientId[user.clientId].process.port
-            self._sendToUser(user, response)
-        else :
-            response = game_pb2.CurrentGame()
-            response.rqid = message.rqid
-            response.isGameExists = False
-            self._sendToUser(user, response)
+            errorResponse = makeErrorResponse(message, 0, 'The game is already running.')
+            self._sendToUser(user, errorResponse, isError=True)
+            return
+
+        self.roomManager.processMessageCreateRoom(user, message)
+
+    def _switchUserMessageJoinRoom(self, user: ClientUser, message) :
+        if user.clientId in self.gameByClientId :
+            errorResponse = makeErrorResponse(message, 0, 'The game is already running.')
+            self._sendToUser(user, errorResponse, isError=True)
+            return
+
+        self.roomManager.processMessageJoinRoom(user, message)
+
+    def _switchUserMessageQuitRoom(self, user: ClientUser, message) :
+        self.roomManager.processMessageQuitRoom(user, message)
 
     def _switchUserMessageNewGame(self, user: ClientUser, message) :
         async def _newGame() :
@@ -262,11 +274,28 @@ class MainProcess :
 
         asyncio.create_task(_newGame()) # TODO 중복 호출에 대한 처리
 
+    def _switchUserMessageCheckCurrentGame(self, user: ClientUser, message) :
+        if user.clientId in self.gameByClientId :
+            response = game_pb2.CurrentGame()
+            response.rqid = message.rqid
+            response.isGameExists = True
+            response.port = self.gameByClientId[user.clientId].process.port
+            self._sendToUser(user, response)
+        else :
+            response = game_pb2.CurrentGame()
+            response.rqid = message.rqid
+            response.isGameExists = False
+            self._sendToUser(user, response)
+
     _switchUserMessage = {
         auth_pb2.UpdateUserInfo : _switchUserMessageUpdateUserInfo,
         auth_pb2.DeleteUser : _switchUserMessageDeleteUser,
+        room_pb2.RequestMyRoomInfo : _switchUserMessageRequestMyRoomInfo,
+        room_pb2.CreateRoom : _switchUserMessageCreateRoom,
+        room_pb2.JoinRoom : _switchUserMessageJoinRoom,
+        room_pb2.QuitRoom : _switchUserMessageQuitRoom,
+        room_pb2.NewGame : _switchUserMessageNewGame,
         game_pb2.CheckCurrentGame : _switchUserMessageCheckCurrentGame,
-        game_pb2.NewGame : _switchUserMessageNewGame,
     }
 
     def _sendToGameProcess(self, messageHandler: MessageHandler, message) :
@@ -283,7 +312,7 @@ class MainProcess :
         if isError :
             self.logger.error(f'_sendToUser id={user.clientId}, name={user.clientName}, type={type(message)}, message=<{message}>')
         else :
-            self.logger.debug(f'_sendToClient id={user.clientId}, name={user.clientName}, type={type(message)}, message=<{message}>')
+            self.logger.debug(f'_sendToUser id={user.clientId}, name={user.clientName}, type={type(message)}, message=<{message}>')
         user.send(message)
 
 if __name__ == "__main__" :
