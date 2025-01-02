@@ -70,9 +70,11 @@ message Player {
 
 enum Phase {
   Phase_UNKNOWN = 0;
-  Phase_DAY = 1;
-  Phase_EVENING = 2;
-  Phase_NIGHT = 3;
+  Phase_PREPARE = 1;
+  Phase_DAY = 2;
+  Phase_EVENING = 3;
+  Phase_NIGHT = 4;
+  Phase_END = 5;
 }
 
 message RequestGamePhase {
@@ -189,6 +191,8 @@ enum GameEndReason {
   GAME_END_CITIZEN_WIN = 1;
   GAME_END_MAFIA_WIN = 2;
   GAME_END_NO_HUMAN_PLAYER = 3;
+  GAME_END_TIMEOUT = 4;
+  GAME_END_INTERRUPTED = 5;
 }
 
 message GameEnd {

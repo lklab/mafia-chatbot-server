@@ -31,8 +31,16 @@ class GameManager :
 
         self._ = self.gameState.translate
 
-    def terminate(self) :
+    def terminate(self, reason=game_pb2.GameEndReason.GAME_END_INTERRUPTED) :
+        if self.terminated or self.gameState.currentPhase == Phase.END :
+            return
         self.terminated = True
+
+        for player in self.gameState.userPlayers :
+            message = game_pb2.GameEnd()
+            message.reason = reason
+            player.user.send(message)
+            player.user.clearSubscribers()
 
     def removeUser(self, user: ClientUser) :
         user.clearSubscribers()
@@ -46,6 +54,20 @@ class GameManager :
 
     async def _mainLogic(self) :
         gameEndInfo: GameEndInfo = None
+
+        timeout: float = time.monotonic() + 60
+        while True :
+            # check timeout
+            if time.monotonic() >= timeout :
+                self.terminate(reason=game_pb2.GameEndReason.GAME_END_TIMEOUT)
+                return
+
+            # check all user connected
+            for player in self.gameState.userPlayers :
+                if not player.user.isConnected() :
+                    await asyncio.sleep(0.1)
+                    continue
+            break
 
         while True :
             self.gameState.setPhase(Phase.DAY)
@@ -68,7 +90,7 @@ class GameManager :
 
             self.gameState.addRound()
 
-        self.gameState.setPhase(Phase.NOT_PLAYING)
+        self.gameState.setPhase(Phase.END)
 
         for player in self.gameState.userPlayers :
             message = game_pb2.GameEnd()

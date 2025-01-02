@@ -22,16 +22,18 @@ TONES: list[str] = [
 ]
 
 class Phase(Enum) :
-    NOT_PLAYING = 0
+    PREPARE = 0
     DAY = 1
     EVENING = 2
     NIGHT = 3
+    END = 4
 
 phaseToProtoDict: dict[Phase, game_pb2.Phase] = {
-    Phase.NOT_PLAYING: game_pb2.Phase.Phase_UNKNOWN,
+    Phase.PREPARE: game_pb2.Phase.Phase_PREPARE,
     Phase.DAY: game_pb2.Phase.Phase_DAY,
     Phase.EVENING: game_pb2.Phase.Phase_EVENING,
     Phase.NIGHT: game_pb2.Phase.Phase_NIGHT,
+    Phase.END: game_pb2.Phase.Phase_END,
 }
 
 class VoteData :
@@ -324,7 +326,7 @@ class GameState :
 
         ### phase data
         self.round = 0
-        self.currentPhase = Phase.NOT_PLAYING
+        self.currentPhase = Phase.PREPARE
         self.daySeconds = 60
         self.eveningSeconds = 30
         self.nightSeconds = 30
@@ -413,6 +415,9 @@ class GameState :
     def addRound(self) :
         self.round += 1
 
+    def _switchPhaseNone(self) :
+        pass
+
     def _switchPhaseDay(self) :
         self._reloadAllChatingCounts()
         self.timeLimit: float = time.monotonic() + self.daySeconds
@@ -426,9 +431,11 @@ class GameState :
         self.timeLimit: float = time.monotonic() + self.nightSeconds
 
     _switchPhase = {
+        Phase.PREPARE : _switchPhaseNone,
         Phase.DAY : _switchPhaseDay,
         Phase.EVENING : _switchPhaseEvening,
         Phase.NIGHT : _switchPhaseNight,
+        Phase.END : _switchPhaseNone,
     }
 
     def _reloadAllChatingCounts(self) :
@@ -445,9 +452,8 @@ class GameState :
         self.currentPhase = phase
         self.logger.log(TAG.PHASE, f'round={self.round}, phase={self.currentPhase.name}')
 
-        if phase != Phase.NOT_PLAYING :
-            GameState._switchPhase[phase](self)
-            self.sendGameStateMessageToAllUsers()
+        GameState._switchPhase[phase](self)
+        self.sendGameStateMessageToAllUsers()
 
     def getCurrentRoundInfo(self) -> RoundInfo :
         return RoundInfo(self.round, len(self.players), len(self.mafiaPlayers))

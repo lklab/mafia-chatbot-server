@@ -50,6 +50,9 @@ class ClientUser :
             self.onRelease(self)
 
     ### message ###
+    def isConnected(self) :
+        return self.handler != None
+
     def setMessageHandler(self, handler: MessageHandler) :
         if self.isReleased :
             return
