@@ -202,7 +202,12 @@ class GameProcess :
         if type(message) in GameProcess._switchUserMessage :
             GameProcess._switchUserMessage[type(message)](self, user, message)
         else :
-            user.forward(message)
+            if user.forward(message) :
+                pass
+            else :
+                errorResponse = makeErrorResponse(message, 0, 'Cannot process the message.')
+                self._sendToUser(user, errorResponse, isError=True)
+                return
 
     def _onClientDisconnected(self, user: ClientUser) :
         self.logger.debug(f'_onClientDisconnected clientId={user.clientId} name={user.clientName}')

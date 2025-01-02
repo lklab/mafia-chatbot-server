@@ -61,7 +61,7 @@ class ClientUser :
 
     def forward(self, message) :
         if self.handler == None :
-            return
+            return False
 
         msgType = type(message)
         if msgType in self.subscribers :
