@@ -129,7 +129,7 @@ class ClientUser :
         return len(self.clientName) == 0
 
     def delete(self) -> bool :
-        if self.refCount > 0 :
+        if len(self.holders) > 0 :
             return False
 
         firebase.deleteUser(self.clientId) # TODO 삭제된 사용자 uid 일정 기간동안 보유하면서 새로운 연결 막기
