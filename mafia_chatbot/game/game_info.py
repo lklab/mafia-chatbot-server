@@ -37,7 +37,7 @@ class GameInfo :
         self.users = users or []
         self.localPlayerName = localPlayerName
 
-        self.language = language
+        self.language = language # TODO varify
 
         self.useLLM = True
         self.isCUI = localPlayerName != None

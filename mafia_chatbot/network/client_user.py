@@ -87,6 +87,7 @@ class ClientUser :
 
     def clearSubscribers(self) :
         self.subscribers.clear()
+        self.logger = None
 
     def disconnect(self) :
         if self.handler != None :

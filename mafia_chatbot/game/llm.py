@@ -233,7 +233,7 @@ class LLM :
 
         # setup prompt
         template = (
-            "You are a player participating in a Mafia game. Your name is {my_name}, and your role is {my_role}. {claim_public_role}It is currently the discussion phase, and it is your turn to speak. You must claim that {estimations}. Use the provided ##Conversation Logs## and ##Evidence## as references, or base your claim on your logical reasoning. Keep your statement concise, limited to two sentences, and written in a {tone} tone, written in %(language)s and resembling natural dialogue. Your response should differ from previous statements and introduce variety in phrasing."
+            "You are a player participating in a Mafia game. Your name is {my_name}, and your role is {my_role}. {claim_public_role}It is currently the discussion phase, and it is your turn to speak. You must claim that {estimations}. Use the provided ##Conversation Logs## and ##Evidence## as references, or base your claim on your logical reasoning. Keep your statement concise, limited to two sentences, and written in a {tone} tone, written in %(language)s and resembling natural dialogue.%(dont_tranlate)s Your response should differ from previous statements and introduce variety in phrasing."
             "\n\n"
             "##Conversation Logs##"
             "\n"
@@ -243,7 +243,10 @@ class LLM :
             "\n"
             "{evidence}"
         )
-        template = template % {'language' : gameInfo.language}
+        template = template % {
+            'language' : gameInfo.language,
+            'dont_tranlate' : ' Do not translate into english.' if gameInfo.language != 'english' else '',
+        }
         prompt = PromptTemplate.from_template(template)
 
         # setup chain

@@ -36,7 +36,7 @@ class GameManager :
             return
         self.terminated = True
 
-        for player in self.gameState.userPlayers :
+        for player in self.gameState.userPlayers : # TODO 메인프로세스에 GameEnd 처리 완료 후 클라이언트에게 보내기
             message = game_pb2.GameEnd()
             message.reason = reason
             player.user.send(message)
@@ -50,11 +50,9 @@ class GameManager :
         UserMessageProcessor(self.gameState, self.trustRecorder, player)
 
     async def start(self) :
-        await self._mainLogic()
+        self.gameState.setPhase(Phase.PREPARE)
 
-    async def _mainLogic(self) :
-        gameEndInfo: GameEndInfo = None
-
+        # wait for users
         timeout: float = time.monotonic() + 60
         while True :
             # check timeout
@@ -68,6 +66,11 @@ class GameManager :
                     await asyncio.sleep(0.1)
                     continue
             break
+
+        await self._mainLogic()
+
+    async def _mainLogic(self) :
+        gameEndInfo: GameEndInfo = None
 
         while True :
             self.gameState.setPhase(Phase.DAY)

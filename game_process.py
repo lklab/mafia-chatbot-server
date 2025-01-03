@@ -276,6 +276,8 @@ class GameProcess :
         clientExited.clientId = user.clientId
         self._sendToMainProcess(clientExited)
 
+        # TODO 메인 프로세스에서 응답 받은 다음에 클라이언트에게 응답 보내기
+
         if len(game.users) == 0 :
             game.terminate() # terminate에서 _clearGame이 호출되는데 ClientExited를 GameEnded보다 먼저 보내야 하므로 이 위치에 있어야 함
 

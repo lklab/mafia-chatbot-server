@@ -330,7 +330,7 @@ class GameState :
         self.daySeconds = 60
         self.eveningSeconds = 30
         self.nightSeconds = 30
-        self.timeLimit: float = None
+        self.timeLimit: float = time.monotonic()
 
         # phase data - debug
         if gameInfo.debugInfo != None :
