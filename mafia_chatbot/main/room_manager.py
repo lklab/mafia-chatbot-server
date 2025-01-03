@@ -15,17 +15,17 @@ class RoomManager :
         self.codeGenerator: CodeGenerator = CodeGenerator(min_digits=4)
 
     def processMessageRequestMyRoomInfo(self, user: ClientUser, message) :
-        message = room_pb2.MyRoomInfo()
-        message.rqid = message.rqid
+        response = room_pb2.MyRoomInfo()
+        response.rqid = message.rqid
 
         room: Room = user.getHolder('room')
         if room != None :
-            message.isRoomExists = True
-            room.infoToProtoMessage(message.info)
+            response.isRoomExists = True
+            room.infoToProtoMessage(response.info)
         else :
-            message.isRoomExists = False
+            response.isRoomExists = False
 
-        self._sendToUser(message)
+        self._sendToUser(user, response)
 
     def processMessageCreateRoom(self, user: ClientUser, message) :
         if user.isNeedToSignUp() :
