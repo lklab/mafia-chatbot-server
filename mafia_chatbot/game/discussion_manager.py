@@ -435,7 +435,7 @@ class DiscussionManager :
             point: float = self.trustRecorder.getTrustPoint(estimation.playerInfo)
             if point > 30.0 and (point / 100.0) > random.random() :
                 player: Player = None
-                for dPlayer in self.dPlayers : # TODO change to self.gameState.players
+                for dPlayer in self.dPlayers : # AI 사용자 및 발언 우선순위로 선택해야 하므로 gameState.players 대신 dPlayers 사용
                     if dPlayer.player != data.speaker and dPlayer.player.info != estimation.playerInfo :
                         player = dPlayer.player
                         break
