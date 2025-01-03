@@ -26,7 +26,15 @@ message ClientExited {
   string clientId = 3;
 }
 
+message ClientExitedResponse {
+  string rqid = 1;
+}
+
 message GameEnded {
   string rqid = 1;
   string gameId = 2;
+}
+
+message GameEndedResponse {
+  string rqid = 1;
 }

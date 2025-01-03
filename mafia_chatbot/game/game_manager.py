@@ -31,14 +31,18 @@ class GameManager :
 
         self._ = self.gameState.translate
 
+        self.gameEndReason: game_pb2.GameEndReason = game_pb2.GameEndReason.GAME_END_INTERRUPTED
+
     def terminate(self, reason=game_pb2.GameEndReason.GAME_END_INTERRUPTED) :
         if self.terminated or self.gameState.currentPhase == Phase.END :
             return
         self.terminated = True
+        self.gameEndReason = reason
 
-        for player in self.gameState.userPlayers : # TODO 메인프로세스에 GameEnd 처리 완료 후 클라이언트에게 보내기
-            message = game_pb2.GameEnd()
-            message.reason = reason
+    def sendGameEndToUsers(self) :
+        message = game_pb2.GameEnd()
+        message.reason = self.gameEndReason
+        for player in self.gameState.userPlayers :
             player.user.send(message)
             player.user.clearSubscribers()
 
@@ -94,12 +98,7 @@ class GameManager :
             self.gameState.addRound()
 
         self.gameState.setPhase(Phase.END)
-
-        for player in self.gameState.userPlayers :
-            message = game_pb2.GameEnd()
-            message.reason = gameEndReasonToProtoDict[gameEndInfo.reason]
-            player.user.send(message)
-            player.user.clearSubscribers()
+        self.gameEndReason = gameEndReasonToProtoDict[gameEndInfo.reason]
 
     async def _processDay(self) :
         self._addSystemChat(self._("It is now morning. Please begin your discussion."))

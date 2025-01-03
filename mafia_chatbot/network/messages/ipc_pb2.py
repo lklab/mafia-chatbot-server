@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tipc.proto\"/\n\x11GameServerStarted\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\"\"\n\x06\x43lient\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"F\n\x0cStartNewGame\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0e\n\x06gameId\x18\x02 \x01(\t\x12\x18\n\x07\x63lients\x18\x03 \x03(\x0b\x32\x07.Client\"$\n\x14StartNewGameResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\">\n\x0c\x43lientExited\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0e\n\x06gameId\x18\x02 \x01(\t\x12\x10\n\x08\x63lientId\x18\x03 \x01(\t\")\n\tGameEnded\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0e\n\x06gameId\x18\x02 \x01(\tb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tipc.proto\"/\n\x11GameServerStarted\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\"\"\n\x06\x43lient\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"F\n\x0cStartNewGame\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0e\n\x06gameId\x18\x02 \x01(\t\x12\x18\n\x07\x63lients\x18\x03 \x03(\x0b\x32\x07.Client\"$\n\x14StartNewGameResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\">\n\x0c\x43lientExited\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0e\n\x06gameId\x18\x02 \x01(\t\x12\x10\n\x08\x63lientId\x18\x03 \x01(\t\"$\n\x14\x43lientExitedResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\")\n\tGameEnded\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0e\n\x06gameId\x18\x02 \x01(\t\"!\n\x11GameEndedResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\tb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -41,6 +41,10 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_STARTNEWGAMERESPONSE']._serialized_end=206
   _globals['_CLIENTEXITED']._serialized_start=208
   _globals['_CLIENTEXITED']._serialized_end=270
-  _globals['_GAMEENDED']._serialized_start=272
-  _globals['_GAMEENDED']._serialized_end=313
+  _globals['_CLIENTEXITEDRESPONSE']._serialized_start=272
+  _globals['_CLIENTEXITEDRESPONSE']._serialized_end=308
+  _globals['_GAMEENDED']._serialized_start=310
+  _globals['_GAMEENDED']._serialized_end=351
+  _globals['_GAMEENDEDRESPONSE']._serialized_start=353
+  _globals['_GAMEENDEDRESPONSE']._serialized_end=386
 # @@protoc_insertion_point(module_scope)

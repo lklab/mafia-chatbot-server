@@ -151,6 +151,10 @@ class MainProcess :
         if game != None :
             game.removeUser(user)
 
+        response = ipc_pb2.ClientExitedResponse()
+        response.rqid = message.rqid
+        self._sendToGameProcess(messageHandler, response)
+
     def _switchGameProcessMessageGameEnded(self, messageHandler: MessageHandler, message) :
         gameId: str = message.gameId
 
@@ -158,6 +162,10 @@ class MainProcess :
             game: GameHandler = self.gameDict[gameId]
             del self.gameDict[gameId]
             game.terminate()
+
+        response = ipc_pb2.GameEndedResponse()
+        response.rqid = message.rqid
+        self._sendToGameProcess(messageHandler, response)
 
     _switchGameProcessMessage = {
         ipc_pb2.GameServerStarted : _switchGameProcessMessageGameServerStarted,

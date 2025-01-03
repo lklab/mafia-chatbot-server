@@ -16,7 +16,9 @@
                 "StartNewGame",
                 "StartNewGameResponse",
                 "ClientExited",
-                "GameEnded"
+                "ClientExitedResponse",
+                "GameEnded",
+                "GameEndedResponse"
             ]
         },
         {
