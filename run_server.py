@@ -232,7 +232,7 @@ class MainProcess :
             # find free game process
             targetProcess: GameProcessHandler = None
             gameCount: int = 0
-            
+
             for process in self.gameProcessHandlers :
                 count = process.getGameCount()
                 if targetProcess == None or count < gameCount :
@@ -274,6 +274,10 @@ class MainProcess :
             # assign game
             game: GameHandler = GameHandler(gameId, targetProcess, users)
             self.gameDict[gameId] = game
+
+            # destroy room
+            if room != None :
+                self.roomManager.destroyRoom(room)
 
             # response port to users
             newGameResponse = room_pb2.NewGameResponse()
