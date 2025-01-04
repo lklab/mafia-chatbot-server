@@ -26,64 +26,92 @@ class GameInstance :
     pass
 
 class GameInstance :
-    def __init__(self, id: str, users: list[ClientUser], onGameEnded: Callable[[GameInstance], Awaitable[None]], logger: WandsLogger) :
+    def __init__(self,
+                 id: str,
+                 users: list[ClientUser],
+                 gameInfoRaw: game_data_pb2.GameInfo,
+                 onGameEnded: Callable[[GameInstance], Awaitable[None]],
+                 logger: WandsLogger
+    ) :
         self.id = id
+        self.gameInfoRaw = gameInfoRaw
+        self.onGameEnded = onGameEnded
+        self.logger = logger
+        self.isTerminated: bool = False
 
         self.users: dict[str, ClientUser] = {}
         for user in users :
             self.users[user.clientId] = user
             user.setHolder('game', self)
-
-        self.onGameEnded = onGameEnded
-
-        self.logger = logger
-
-        self.gameInfoMessage: game_pb2.GameInfo = None
-        self.gameInfo: GameInfo = None
+        self.readyUsers: set[ClientUser] = set()
 
         self.gameManager: GameManager = None
-        self.isTerminated: bool = False
 
         self.timeoutTask = asyncio.create_task(self._timeoutTerminate(60))
 
-    def setGameInfoMessage(self, message: game_pb2.GameInfo) :
-        self.gameInfoMessage = message
-
-    def prepareGame(self) -> bool :
-        if self.gameManager != None or self.isTerminated :
-            return False
-        self._setupGameInfo()
-        return self.gameInfo.checkValid()
-
-    def startGame(self) :
-        async def _startGame() :
-            await self.gameManager.start()
-            self.terminate()
-
-        if self.gameManager != None or self.gameInfo == None or self.isTerminated :
-            return
-
-        self.timeoutTask.cancel()
-        self.gameManager = GameManager(self.gameInfo)
-        asyncio.create_task(_startGame())
-
-    def isRunning(self) :
-        return self.gameManager != None
+    def readyUser(self, user: ClientUser) :
+        if user.clientId in self.users :
+            self.readyUsers.add(user)
+            self._checkUserState()
 
     def removeUser(self, user: ClientUser) :
         if user.clientId in self.users :
             if self.gameManager != None :
                 self.gameManager.removeUser(user)
-            user.releaseHolder('game')
-            del self.users[user.clientId]
 
-    def terminate(self) :
+            user.releaseHolder('game')
+
+            del self.users[user.clientId]
+            self.readyUsers.discard(user)
+
+            self._checkUserState()
+
+    def isRunning(self) :
+        return self.gameManager != None
+
+    def _checkUserState(self) :
+        # 남은 사용자가 없는 경우 게임 종료
+        if len(self.users) == 0 :
+            self._terminate()
+
+        # 모든 플레이어가 준비된 경우 게임 시작
+        elif len(self.users) == len(self.readyUsers) :
+            self._startGame()
+
+    def _startGame(self) :
+        async def _startGame() :
+            await self.gameManager.start()
+            self._terminate()
+
+        # 이미 게임이 시작된 경우, 종료된 경우 무시
+        if self.gameManager != None or self.isTerminated :
+            return
+
+        # stop timeout
+        self.timeoutTask.cancel()
+
+        # create game
+        gameInfo: GameInfo = GameInfo(
+            gameId=self.id,
+            playerCount=self.gameInfoRaw.playerCount,
+            mafiaCount=self.gameInfoRaw.mafiaCount,
+            users=list(self.users.values()),
+            localPlayerName=None,
+            language=self.gameInfoRaw.language,
+            debugInfo=DebugInfo(self.gameInfoRaw.debugInfo) if self.gameInfoRaw.debugInfo.isDebug else None,
+        )
+        self.gameManager = GameManager(gameInfo)
+
+        # start game logic
+        asyncio.create_task(_startGame())
+
+    def _terminate(self) :
         if self.isTerminated :
             return
         self.isTerminated = True
-        asyncio.create_task(self._terminate())
+        asyncio.create_task(self._terminateAsync())
 
-    async def _terminate(self) :
+    async def _terminateAsync(self) :
         if self.gameManager != None :
             self.gameManager.terminate()
 
@@ -96,17 +124,6 @@ class GameInstance :
         if self.gameManager != None :
             self.gameManager.sendGameEndToUsers()
 
-    def _setupGameInfo(self) :
-        self.gameInfo = GameInfo(
-            gameId=self.id,
-            playerCount=self.gameInfoMessage.playerCount,
-            mafiaCount=self.gameInfoMessage.mafiaCount,
-            users=list(self.users.values()),
-            localPlayerName=None,
-            language=self.gameInfoMessage.language,
-            debugInfo=DebugInfo(self.gameInfoMessage.debugInfo) if self.gameInfoMessage.debugInfo.isDebug else None,
-        )
-
     async def _timeoutTerminate(self, seconds: float) :
         try:
             await asyncio.sleep(seconds)
@@ -114,7 +131,7 @@ class GameInstance :
             return
 
         self.logger.error(f'game {self.id} terminated by timeout')
-        self.terminate()
+        self._terminate()
 
 class GameProcess :
     def __init__(self, port: int) :
@@ -179,7 +196,7 @@ class GameProcess :
         for client in message.clients :
             users.append(self.gameServer.getUser(client.id))
 
-        GameInstance(gameId, users, self._clearGame, self.logger)
+        GameInstance(gameId, users, message.gameInfo, self._clearGame, self.logger)
 
         # send response to main process
         response = ipc_pb2.StartNewGameResponse()
@@ -226,24 +243,19 @@ class GameProcess :
         response.time = int(time.monotonic() * 1000)
         self._sendToUser(user, response, log=False)
 
-    def _switchUserMessageRequestGameInfo(self, user: ClientUser, message) :
+    def _switchUserMessageRequestCurrentGameInfo(self, user: ClientUser, message) :
         game: GameInstance = user.getHolder('game')
         if game == None :
             errorResponse = makeErrorResponse(message, 0, 'There are no participating games.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
-        if game.gameInfoMessage == None :
-            errorResponse = makeErrorResponse(message, 0, 'Game info not set yet.')
-            self._sendToUser(user, errorResponse, isError=True)
-            return
-
-        response = game_pb2.GameInfo()
-        response.CopyFrom(game.gameInfoMessage)
+        response = game_data_pb2.CurrentGameInfo()
         response.rqid = message.rqid
+        response.info.CopyFrom(game.gameInfoRaw)
         self._sendToUser(user, response)
 
-    def _switchUserMessageGameStart(self, user: ClientUser, message) :
+    def _switchUserMessageReadyGame(self, user: ClientUser, message) :
         game: GameInstance = user.getHolder('game')
         if game == None :
             errorResponse = makeErrorResponse(message, 0, 'There are no participating games.')
@@ -255,25 +267,14 @@ class GameProcess :
             self._sendToUser(user, errorResponse, isError=True)
             return
 
-        game.setGameInfoMessage(message.info)
+        game.readyUser(user)
 
-        isValid: bool = game.prepareGame()
-        if not isValid :
-            game.terminate()
-            errorResponse = makeErrorResponse(message, 0, 'GameInfo is invalid.')
-            self._sendToUser(user, errorResponse, isError=True)
-            return
-
-        game.startGame()
-
-        response = game_pb2.GameStartResponse()
+        response = game_pb2.ReadyGameResponse()
         response.rqid = message.rqid
         self._sendToUser(user, response)
 
     def _switchUserMessageQuitGame(self, user: ClientUser, message) :
         async def _quitGame(game: GameInstance) :
-            game.removeUser(user)
-
             clientExited = ipc_pb2.ClientExited()
             clientExited.gameId = game.id
             clientExited.clientId = user.clientId
@@ -283,8 +284,9 @@ class GameProcess :
             except Exception as e :
                 self.logger.error(f'clientExited failed for {user.clientId}: {e}')
 
-            if len(game.users) == 0 :
-                game.terminate() # terminate에서 _clearGame이 호출되는데 ClientExited를 GameEnded보다 먼저 보내야 하므로 이 위치에 있어야 함
+            # 남은 사용자가 없는 경우 terminate에서 _clearGame이 호출되는데
+            # ClientExited를 GameEnded보다 먼저 보내야 하므로 이 위치에 있어야 함
+            game.removeUser(user)
 
             response = game_pb2.QuitGameResponse()
             response.rqid = message.rqid
@@ -324,8 +326,8 @@ class GameProcess :
 
     _switchUserMessage = {
         time_pb2.RequestTimeSync : _switchUserMessageRequestTimeSync,
-        game_pb2.RequestGameInfo : _switchUserMessageRequestGameInfo,
-        game_pb2.GameStart : _switchUserMessageGameStart,
+        game_pb2.RequestCurrentGameInfo : _switchUserMessageRequestCurrentGameInfo,
+        game_pb2.ReadyGame : _switchUserMessageReadyGame,
         game_pb2.QuitGame : _switchUserMessageQuitGame,
         game_pb2.ReportChat : _switchUserMessageReportChat,
     }

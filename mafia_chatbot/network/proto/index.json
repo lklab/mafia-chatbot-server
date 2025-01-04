@@ -66,10 +66,10 @@
             [
                 "CheckCurrentGame",
                 "CurrentGame",
-                "RequestGameInfo",
-                "GameInfo",
-                "GameStart",
-                "GameStartResponse",
+                "RequestCurrentGameInfo",
+                "CurrentGameInfo",
+                "ReadyGame",
+                "ReadyGameResponse",
                 "RequestGamePhase",
                 "GamePhase",
                 "RequestGameState",
@@ -90,6 +90,10 @@
                 "ReportChat",
                 "ReportChatResponse"
             ]
+        },
+        {
+            "name" : "game_data",
+            "messages" : []
         }
     ]
 }

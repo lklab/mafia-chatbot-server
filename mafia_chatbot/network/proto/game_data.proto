@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+message DebugInfo {
+  bool isDebug = 1;
+  Role fixedRole = 2;
+  string fixedRoleClientId = 3;
+  int32 daySeconds = 4;
+  int32 eveningSeconds = 5;
+  int32 nightSeconds = 6;
+  bool useLLM = 7;
+  string nonTargetableClientId = 8;
+  string observerClientId = 9;
+  bool continueOnlyBots = 10;
+}
+
+message GameInfo {
+  int32 playerCount = 1;
+  int32 mafiaCount = 2;
+  string language = 3;
+  DebugInfo debugInfo = 4;
+}
+
+enum Role {
+  Role_UNKNOWN = 0;
+  Role_CITIZEN = 1;
+  Role_MAFIA = 2;
+  Role_POLICE = 3;
+  Role_DOCTOR = 4;
+}
+
+enum RemoveReason {
+  REMOVE_UNKNOWN = 0;
+  REMOVE_LIVE = 1;
+  REMOVE_EXECUTED = 2;
+  REMOVE_ASSASSINATED = 3;
+  REMOVE_OBSERVER = 4;
+}
+
+message Player {
+  string id = 1;
+  string name = 2;
+  Role role = 3;
+  bool isLive = 4;
+  RemoveReason removeReason = 5;
+}
+
+enum Phase {
+  Phase_UNKNOWN = 0;
+  Phase_PREPARE = 1;
+  Phase_DAY = 2;
+  Phase_EVENING = 3;
+  Phase_NIGHT = 4;
+  Phase_END = 5;
+}
+
+enum ChatType {
+  CHAT_UNKNOWN = 0;
+  CHAT_SYSTEM = 1;
+  CHAT_DISCUSSION = 2;
+}
+
+message Chat {
+  string id = 1;
+  ChatType type = 2;
+  int32 index = 3;
+
+  string sender = 4;
+  string content = 5;
+}
+
+enum TargetType {
+  TARGET_UNKNOWN = 0;
+  TARGET_VOTE = 1;
+  TARGET_KILL = 2;
+  TARGET_TEST = 3;
+  TARGET_HEAL = 4;
+}
+
+message Voters {
+  repeated string voters = 1;
+}
+
+enum GameEndReason {
+  GAME_END_UNKNOWN = 0;
+  GAME_END_CITIZEN_WIN = 1;
+  GAME_END_MAFIA_WIN = 2;
+  GAME_END_NO_HUMAN_PLAYER = 3;
+  GAME_END_TIMEOUT = 4;
+  GAME_END_INTERRUPTED = 5;
+}

@@ -8,6 +8,8 @@ from game_process import startGameProcess
 from mafia_chatbot.main.room_manager import RoomManager
 from mafia_chatbot.main.room import Room
 
+from mafia_chatbot.game.game_info import varifyGameInfo
+
 from mafia_chatbot.network.tcp_server import TcpServer
 from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.message_handler import MessageHandler
@@ -262,6 +264,7 @@ class MainProcess :
             startNewGame = ipc_pb2.StartNewGame()
             startNewGame.gameId = gameId
             startNewGame.clients.extend(clients)
+            startNewGame.gameInfo.CopyFrom(message.gameInfo)
 
             try :
                 await self._sendAwaitResponseToGameProcess(targetProcess.messageHandler, startNewGame)
@@ -306,6 +309,21 @@ class MainProcess :
         room: Room = user.getHolder('room')
         if room != None and not room.isHostUser(user) :
             errorResponse = makeErrorResponse(message, 0, 'You are not the host of the room.')
+            self._sendToUser(user, errorResponse, isError=True)
+            return
+
+        # check game info
+        if not varifyGameInfo(message.gameInfo) :
+            errorResponse = makeErrorResponse(message, 0, 'The game information is invalid.')
+            self._sendToUser(user, errorResponse, isError=True)
+            return
+
+        # check human count
+        humanCount: int = 1
+        if room != None :
+            humanCount = len(room.users)
+        if humanCount > message.gameInfo.playerCount :
+            errorResponse = makeErrorResponse(message, 0, 'The number of users cannot exceed the number of players.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 

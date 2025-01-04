@@ -35,10 +35,10 @@ messageTypeDict: dict[Type, int] = {
     room_pb2.GameStarted : 4012,
     game_pb2.CheckCurrentGame : 5000,
     game_pb2.CurrentGame : 5001,
-    game_pb2.RequestGameInfo : 5002,
-    game_pb2.GameInfo : 5003,
-    game_pb2.GameStart : 5004,
-    game_pb2.GameStartResponse : 5005,
+    game_pb2.RequestCurrentGameInfo : 5002,
+    game_pb2.CurrentGameInfo : 5003,
+    game_pb2.ReadyGame : 5004,
+    game_pb2.ReadyGameResponse : 5005,
     game_pb2.RequestGamePhase : 5006,
     game_pb2.GamePhase : 5007,
     game_pb2.RequestGameState : 5008,
@@ -215,23 +215,23 @@ def _CurrentGameMessageFactory(data: bytes) -> game_pb2.CurrentGame :
     message.ParseFromString(data)
     return message
 
-def _RequestGameInfoMessageFactory(data: bytes) -> game_pb2.RequestGameInfo :
-    message = game_pb2.RequestGameInfo()
+def _RequestCurrentGameInfoMessageFactory(data: bytes) -> game_pb2.RequestCurrentGameInfo :
+    message = game_pb2.RequestCurrentGameInfo()
     message.ParseFromString(data)
     return message
 
-def _GameInfoMessageFactory(data: bytes) -> game_pb2.GameInfo :
-    message = game_pb2.GameInfo()
+def _CurrentGameInfoMessageFactory(data: bytes) -> game_pb2.CurrentGameInfo :
+    message = game_pb2.CurrentGameInfo()
     message.ParseFromString(data)
     return message
 
-def _GameStartMessageFactory(data: bytes) -> game_pb2.GameStart :
-    message = game_pb2.GameStart()
+def _ReadyGameMessageFactory(data: bytes) -> game_pb2.ReadyGame :
+    message = game_pb2.ReadyGame()
     message.ParseFromString(data)
     return message
 
-def _GameStartResponseMessageFactory(data: bytes) -> game_pb2.GameStartResponse :
-    message = game_pb2.GameStartResponse()
+def _ReadyGameResponseMessageFactory(data: bytes) -> game_pb2.ReadyGameResponse :
+    message = game_pb2.ReadyGameResponse()
     message.ParseFromString(data)
     return message
 
@@ -363,10 +363,10 @@ messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     4012 : _GameStartedMessageFactory,
     5000 : _CheckCurrentGameMessageFactory,
     5001 : _CurrentGameMessageFactory,
-    5002 : _RequestGameInfoMessageFactory,
-    5003 : _GameInfoMessageFactory,
-    5004 : _GameStartMessageFactory,
-    5005 : _GameStartResponseMessageFactory,
+    5002 : _RequestCurrentGameInfoMessageFactory,
+    5003 : _CurrentGameInfoMessageFactory,
+    5004 : _ReadyGameMessageFactory,
+    5005 : _ReadyGameResponseMessageFactory,
     5006 : _RequestGamePhaseMessageFactory,
     5007 : _GamePhaseMessageFactory,
     5008 : _RequestGameStateMessageFactory,

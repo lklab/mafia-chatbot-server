@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "game_data.proto";
+
 message Participant {
   string clientId = 1;
   string name = 2;
@@ -65,6 +67,7 @@ message RoomDestroyed {
 
 message NewGame {
   string rqid = 1;
+  GameInfo gameInfo = 2;
 }
 
 message NewGameResponse {

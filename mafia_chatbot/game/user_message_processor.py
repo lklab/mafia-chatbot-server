@@ -109,16 +109,16 @@ class UserMessageProcessor :
         self.user.send(response)
 
     _switchSetTargetCheckPhase = {
-        game_pb2.TargetType.TARGET_VOTE : Phase.EVENING,
-        game_pb2.TargetType.TARGET_KILL : Phase.NIGHT,
-        game_pb2.TargetType.TARGET_TEST : Phase.NIGHT,
-        game_pb2.TargetType.TARGET_HEAL : Phase.NIGHT,
+        game_data_pb2.TargetType.TARGET_VOTE : Phase.EVENING,
+        game_data_pb2.TargetType.TARGET_KILL : Phase.NIGHT,
+        game_data_pb2.TargetType.TARGET_TEST : Phase.NIGHT,
+        game_data_pb2.TargetType.TARGET_HEAL : Phase.NIGHT,
     }
 
     _switchSetTargetCheckRole = {
-        game_pb2.TargetType.TARGET_KILL : Role.MAFIA,
-        game_pb2.TargetType.TARGET_TEST : Role.POLICE,
-        game_pb2.TargetType.TARGET_HEAL : Role.DOCTOR,
+        game_data_pb2.TargetType.TARGET_KILL : Role.MAFIA,
+        game_data_pb2.TargetType.TARGET_TEST : Role.POLICE,
+        game_data_pb2.TargetType.TARGET_HEAL : Role.DOCTOR,
     }
 
     def _switchSetTargetProcessVote(self, target: Player) :
@@ -136,10 +136,10 @@ class UserMessageProcessor :
         self.gameState.getCurrentNightTargetData().healTarget = target
 
     _switchSetTargetProcess = {
-        game_pb2.TargetType.TARGET_VOTE : _switchSetTargetProcessVote,
-        game_pb2.TargetType.TARGET_KILL : _switchSetTargetProcessKill,
-        game_pb2.TargetType.TARGET_TEST : _switchSetTargetProcessTest,
-        game_pb2.TargetType.TARGET_HEAL : _switchSetTargetProcessHeal,
+        game_data_pb2.TargetType.TARGET_VOTE : _switchSetTargetProcessVote,
+        game_data_pb2.TargetType.TARGET_KILL : _switchSetTargetProcessKill,
+        game_data_pb2.TargetType.TARGET_TEST : _switchSetTargetProcessTest,
+        game_data_pb2.TargetType.TARGET_HEAL : _switchSetTargetProcessHeal,
     }
 
     def _onSetTargetMessage(self, message: game_pb2.SetTarget) :
@@ -152,7 +152,7 @@ class UserMessageProcessor :
             return
 
         # check is type valid
-        if message.type == game_pb2.TargetType.TARGET_UNKNOWN :
+        if message.type == game_data_pb2.TargetType.TARGET_UNKNOWN :
             errorResponse = self._makeErrorResponse(message, 0, 'Not a valid type.')
             self.user.send(errorResponse)
             return
@@ -165,7 +165,7 @@ class UserMessageProcessor :
 
         # check role
         if (
-            message.type != game_pb2.TargetType.TARGET_VOTE and
+            message.type != game_data_pb2.TargetType.TARGET_VOTE and
             self.player.info.role != UserMessageProcessor._switchSetTargetCheckRole[message.type]
         ) :
             errorResponse = self._makeErrorResponse(message, 0, 'You are not allowed to do that.')

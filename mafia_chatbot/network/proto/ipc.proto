@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "game_data.proto";
+
 message GameServerStarted {
   string rqid = 1;
   int32 port = 2;
@@ -14,6 +16,7 @@ message StartNewGame {
   string rqid = 1;
   string gameId = 2;
   repeated Client clients = 3;
+  GameInfo gameInfo = 4;
 }
 
 message StartNewGameResponse {

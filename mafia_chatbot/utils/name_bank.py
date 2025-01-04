@@ -7,6 +7,11 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
+languageToCodeDict: dict[str, str] = {
+    'english' : 'en',
+    'korean' : 'ko',
+}
+
 NAMES: dict[str, list[str]] = {
     'english' : [
         'Oliver', 'Emma', 'Noah', 'Ava', 'Liam', 'Sophia', 'Mason', 'Isabella',

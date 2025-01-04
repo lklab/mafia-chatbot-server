@@ -31,10 +31,10 @@ class GameManager :
 
         self._ = self.gameState.translate
 
-        self.gameEndReason: game_pb2.GameEndReason = game_pb2.GameEndReason.GAME_END_INTERRUPTED
+        self.gameEndReason: game_data_pb2.GameEndReason = game_data_pb2.GameEndReason.GAME_END_INTERRUPTED
 
-    def terminate(self, reason=game_pb2.GameEndReason.GAME_END_INTERRUPTED) :
-        if self.terminated or self.gameState.currentPhase == Phase.END :
+    def terminate(self, reason=game_data_pb2.GameEndReason.GAME_END_INTERRUPTED) :
+        if self.terminated :
             return
         self.terminated = True
         self.gameEndReason = reason
@@ -55,22 +55,7 @@ class GameManager :
 
     async def start(self) :
         self.gameState.setPhase(Phase.PREPARE)
-
-        # wait for users
-        timeout: float = time.monotonic() + 60
-        while True :
-            # check timeout
-            if time.monotonic() >= timeout :
-                self.terminate(reason=game_pb2.GameEndReason.GAME_END_TIMEOUT)
-                return
-
-            # check all user connected
-            for player in self.gameState.userPlayers :
-                if not player.user.isConnected() :
-                    await asyncio.sleep(0.1)
-                    continue
-            break
-
+        await asyncio.sleep(1)
         await self._mainLogic()
 
     async def _mainLogic(self) :
@@ -98,7 +83,7 @@ class GameManager :
             self.gameState.addRound()
 
         self.gameState.setPhase(Phase.END)
-        self.gameEndReason = gameEndReasonToProtoDict[gameEndInfo.reason]
+        self.terminate(gameEndReasonToProtoDict[gameEndInfo.reason])
 
     async def _processDay(self) :
         self._addSystemChat(self._("It is now morning. Please begin your discussion."))

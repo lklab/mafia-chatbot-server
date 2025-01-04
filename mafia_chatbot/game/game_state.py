@@ -12,7 +12,7 @@ from mafia_chatbot.game.game_logger import GameLogger, TAG, FakeGameLogger
 from mafia_chatbot.network.messages import *
 
 import mafia_chatbot.utils.utils as utils
-from mafia_chatbot.utils.name_bank import NAMES, ENGLISH_NAMES
+from mafia_chatbot.utils.name_bank import NAMES, ENGLISH_NAMES, languageToCodeDict
 
 TONES: list[str] = [
     'Affable', 'Amiable', 'Blunt', 'Breezy', 'Casual', 'Charming',
@@ -28,12 +28,12 @@ class Phase(Enum) :
     NIGHT = 3
     END = 4
 
-phaseToProtoDict: dict[Phase, game_pb2.Phase] = {
-    Phase.PREPARE: game_pb2.Phase.Phase_PREPARE,
-    Phase.DAY: game_pb2.Phase.Phase_DAY,
-    Phase.EVENING: game_pb2.Phase.Phase_EVENING,
-    Phase.NIGHT: game_pb2.Phase.Phase_NIGHT,
-    Phase.END: game_pb2.Phase.Phase_END,
+phaseToProtoDict: dict[Phase, game_data_pb2.Phase] = {
+    Phase.PREPARE: game_data_pb2.Phase.Phase_PREPARE,
+    Phase.DAY: game_data_pb2.Phase.Phase_DAY,
+    Phase.EVENING: game_data_pb2.Phase.Phase_EVENING,
+    Phase.NIGHT: game_data_pb2.Phase.Phase_NIGHT,
+    Phase.END: game_data_pb2.Phase.Phase_END,
 }
 
 class VoteData :
@@ -130,11 +130,6 @@ class PlayerRemoveInfo :
         self.player = player
         self.reason = reason
         self.roundInfo = roundInfo
-
-languageToCodeDict: dict[str, str] = {
-    'english' : 'en',
-    'korean' : 'ko',
-}
 
 class GameState :
     def __init__(self, gameInfo: GameInfo, logger: GameLogger = None) :
@@ -481,7 +476,7 @@ class GameState :
         self.logger.log(TAG.CHAT, f'SYSTEM - {chat.index} - for {"everyone" if receiver == None else receiver.name}: {content}')
         self.sendAddChatMessageToAllUsers(chat)
 
-    def addHumanChat(self, sender: PlayerInfo, chat_out: game_pb2.Chat) :
+    def addHumanChat(self, sender: PlayerInfo, chat_out: game_data_pb2.Chat) :
         chat: ChatData = ChatData(
             type=ChatType.DISCUSSION,
             index=len(self.chatList),

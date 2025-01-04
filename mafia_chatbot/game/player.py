@@ -16,11 +16,11 @@ class RemoveReason(Enum) :
     KILL = 2
     OBSERVER = 3
 
-removeReasonToProtoDict: dict[RemoveReason, game_pb2.RemoveReason] = {
-    RemoveReason.LIVE: game_pb2.RemoveReason.REMOVE_LIVE,
-    RemoveReason.VOTE: game_pb2.RemoveReason.REMOVE_EXECUTED,
-    RemoveReason.KILL: game_pb2.RemoveReason.REMOVE_ASSASSINATED,
-    RemoveReason.OBSERVER: game_pb2.RemoveReason.REMOVE_OBSERVER,
+removeReasonToProtoDict: dict[RemoveReason, game_data_pb2.RemoveReason] = {
+    RemoveReason.LIVE: game_data_pb2.RemoveReason.REMOVE_LIVE,
+    RemoveReason.VOTE: game_data_pb2.RemoveReason.REMOVE_EXECUTED,
+    RemoveReason.KILL: game_data_pb2.RemoveReason.REMOVE_ASSASSINATED,
+    RemoveReason.OBSERVER: game_data_pb2.RemoveReason.REMOVE_OBSERVER,
 }
 
 class Player :
@@ -184,12 +184,12 @@ class Player :
     def clearChatingCount(self) :
         self.remainChatingCount = 0
 
-    def createProtoMessage(self, receiver: Player) -> game_pb2.Player :
-        message = game_pb2.Player()
+    def createProtoMessage(self, receiver: Player) -> game_data_pb2.Player :
+        message = game_data_pb2.Player()
         self.toProtoMessage(receiver, message)
         return message
 
-    def toProtoMessage(self, receiver: Player, message_out: game_pb2.Player) :
+    def toProtoMessage(self, receiver: Player, message_out: game_data_pb2.Player) :
         message_out.id = self.info.id
         message_out.name = self.info.name
 
@@ -200,7 +200,7 @@ class Player :
         elif receiver.info.role == Role.MAFIA and self.info.role == Role.MAFIA :
             message_out.role = roleToProtoDict[Role.MAFIA]
         else :
-            message_out.role = game_pb2.Role.Role_UNKNOWN
+            message_out.role = game_data_pb2.Role.Role_UNKNOWN
 
         message_out.isLive = self.isLive
         message_out.removeReason = removeReasonToProtoDict[self.removeReason]

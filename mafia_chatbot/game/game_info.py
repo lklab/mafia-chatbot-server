@@ -3,8 +3,25 @@ from mafia_chatbot.game.player_info import Role, protoToRoleDict
 from mafia_chatbot.network.client_user import ClientUser
 from mafia_chatbot.network.messages import *
 
+from mafia_chatbot.utils.name_bank import languageToCodeDict
+
+def varifyGameInfo(info: game_data_pb2.GameInfo) -> bool :
+    if info.playerCount > 10 or info.playerCount < 3 :
+        return False
+
+    if info.playerCount <= info.mafiaCount * 2 :
+        return False
+
+    if info.mafiaCount <= 0 :
+        return False
+
+    if info.language.lower() not in languageToCodeDict :
+        return False
+
+    return True
+
 class DebugInfo :
-    def __init__(self, data: game_pb2.DebugInfo) :
+    def __init__(self, data: game_data_pb2.DebugInfo) :
         self.fixedRole: Role = protoToRoleDict[data.fixedRole]
         self.fixedRoleClientId: str = data.fixedRoleClientId
 
@@ -37,7 +54,7 @@ class GameInfo :
         self.users = users or []
         self.localPlayerName = localPlayerName
 
-        self.language = language # TODO varify
+        self.language = language.lower()
 
         self.useLLM = True
         self.isCUI = localPlayerName != None
