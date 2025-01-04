@@ -15,14 +15,24 @@ chatTypeToProtoDict: dict[ChatType, game_data_pb2.ChatType] = {
 }
 
 class ChatData :
-    def __init__(self, type: ChatType, index: int, content: str, sender: PlayerInfo = None, receiver: PlayerInfo = None) :
+    def __init__(self,
+                 type: ChatType,
+                 index: int,
+                 content: str,
+                 sender: PlayerInfo = None,
+                 receiver: PlayerInfo = None,
+                 id: str = None,
+        ) :
         self.type = type
         self.index = index
         self.content = content
         self.sender = sender
         self.receiver = receiver
 
-        self.id: str = str(uuid.uuid4())
+        if id != None :
+            self.id = id
+        else :
+            self.id: str = str(uuid.uuid4())
 
     def createProtoMessage(self, receiver: PlayerInfo) -> game_data_pb2.Chat :
         message = game_data_pb2.Chat()

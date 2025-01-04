@@ -482,6 +482,7 @@ class GameState :
             index=len(self.chatList),
             content=chat_out.content,
             sender=sender,
+            id=chat_out.id,
         )
         self.chatList.append(chat)
         self.chatLogs.append(f'{sender.name}: {chat.content}')
