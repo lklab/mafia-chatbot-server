@@ -43,15 +43,15 @@ class GameInstance :
         for user in users :
             self.users[user.clientId] = user
             user.setHolder('game', self)
-        self.readyUsers: set[ClientUser] = set()
+        self.readyUsers: set[str] = set()
 
         self.gameManager: GameManager = None
 
         self.timeoutTask = asyncio.create_task(self._timeoutTerminate(60))
 
     def readyUser(self, user: ClientUser) :
-        if user.clientId in self.users :
-            self.readyUsers.add(user)
+        if user.clientId in self.users and user.clientId not in self.readyUsers :
+            self.readyUsers.add(user.clientId)
             self._checkUserState()
 
     def removeUser(self, user: ClientUser) :
@@ -62,7 +62,7 @@ class GameInstance :
             user.releaseHolder('game')
 
             del self.users[user.clientId]
-            self.readyUsers.discard(user)
+            self.readyUsers.discard(user.clientId)
 
             self._checkUserState()
 
