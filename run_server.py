@@ -216,6 +216,11 @@ class MainProcess :
             self._sendToUser(user, errorResponse, isError=True)
             return
 
+        if not varifyGameInfo(message.gameInfo) :
+            errorResponse = makeErrorResponse(message, 0, 'The game information is invalid.')
+            self._sendToUser(user, errorResponse, isError=True)
+            return
+
         self.roomManager.processMessageCreateRoom(user, message)
 
     def _switchUserMessageJoinRoom(self, user: ClientUser, message) :
@@ -260,11 +265,16 @@ class MainProcess :
                 clientInfo.name = u.clientName
                 clients.append(clientInfo)
 
+            # setup game info
+            gameInfo: game_data_pb2.GameInfo = message.gameInfo
+            if room != None :
+                gameInfo = room.gameInfoRaw
+
             # send new game
             startNewGame = ipc_pb2.StartNewGame()
             startNewGame.gameId = gameId
             startNewGame.clients.extend(clients)
-            startNewGame.gameInfo.CopyFrom(message.gameInfo)
+            startNewGame.gameInfo.CopyFrom(gameInfo)
 
             try :
                 await self._sendAwaitResponseToGameProcess(targetProcess.messageHandler, startNewGame)
@@ -313,7 +323,8 @@ class MainProcess :
             return
 
         # check game info
-        if not varifyGameInfo(message.gameInfo) :
+        # 방이 있는 경우 방에 설정된 검증된 game info를 사용
+        if room == None and not varifyGameInfo(message.gameInfo) :
             errorResponse = makeErrorResponse(message, 0, 'The game information is invalid.')
             self._sendToUser(user, errorResponse, isError=True)
             return

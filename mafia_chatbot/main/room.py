@@ -23,9 +23,9 @@ class Room :
 
 class Room :
     def __init__(self, createRoomMessage: room_pb2.CreateRoom, code: str, hostUser: ClientUser, logger: WandsLogger, onDestroy: Callable[[Room], None]) :
-        self.language: str = createRoomMessage.language
         self.maxHumans: int = createRoomMessage.maxHumans
         self.password: str = createRoomMessage.password
+        self.gameInfoRaw: game_data_pb2.GameInfo = createRoomMessage.gameInfo
 
         self.code: str = code
 
@@ -94,10 +94,10 @@ class Room :
 
     def infoToProtoMessage(self, message: room_pb2.RoomInfo) :
         message.code = self.code
-        message.language = self.language
         message.maxHumans = self.maxHumans
         message.participants.extend(list(map(lambda user : self._createParticipantMessage(user), self.users)))
         message.hostId = self.hostUser.clientId
+        message.gameInfo.CopyFrom(self.gameInfoRaw)
 
     def _createParticipantMessage(self, user: ClientUser) :
         message = room_pb2.Participant()

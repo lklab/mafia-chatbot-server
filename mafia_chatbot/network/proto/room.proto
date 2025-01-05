@@ -9,10 +9,10 @@ message Participant {
 
 message RoomInfo {
   string code = 1;
-  string language = 2;
-  int32 maxHumans = 3;
-  repeated Participant participants = 4;
-  string hostId = 5;
+  int32 maxHumans = 2;
+  repeated Participant participants = 3;
+  string hostId = 4;
+  GameInfo gameInfo = 5;
 }
 
 message RequestMyRoomInfo {
@@ -27,9 +27,9 @@ message MyRoomInfo {
 
 message CreateRoom {
   string rqid = 1;
-  string language = 2;
-  int32 maxHumans = 3;
-  string password = 4;
+  int32 maxHumans = 2;
+  string password = 3;
+  GameInfo gameInfo = 4;
 }
 
 message CreateRoomResponse {
