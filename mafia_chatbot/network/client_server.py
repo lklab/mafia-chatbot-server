@@ -49,6 +49,7 @@ class ClientServer :
             onAuth=self._onAuth,
             onMessage=self.onMessage,
             onDisconnected=self.onDisconnected,
+            logger=self.logger,
         )
 
     def _onAuth(self, client: ClientHandler, clientId: str, message) -> tuple[Any, ClientUser] :

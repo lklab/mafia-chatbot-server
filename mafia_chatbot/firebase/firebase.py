@@ -14,12 +14,8 @@ def initialize() :
     firebaseInitialized = True
 
 def verifyIdToken(token: str) -> str :
-    try :
-        decoded = auth.verify_id_token(token)
-        uid = decoded['uid']
-    except :
-        return None
-    return uid
+    decoded = auth.verify_id_token(token)
+    return decoded['uid']
 
 def deleteUser(uid: str) :
     auth.delete_user(uid)
