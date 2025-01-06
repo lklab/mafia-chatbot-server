@@ -57,6 +57,7 @@ class GameManager :
         self.gameState.setPhase(Phase.PREPARE)
         await asyncio.sleep(1)
         await self._mainLogic()
+        self.gameState.logger.close()
 
     async def _mainLogic(self) :
         gameEndInfo: GameEndInfo = None
