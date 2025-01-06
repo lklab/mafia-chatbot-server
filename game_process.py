@@ -250,7 +250,7 @@ class GameProcess :
             self._sendToUser(user, errorResponse, isError=True)
             return
 
-        response = game_data_pb2.CurrentGameInfo()
+        response = game_pb2.CurrentGameInfo()
         response.rqid = message.rqid
         response.info.CopyFrom(game.gameInfoRaw)
         self._sendToUser(user, response)

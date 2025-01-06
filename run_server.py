@@ -211,13 +211,21 @@ class MainProcess :
         self.roomManager.processMessageRequestMyRoomInfo(user, message)
 
     def _switchUserMessageCreateRoom(self, user: ClientUser, message) :
+        # check current game
         if user.getHolder('gamehandler') != None :
             errorResponse = makeErrorResponse(message, 0, 'The game is already running.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
+        # check game info
         if not varifyGameInfo(message.gameInfo) :
             errorResponse = makeErrorResponse(message, 0, 'The game information is invalid.')
+            self._sendToUser(user, errorResponse, isError=True)
+            return
+
+        # check human count
+        if message.maxHumans > message.gameInfo.playerCount :
+            errorResponse = makeErrorResponse(message, 0, 'The number of humans cannot exceed the number of players.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
@@ -326,15 +334,6 @@ class MainProcess :
         # 방이 있는 경우 방에 설정된 검증된 game info를 사용
         if room == None and not varifyGameInfo(message.gameInfo) :
             errorResponse = makeErrorResponse(message, 0, 'The game information is invalid.')
-            self._sendToUser(user, errorResponse, isError=True)
-            return
-
-        # check human count
-        humanCount: int = 1
-        if room != None :
-            humanCount = len(room.users)
-        if humanCount > message.gameInfo.playerCount :
-            errorResponse = makeErrorResponse(message, 0, 'The number of users cannot exceed the number of players.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
