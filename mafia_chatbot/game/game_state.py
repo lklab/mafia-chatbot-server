@@ -488,10 +488,11 @@ class GameState :
         self.chatLogs.append(f'{sender.name}: {chat.content}')
         self.logger.log(TAG.CHAT, f'DISCUSSION - {chat.index} - {sender.name}: {chat.content}')
 
+        chat_out.index = chat.index
+        self.sendAddChatMessageToAllUsers(chat)
+
         if self.onHumanChat != None :
             self.onHumanChat(chat)
-
-        chat_out.index = chat.index
 
     def getRecentConversationLogs(self, count: int) -> list[str] :
         logs: list[str] = []

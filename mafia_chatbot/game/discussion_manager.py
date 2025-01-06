@@ -95,6 +95,7 @@ class DiscussionManager :
     async def stop(self) :
         self.logger.log(TAG.DISCUSSION, 'stop discussion')
 
+        self.gameState.setOnHumanChatListener(None)
         self._stopTask()
         self._isRunning = False
 
