@@ -89,15 +89,20 @@ class GameManager :
         self._addSystemChat(self._("It is now morning. Please begin your discussion."))
 
         # start discussion
-        self.discussionManager = DiscussionManager(self.gameState, self.trustRecorder, self.llm)
-        self.discussionManager.start()
+        if len(self.gameState.players) > len(self.gameState.userPlayers) :
+            self.discussionManager = DiscussionManager(self.gameState, self.trustRecorder, self.llm)
+            self.discussionManager.start()
+        else :
+            self.discussionManager = None
 
         # await until time limit
         waitTime: float = self.gameState.timeLimit - time.monotonic()
         await asyncio.sleep(waitTime)
 
         # stop discussion
-        await self.discussionManager.stop()
+        if self.discussionManager != None :
+            await self.discussionManager.stop()
+            self.discussionManager = None
 
     async def _processEvening(self) :
         self.trustRecorder.updateTrustRecords()
