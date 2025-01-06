@@ -107,15 +107,61 @@ class VoteData :
 
     def getVoteStateMessage(self) -> game_pb2.VoteState :
         message = game_pb2.VoteState()
+        message.type = game_data_pb2.TargetType.TARGET_VOTE
         for target, voters in self.voteDict.items() :
             ids = [voter.info.id for voter in voters]
             message.votersMap[target.id].voters.extend(ids)
         return message
 
-class NightTargetData :
-    def __init__(self, round) :
+class KillVoteData :
+    def __init__(self, round: int, mafiaUserPlayers: list[Player]) :
         self.round = round
-        self.killTarget: Player = None
+        self.mafiaUserPlayers = mafiaUserPlayers
+        self.voteDict: dict[Player, Player] = {}
+
+    def setKillTarget(self, voter: Player, target: Player) :
+        if not voter.isLive or voter.info.role != Role.MAFIA :
+            return
+
+        if voter not in self.voteDict :
+            self.voteDict[voter] = None
+
+        oldTarget: Player = self.voteDict[voter]
+
+        if target != oldTarget :
+            self.voteDict[voter] = target
+
+            message = self.getVoteStateMessage()
+            for player in self.mafiaUserPlayers :
+                player.user.send(message)
+
+    def evaluate(self) -> Player :
+        voteCounts: dict[Player, int] = {}
+        maxVoteCount = 0
+
+        # 투표 수 집계
+        for target in self.voteDict.values():
+            if target != None :
+                voteCounts[target] = voteCounts.get(target, 0) + 1
+                maxVoteCount = max(maxVoteCount, voteCounts[target])
+
+        # 최다 득표자 목록 생성
+        targets = [target for target, count in voteCounts.items() if count == maxVoteCount]
+
+        # 동률이면 랜덤으로 선택
+        return random.choice(targets) if targets else None
+
+    def getVoteStateMessage(self) -> game_pb2.VoteState :
+        message = game_pb2.VoteState()
+        message.type = game_data_pb2.TargetType.TARGET_KILL
+        for voter, target in self.voteDict.items() :
+            message.votersMap[target.info.id].voters.append(voter.info.id)
+        return message
+
+class NightTargetData :
+    def __init__(self, round: int, mafiaUserPlayers: list[Player]) :
+        self.round = round
+        self.killVoteData: KillVoteData = KillVoteData(round, mafiaUserPlayers)
         self.testTarget: Player = None
         self.healTarget: Player = None
 
@@ -536,7 +582,7 @@ class GameState :
 
         nightTargetData: NightTargetData = None
         if self.nightTargetHistory[self.round] == None :
-            nightTargetData = NightTargetData(self.round)
+            nightTargetData = NightTargetData(self.round, [user for user in self.userPlayers if user.info.role == Role.MAFIA])
             self.nightTargetHistory[self.round] = nightTargetData
         else :
             nightTargetData = self.nightTargetHistory[self.round]

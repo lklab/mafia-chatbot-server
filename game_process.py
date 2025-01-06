@@ -262,11 +262,6 @@ class GameProcess :
             self._sendToUser(user, errorResponse, isError=True)
             return
 
-        if game.isRunning() :
-            errorResponse = makeErrorResponse(message, 0, 'The game is already running.')
-            self._sendToUser(user, errorResponse, isError=True)
-            return
-
         game.readyUser(user)
 
         response = game_pb2.ReadyGameResponse()

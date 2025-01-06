@@ -76,7 +76,7 @@ class ClientUser :
     def send(self, message) :
         if self.handler != None :
             if self.logger != None :
-                self.logger.log(TAG.NETWORK, f'[ClientUser] send message to {self.clientName}: <{message}>')
+                self.logger.log(TAG.NETWORK, f'[ClientUser] send {type(message)} message to {self.clientName}: <{message}>')
             self.handler.send(message)
 
     def setLogger(self, logger: GameLogger) :

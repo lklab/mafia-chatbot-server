@@ -1,4 +1,4 @@
-from mafia_chatbot.game.game_state import GameState, Phase, VoteData
+from mafia_chatbot.game.game_state import GameState, Phase, VoteData, KillVoteData
 from mafia_chatbot.game.player import Player
 from mafia_chatbot.game.player_info import Role
 from mafia_chatbot.game.strategy import VoteStrategy
@@ -127,7 +127,7 @@ class UserMessageProcessor :
         self.trustRecorder.voteStrategyUpdated(self.player.info, strategy)
 
     def _switchSetTargetProcessKill(self, target: Player) :
-        self.gameState.getCurrentNightTargetData().killTarget = target
+        self.gameState.getCurrentNightTargetData().killVoteData.setKillTarget(self.player, target)
 
     def _switchSetTargetProcessTest(self, target: Player) :
         self.gameState.getCurrentNightTargetData().testTarget = target
@@ -195,17 +195,42 @@ class UserMessageProcessor :
     def _onGetVoteStateMessage(self, message: game_pb2.GetVoteState) :
         self.logger.log(TAG.NETWORK, f'[UserMessageProcessor] {self.player.info.name}: received GetVoteState: message=<{message}>')
 
-        # check phase
-        if self.gameState.currentPhase != Phase.EVENING :
-            errorResponse = self._makeErrorResponse(message, 0, 'Not a valid phase.')
-            self.user.send(errorResponse)
-            return
+        # for vote
+        if message.type == game_data_pb2.TargetType.TARGET_VOTE :
+            # check phase
+            if self.gameState.currentPhase != Phase.EVENING :
+                errorResponse = self._makeErrorResponse(message, 0, 'Not a valid phase.')
+                self.user.send(errorResponse)
+                return
 
-        # response
-        voteData: VoteData = self.gameState.getCurrentVoteData()
-        response = voteData.getVoteStateMessage()
-        response.rqid = message.rqid
-        self.user.send(response)
+            voteData: VoteData = self.gameState.getCurrentVoteData()
+            response = voteData.getVoteStateMessage()
+            response.rqid = message.rqid
+            self.user.send(response)
+
+        # for kill
+        elif message.type == game_data_pb2.TargetType.TARGET_KILL :
+            # check role
+            if self.player.info.role != Role.MAFIA :
+                errorResponse = self._makeErrorResponse(message, 0, 'You are not allowed to do that.')
+                self.user.send(errorResponse)
+                return
+
+            # check phase
+            if self.gameState.currentPhase != Phase.NIGHT :
+                errorResponse = self._makeErrorResponse(message, 0, 'Not a valid phase.')
+                self.user.send(errorResponse)
+                return
+
+            killVoteData: KillVoteData = self.gameState.getCurrentNightTargetData().killVoteData
+            response = killVoteData.getVoteStateMessage()
+            response.rqid = message.rqid
+            self.user.send(response)
+
+        # others: error
+        else :
+            errorResponse = self._makeErrorResponse(message, 0, 'The target type is invalid.')
+            self.user.send(errorResponse)
 
     def _makeErrorResponse(self, message, code: int, detail: str) :
         self.logger.log(TAG.ERROR, f'[UserMessageProcessor] {self.player.info.name}: response error message: code={code}, detail={detail}')

@@ -167,8 +167,9 @@ class GameManager :
 
         ### mafia action: kill
         # bot chooses the kill target
-        if len(self.gameState.humanMafiaPlayers) == 0 :
-            nightTargetData.killTarget = evaluator.evaluateKillTarget(self.gameState, self.trustRecorder)
+        if len(self.gameState.humanMafiaPlayers) == 0 and len(self.gameState.mafiaPlayers) > 0 :
+            killTargetPlayer: Player = evaluator.evaluateKillTarget(self.gameState, self.trustRecorder)
+            nightTargetData.killVoteData.setKillTarget(self.gameState.mafiaPlayers[0], killTargetPlayer)
 
         # local player chooses the kill target
         elif (
@@ -176,7 +177,8 @@ class GameManager :
             self.gameState.localPlayer.isLive and
             self.gameState.localPlayer.info.role == Role.MAFIA
         ) :
-            nightTargetData.killTarget = await self.gameState.getPlayerFromCuiAsync('Choose the target to assassinate: ')
+            killTargetPlayer: Player = await self.gameState.getPlayerFromCuiAsync('Choose the target to assassinate: ')
+            nightTargetData.killVoteData.setKillTarget(self.gameState.localPlayer, killTargetPlayer)
 
         ### police action: test
         police: Player = self.gameState.policePlayer
@@ -208,18 +210,20 @@ class GameManager :
 
         ### execute kill
         doctor.addHealSuccess(None)
-        if nightTargetData.killTarget == None :
+        killTargetPlayer: Player = nightTargetData.killVoteData.evaluate()
+
+        if killTargetPlayer == None :
             self._addSystemChat(self._('The Mafia did not assassinate anyone.'))
         else :
-            if nightTargetData.killTarget == nightTargetData.healTarget :
+            if killTargetPlayer == nightTargetData.healTarget :
                 doctor.addHealSuccess(nightTargetData.healTarget)
                 self.trustRecorder.healSucceeded(nightTargetData.healTarget.info)
                 self._addSystemChat(self._('The Mafia attempted to assassinate someone but failed.'))
             else :
-                self.gameState.removePlayerByInfo(nightTargetData.killTarget.info, RemoveReason.KILL)
-                self.trustRecorder.playerRemoved(nightTargetData.killTarget.info, RemoveReason.KILL)
-                _name = nightTargetData.killTarget.info.name
-                _role = self.gameState.translateRole[nightTargetData.killTarget.info.role]
+                self.gameState.removePlayerByInfo(killTargetPlayer.info, RemoveReason.KILL)
+                self.trustRecorder.playerRemoved(killTargetPlayer.info, RemoveReason.KILL)
+                _name = killTargetPlayer.info.name
+                _role = self.gameState.translateRole[killTargetPlayer.info.role]
                 self._addSystemChat(self._('{name} was assassinated by the Mafia. Their role was {role}.').format(name=_name, role=_role))
 
         ### execute test
