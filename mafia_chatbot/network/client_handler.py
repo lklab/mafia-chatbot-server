@@ -1,4 +1,7 @@
 from typing import Callable, Any
+import jwt
+from datetime import datetime, timezone
+import asyncio
 
 from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.client_user import ClientUser
@@ -7,6 +10,8 @@ from mafia_chatbot.network.messages import *
 from mafia_chatbot.network.utils import makeErrorResponse
 
 import mafia_chatbot.firebase.firebase as firebase
+
+from mafia_chatbot.utils.wands_logger import WandsLogger
 
 class ClientHandler :
     pass
@@ -17,6 +22,7 @@ class ClientHandler :
                  onAuth: Callable[[ClientHandler, str, Any], tuple[Any, ClientUser]],
                  onMessage: Callable[[ClientUser, Any], None],
                  onDisconnected: Callable[[ClientUser], None],
+                 logger: WandsLogger,
         ) :
         self.addr = tcpHandler.addr
 
@@ -25,6 +31,7 @@ class ClientHandler :
         self.onAuth = onAuth
         self.onMessage = onMessage
         self.onDisconnected = onDisconnected
+        self.logger = logger
 
         self.messageHandler = MessageHandler(
             tcpHandler=tcpHandler,
@@ -33,10 +40,23 @@ class ClientHandler :
             onDisconnected=self._onDisconnected,
         )
 
-    def _onAuth(self, message) -> tuple[Any, bool] :
+    async def _onAuth(self, message) -> tuple[Any, bool] :
+        # 토큰 발행 시간 확인
+        # 다음과 같은 오류로 발행 시간이 시스템 시간보다 미래이면 해당 시간동안 대기 후 검증
+        # verifyIdToken error [<class 'firebase_admin._auth_utils.InvalidIdTokenError'>] Token used too early, 1736148080 < 1736148081. Check that your computer's clock is set correctly.
+        decodedToken = jwt.decode(message.token, options={"verify_signature": False})
+        issueTime = decodedToken.get('iat')
+        currentTime = int(datetime.now(timezone.utc).timestamp())
+        waitTime = issueTime - currentTime
+        if issueTime and waitTime > 0 and waitTime < 60 :
+            self.logger.debug(f'[ClientHandler] _onAuth() addr={self.addr}: wait for {waitTime} seconds')
+            await asyncio.sleep(waitTime)
+
         # check ID token
-        clientId = firebase.verifyIdToken(message.token)
-        if clientId == None :
+        try :
+            clientId = firebase.verifyIdToken(message.token)
+        except Exception as e :
+            self.logger.error(f'[ClientHandler] _onAuth() addr={self.addr}: verifyIdToken error [{type(e)}] {e}. token={message.token}')
             errorResponse = makeErrorResponse(message, 0, 'Invalid ID token.')
             return errorResponse, False
 

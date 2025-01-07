@@ -16,7 +16,9 @@
                 "StartNewGame",
                 "StartNewGameResponse",
                 "ClientExited",
-                "GameEnded"
+                "ClientExitedResponse",
+                "GameEnded",
+                "GameEndedResponse"
             ]
         },
         {
@@ -40,17 +42,34 @@
             ]
         },
         {
+            "name" : "room",
+            "messages" :
+            [
+                "RequestMyRoomInfo",
+                "MyRoomInfo",
+                "CreateRoom",
+                "CreateRoomResponse",
+                "JoinRoom",
+                "JoinRoomResponse",
+                "QuitRoom",
+                "QuitRoomResponse",
+                "RoomInfoUpdated",
+                "RoomDestroyed",
+                "NewGame",
+                "NewGameResponse",
+                "GameStarted"
+            ]
+        },
+        {
             "name" : "game",
             "messages" :
             [
                 "CheckCurrentGame",
                 "CurrentGame",
-                "NewGame",
-                "NewGameResponse",
-                "RequestGameInfo",
-                "GameInfo",
-                "GameStart",
-                "GameStartResponse",
+                "RequestCurrentGameInfo",
+                "CurrentGameInfo",
+                "ReadyGame",
+                "ReadyGameResponse",
                 "RequestGamePhase",
                 "GamePhase",
                 "RequestGameState",
@@ -71,6 +90,10 @@
                 "ReportChat",
                 "ReportChatResponse"
             ]
+        },
+        {
+            "name" : "game_data",
+            "messages" : []
         }
     ]
 }

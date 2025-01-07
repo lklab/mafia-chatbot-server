@@ -39,8 +39,15 @@ class GameLogger :
         self.logger.error(f'[EXCEPTION] {message}: {e}')
         self.logger.error(traceback.format_exc())
 
+    def close(self) :
+        for handler in self.logger.handlers:
+            handler.close()
+            self.logger.removeHandler(handler)
+
 class FakeGameLogger :
     def log(self, tag: TAG, message: str) :
         pass
     def logError(self, message: str, e: Exception) :
+        pass
+    def close(self) :
         pass

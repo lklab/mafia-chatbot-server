@@ -8,3 +8,12 @@ def makeErrorResponse(message, code: int, detail: str) :
     errorResponse.code = code
     errorResponse.detail = detail
     return errorResponse
+
+class MessageException(Exception):
+    def __init__(self, code: int, detail: str):
+        super().__init__(detail)
+        self.code = code
+        self.detail = detail
+
+    def makeResponse(self, message) :
+        return makeErrorResponse(message, self.code, self.detail)

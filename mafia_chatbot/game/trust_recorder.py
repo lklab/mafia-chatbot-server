@@ -351,6 +351,9 @@ class TrustRecorder :
 
             for estimation in player.estimationsAsDoctor.values() :
                 p = self.gameState.getPlayerByInfo(estimation.playerInfo)
+                if p == player : # 자힐한 경우 평가하지 않음
+                    continue
+
                 if p.publicRole == Role.DOCTOR and estimation.role != Role.MAFIA :
                     profile.setState(
                         state=TrustState.CONFIRMED_MAFIA,

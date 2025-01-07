@@ -29,16 +29,18 @@ class ClientServer :
     async def serve(self) :
         await self.tcpServer.serve()
 
-    def getUser(self, clientId: str) :
+    def getUser(self, clientId: str, onlyExists: bool = False) :
         if clientId in self.users :
             return self.users[clientId]
-        else :
+        elif not onlyExists :
             user: ClientUser = ClientUser(
                 clientId=clientId,
                 onRelease=self._onUserRelease,
             )
             self.users[clientId] = user
             return user
+        else :
+            return None
 
     def _onConnected(self, tcpHandler: TcpHandler) :
         self.logger.debug(f'[ClientServer] _onConnected() addr={tcpHandler.addr}')
@@ -47,6 +49,7 @@ class ClientServer :
             onAuth=self._onAuth,
             onMessage=self.onMessage,
             onDisconnected=self.onDisconnected,
+            logger=self.logger,
         )
 
     def _onAuth(self, client: ClientHandler, clientId: str, message) -> tuple[Any, ClientUser] :

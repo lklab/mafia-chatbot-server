@@ -31,8 +31,20 @@ class GameManager :
 
         self._ = self.gameState.translate
 
-    def terminate(self) :
+        self.gameEndReason: game_data_pb2.GameEndReason = game_data_pb2.GameEndReason.GAME_END_INTERRUPTED
+
+    def terminate(self, reason=game_data_pb2.GameEndReason.GAME_END_INTERRUPTED) :
+        if self.terminated :
+            return
         self.terminated = True
+        self.gameEndReason = reason
+
+    def sendGameEndToUsers(self) :
+        message = game_pb2.GameEnd()
+        message.reason = self.gameEndReason
+        for player in self.gameState.userPlayers :
+            player.user.send(message)
+            player.user.clearSubscribers()
 
     def removeUser(self, user: ClientUser) :
         user.clearSubscribers()
@@ -42,7 +54,10 @@ class GameManager :
         UserMessageProcessor(self.gameState, self.trustRecorder, player)
 
     async def start(self) :
+        self.gameState.setPhase(Phase.PREPARE)
+        await asyncio.sleep(1)
         await self._mainLogic()
+        self.gameState.logger.close()
 
     async def _mainLogic(self) :
         gameEndInfo: GameEndInfo = None
@@ -68,27 +83,27 @@ class GameManager :
 
             self.gameState.addRound()
 
-        self.gameState.setPhase(Phase.NOT_PLAYING)
-
-        for player in self.gameState.userPlayers :
-            message = game_pb2.GameEnd()
-            message.reason = gameEndReasonToProtoDict[gameEndInfo.reason]
-            player.user.send(message)
-            player.user.clearSubscribers()
+        self.gameState.setPhase(Phase.END)
+        self.terminate(gameEndReasonToProtoDict[gameEndInfo.reason])
 
     async def _processDay(self) :
         self._addSystemChat(self._("It is now morning. Please begin your discussion."))
 
         # start discussion
-        self.discussionManager = DiscussionManager(self.gameState, self.trustRecorder, self.llm)
-        self.discussionManager.start()
+        if len(self.gameState.players) > len(self.gameState.userPlayers) :
+            self.discussionManager = DiscussionManager(self.gameState, self.trustRecorder, self.llm)
+            self.discussionManager.start()
+        else :
+            self.discussionManager = None
 
         # await until time limit
         waitTime: float = self.gameState.timeLimit - time.monotonic()
         await asyncio.sleep(waitTime)
 
         # stop discussion
-        await self.discussionManager.stop()
+        if self.discussionManager != None :
+            await self.discussionManager.stop()
+            self.discussionManager = None
 
     async def _processEvening(self) :
         self.trustRecorder.updateTrustRecords()
@@ -153,8 +168,9 @@ class GameManager :
 
         ### mafia action: kill
         # bot chooses the kill target
-        if len(self.gameState.humanMafiaPlayers) == 0 :
-            nightTargetData.killTarget = evaluator.evaluateKillTarget(self.gameState, self.trustRecorder)
+        if len(self.gameState.humanMafiaPlayers) == 0 and len(self.gameState.mafiaPlayers) > 0 :
+            killTargetPlayer: Player = evaluator.evaluateKillTarget(self.gameState, self.trustRecorder)
+            nightTargetData.killVoteData.setKillTarget(self.gameState.mafiaPlayers[0], killTargetPlayer)
 
         # local player chooses the kill target
         elif (
@@ -162,7 +178,8 @@ class GameManager :
             self.gameState.localPlayer.isLive and
             self.gameState.localPlayer.info.role == Role.MAFIA
         ) :
-            nightTargetData.killTarget = await self.gameState.getPlayerFromCuiAsync('Choose the target to assassinate: ')
+            killTargetPlayer: Player = await self.gameState.getPlayerFromCuiAsync('Choose the target to assassinate: ')
+            nightTargetData.killVoteData.setKillTarget(self.gameState.localPlayer, killTargetPlayer)
 
         ### police action: test
         police: Player = self.gameState.policePlayer
@@ -194,18 +211,20 @@ class GameManager :
 
         ### execute kill
         doctor.addHealSuccess(None)
-        if nightTargetData.killTarget == None :
+        killTargetPlayer: Player = nightTargetData.killVoteData.evaluate()
+
+        if killTargetPlayer == None :
             self._addSystemChat(self._('The Mafia did not assassinate anyone.'))
         else :
-            if nightTargetData.killTarget == nightTargetData.healTarget :
+            if killTargetPlayer == nightTargetData.healTarget :
                 doctor.addHealSuccess(nightTargetData.healTarget)
                 self.trustRecorder.healSucceeded(nightTargetData.healTarget.info)
                 self._addSystemChat(self._('The Mafia attempted to assassinate someone but failed.'))
             else :
-                self.gameState.removePlayerByInfo(nightTargetData.killTarget.info, RemoveReason.KILL)
-                self.trustRecorder.playerRemoved(nightTargetData.killTarget.info, RemoveReason.KILL)
-                _name = nightTargetData.killTarget.info.name
-                _role = self.gameState.translateRole[nightTargetData.killTarget.info.role]
+                self.gameState.removePlayerByInfo(killTargetPlayer.info, RemoveReason.KILL)
+                self.trustRecorder.playerRemoved(killTargetPlayer.info, RemoveReason.KILL)
+                _name = killTargetPlayer.info.name
+                _role = self.gameState.translateRole[killTargetPlayer.info.role]
                 self._addSystemChat(self._('{name} was assassinated by the Mafia. Their role was {role}.').format(name=_name, role=_role))
 
         ### execute test

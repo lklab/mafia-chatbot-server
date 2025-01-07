@@ -5,6 +5,11 @@ from typing import Any
 
 from game_process import startGameProcess
 
+from mafia_chatbot.main.room_manager import RoomManager
+from mafia_chatbot.main.room import Room
+
+from mafia_chatbot.game.game_info import varifyGameInfo
+
 from mafia_chatbot.network.tcp_server import TcpServer
 from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.message_handler import MessageHandler
@@ -18,7 +23,7 @@ from mafia_chatbot.db.user_db import userDB
 
 from mafia_chatbot.utils.wands_logger import WandsLogger
 
-GAME_PROCESS_COUNT = 8
+GAME_PROCESS_COUNT = 1
 MAIN_PORT = 10015
 GAME_PORT_FRIST = 10016
 GAME_PROCESS_PORT = 30000
@@ -45,30 +50,39 @@ class GameProcessHandler :
         return self.gameCount
 
 class GameHandler :
-    def __init__(self, id: str, process: GameProcessHandler, clientIds: list[str]) :
+    def __init__(self, id: str, process: GameProcessHandler, users: list[ClientUser]) :
         self.id = id
         self.process = process
-        self.clientIds = clientIds
+        self.users = users
+
+        for user in self.users :
+            user.setHolder('gamehandler', self)
 
         process.addGame(id)
 
-    def removeClient(self, clientId: str) :
-        self.clientIds.remove(clientId)
+    def removeUser(self, user: ClientUser) :
+        if user in self.users :
+            self.users.remove(user)
+            user.releaseHolder('gamehandler')
 
     def terminate(self) :
+        for user in self.users :
+            user.releaseHolder('gamehandler')
+        self.users.clear()
+
         self.process.removeGame(self.id)
 
 class MainProcess :
     def __init__(self) :
+        self.logger = WandsLogger('network', 'main')
+
         self.gameProcesses: list[Process] = []
         self.gameProcessHandlers: list[GameProcessHandler] = []
         self.mainServerTask = None
 
         self.gameDict: dict[str, GameHandler] = {}
-        self.gameByClientId: dict[str, GameHandler] = {}
 
-        # setup logger
-        self.logger = WandsLogger('network', 'main')
+        self.roomManager: RoomManager = RoomManager(self.logger)
 
     async def run(self) :
         gameProcessServer = TcpServer(port=GAME_PROCESS_PORT, host='127.0.0.1', useSSL=False)
@@ -95,15 +109,15 @@ class MainProcess :
 
     async def _runMainServer(self) :
         self.logger.debug('_runMainServer()')
-        mainServer = ClientServer(
+        self.mainServer = ClientServer(
             port=MAIN_PORT,
             onAuth=self._onClientAuth,
             onMessage=self._onClientMessage,
             onDisconnected=self._onClientDisconnected,
             logger=self.logger,
         )
-        await mainServer.start()
-        await mainServer.serve()
+        await self.mainServer.start()
+        await self.mainServer.serve()
 
     ### Handle game process ###
     def _onGameProcessConnected(self, tcpHandler: TcpHandler) :
@@ -131,13 +145,17 @@ class MainProcess :
         self._startMainServer()
 
     def _switchGameProcessMessageClientExited(self, messageHandler: MessageHandler, message) :
-        # gameId: str = message.gameId
-        clientId: str = message.clientId
+        user: ClientUser = self.mainServer.getUser(message.clientId, onlyExists=True)
+        if user == None :
+            return
 
-        if clientId in self.gameByClientId :
-            game: GameHandler = self.gameByClientId[clientId]
-            game.removeClient(clientId)
-            del self.gameByClientId[clientId]
+        game: GameHandler = user.getHolder('gamehandler')
+        if game != None :
+            game.removeUser(user)
+
+        response = ipc_pb2.ClientExitedResponse()
+        response.rqid = message.rqid
+        self._sendToGameProcess(messageHandler, response)
 
     def _switchGameProcessMessageGameEnded(self, messageHandler: MessageHandler, message) :
         gameId: str = message.gameId
@@ -147,9 +165,9 @@ class MainProcess :
             del self.gameDict[gameId]
             game.terminate()
 
-            for clientId in game.clientIds :
-                if clientId in self.gameByClientId :
-                    del self.gameByClientId[clientId]
+        response = ipc_pb2.GameEndedResponse()
+        response.rqid = message.rqid
+        self._sendToGameProcess(messageHandler, response)
 
     _switchGameProcessMessage = {
         ipc_pb2.GameServerStarted : _switchGameProcessMessageGameServerStarted,
@@ -189,25 +207,47 @@ class MainProcess :
 
         user.disconnect()
 
-    def _switchUserMessageCheckCurrentGame(self, user: ClientUser, message) :
-        if user.clientId in self.gameByClientId :
-            response = game_pb2.CurrentGame()
-            response.rqid = message.rqid
-            response.isGameExists = True
-            response.port = self.gameByClientId[user.clientId].process.port
-            self._sendToUser(user, response)
-        else :
-            response = game_pb2.CurrentGame()
-            response.rqid = message.rqid
-            response.isGameExists = False
-            self._sendToUser(user, response)
+    def _switchUserMessageRequestMyRoomInfo(self, user: ClientUser, message) :
+        self.roomManager.processMessageRequestMyRoomInfo(user, message)
+
+    def _switchUserMessageCreateRoom(self, user: ClientUser, message) :
+        # check current game
+        if user.getHolder('gamehandler') != None :
+            errorResponse = makeErrorResponse(message, 0, 'The game is already running.')
+            self._sendToUser(user, errorResponse, isError=True)
+            return
+
+        # check game info
+        if not varifyGameInfo(message.gameInfo) :
+            errorResponse = makeErrorResponse(message, 0, 'The game information is invalid.')
+            self._sendToUser(user, errorResponse, isError=True)
+            return
+
+        # check human count
+        if message.maxHumans > message.gameInfo.playerCount :
+            errorResponse = makeErrorResponse(message, 0, 'The number of humans cannot exceed the number of players.')
+            self._sendToUser(user, errorResponse, isError=True)
+            return
+
+        self.roomManager.processMessageCreateRoom(user, message)
+
+    def _switchUserMessageJoinRoom(self, user: ClientUser, message) :
+        if user.getHolder('gamehandler') != None :
+            errorResponse = makeErrorResponse(message, 0, 'The game is already running.')
+            self._sendToUser(user, errorResponse, isError=True)
+            return
+
+        self.roomManager.processMessageJoinRoom(user, message)
+
+    def _switchUserMessageQuitRoom(self, user: ClientUser, message) :
+        self.roomManager.processMessageQuitRoom(user, message)
 
     def _switchUserMessageNewGame(self, user: ClientUser, message) :
-        async def _newGame() :
+        async def _newGame(room: Room) :
             # find free game process
             targetProcess: GameProcessHandler = None
             gameCount: int = 0
-            
+
             for process in self.gameProcessHandlers :
                 count = process.getGameCount()
                 if targetProcess == None or count < gameCount :
@@ -216,18 +256,33 @@ class MainProcess :
                 if count == 0 :
                     break
 
-            # send new game
+            # create new game
             gameId: str = str(uuid.uuid4())
 
-            # TODO multiplay
-            clientInfo = ipc_pb2.Client()
-            clientInfo.id = user.clientId
-            clientInfo.name = user.clientName
-            clients: list[ipc_pb2.Client] = [clientInfo]
+            # setup users
+            users: list[ClientUser]
+            if room == None :
+                users = [user]
+            else :
+                users = room.users
 
+            clients: list[ipc_pb2.Client] = []
+            for u in users :
+                clientInfo = ipc_pb2.Client()
+                clientInfo.id = u.clientId
+                clientInfo.name = u.clientName
+                clients.append(clientInfo)
+
+            # setup game info
+            gameInfo: game_data_pb2.GameInfo = message.gameInfo
+            if room != None :
+                gameInfo = room.gameInfoRaw
+
+            # send new game
             startNewGame = ipc_pb2.StartNewGame()
             startNewGame.gameId = gameId
             startNewGame.clients.extend(clients)
+            startNewGame.gameInfo.CopyFrom(gameInfo)
 
             try :
                 await self._sendAwaitResponseToGameProcess(targetProcess.messageHandler, startNewGame)
@@ -238,15 +293,23 @@ class MainProcess :
                 return
 
             # assign game
-            game: GameHandler = GameHandler(gameId, targetProcess, [user.clientId]) # TODO multiplay
+            game: GameHandler = GameHandler(gameId, targetProcess, users)
             self.gameDict[gameId] = game
-            self.gameByClientId[user.clientId] = game # TODO multiplay
 
-            # response port to client
-            newGameResponse = game_pb2.NewGameResponse()
+            # destroy room
+            if room != None :
+                self.roomManager.destroyRoom(room)
+
+            # response port to users
+            newGameResponse = room_pb2.NewGameResponse()
             newGameResponse.rqid = message.rqid
             newGameResponse.port = game.process.port
             self._sendToUser(user, newGameResponse)
+
+            gameStartedMessage = room_pb2.GameStarted()
+            gameStartedMessage.port = game.process.port
+            for u in users :
+                self._sendToUser(u, gameStartedMessage)
 
         # check ready
         if user.isNeedToSignUp() :
@@ -255,18 +318,50 @@ class MainProcess :
             return
 
         # check exist game
-        if user.clientId in self.gameByClientId :
+        if user.getHolder('gamehandler') != None :
             errorResponse = makeErrorResponse(message, 0, 'The game is already running.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
-        asyncio.create_task(_newGame()) # TODO 중복 호출에 대한 처리
+        # check room
+        room: Room = user.getHolder('room')
+        if room != None and not room.isHostUser(user) :
+            errorResponse = makeErrorResponse(message, 0, 'You are not the host of the room.')
+            self._sendToUser(user, errorResponse, isError=True)
+            return
+
+        # check game info
+        # 방이 있는 경우 방에 설정된 검증된 game info를 사용
+        if room == None and not varifyGameInfo(message.gameInfo) :
+            errorResponse = makeErrorResponse(message, 0, 'The game information is invalid.')
+            self._sendToUser(user, errorResponse, isError=True)
+            return
+
+        asyncio.create_task(_newGame(room)) # TODO 중복 호출에 대한 처리
+
+    def _switchUserMessageCheckCurrentGame(self, user: ClientUser, message) :
+        game: GameHandler = user.getHolder('gamehandler')
+        if game != None :
+            response = game_pb2.CurrentGame()
+            response.rqid = message.rqid
+            response.isGameExists = True
+            response.port = game.process.port
+            self._sendToUser(user, response)
+        else :
+            response = game_pb2.CurrentGame()
+            response.rqid = message.rqid
+            response.isGameExists = False
+            self._sendToUser(user, response)
 
     _switchUserMessage = {
         auth_pb2.UpdateUserInfo : _switchUserMessageUpdateUserInfo,
         auth_pb2.DeleteUser : _switchUserMessageDeleteUser,
+        room_pb2.RequestMyRoomInfo : _switchUserMessageRequestMyRoomInfo,
+        room_pb2.CreateRoom : _switchUserMessageCreateRoom,
+        room_pb2.JoinRoom : _switchUserMessageJoinRoom,
+        room_pb2.QuitRoom : _switchUserMessageQuitRoom,
+        room_pb2.NewGame : _switchUserMessageNewGame,
         game_pb2.CheckCurrentGame : _switchUserMessageCheckCurrentGame,
-        game_pb2.NewGame : _switchUserMessageNewGame,
     }
 
     def _sendToGameProcess(self, messageHandler: MessageHandler, message) :
@@ -283,7 +378,7 @@ class MainProcess :
         if isError :
             self.logger.error(f'_sendToUser id={user.clientId}, name={user.clientName}, type={type(message)}, message=<{message}>')
         else :
-            self.logger.debug(f'_sendToClient id={user.clientId}, name={user.clientName}, type={type(message)}, message=<{message}>')
+            self.logger.debug(f'_sendToUser id={user.clientId}, name={user.clientName}, type={type(message)}, message=<{message}>')
         user.send(message)
 
 if __name__ == "__main__" :

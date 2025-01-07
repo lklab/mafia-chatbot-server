@@ -1,17 +1,6 @@
 syntax = "proto3";
 
-message DebugInfo {
-  bool isDebug = 1;
-  Role fixedRole = 2;
-  string fixedRoleClientId = 3;
-  int32 daySeconds = 4;
-  int32 eveningSeconds = 5;
-  int32 nightSeconds = 6;
-  bool useLLM = 7;
-  string nonTargetableClientId = 8;
-  string observerClientId = 9;
-  bool continueOnlyBots = 10;
-}
+import "game_data.proto";
 
 message CheckCurrentGame {
   string rqid = 1;
@@ -23,66 +12,21 @@ message CurrentGame {
   int32 port = 3;
 }
 
-message NewGame {
-  string rqid = 1;
-  repeated string clients = 2;
-}
-
-message NewGameResponse {
-  string rqid = 1;
-  int32 port = 2;
-}
-
-message RequestGameInfo {
+message RequestCurrentGameInfo {
   string rqid = 1;
 }
 
-message GameInfo {
-  string rqid = 1;
-  int32 playerCount = 2;
-  int32 mafiaCount = 3;
-  string language = 4;
-  DebugInfo debugInfo = 5;
-}
-
-message GameStart {
+message CurrentGameInfo {
   string rqid = 1;
   GameInfo info = 2;
 }
 
-message GameStartResponse {
+message ReadyGame {
   string rqid = 1;
 }
 
-enum Role {
-  Role_UNKNOWN = 0;
-  Role_CITIZEN = 1;
-  Role_MAFIA = 2;
-  Role_POLICE = 3;
-  Role_DOCTOR = 4;
-}
-
-enum RemoveReason {
-  REMOVE_UNKNOWN = 0;
-  REMOVE_LIVE = 1;
-  REMOVE_EXECUTED = 2;
-  REMOVE_ASSASSINATED = 3;
-  REMOVE_OBSERVER = 4;
-}
-
-message Player {
-  string id = 1;
-  string name = 2;
-  Role role = 3;
-  bool isLive = 4;
-  RemoveReason removeReason = 5;
-}
-
-enum Phase {
-  Phase_UNKNOWN = 0;
-  Phase_DAY = 1;
-  Phase_EVENING = 2;
-  Phase_NIGHT = 3;
+message ReadyGameResponse {
+  string rqid = 1;
 }
 
 message RequestGamePhase {
@@ -117,21 +61,6 @@ message GameState {
   int32 maxMyChat = 9;
 }
 
-enum ChatType {
-  CHAT_UNKNOWN = 0;
-  CHAT_SYSTEM = 1;
-  CHAT_DISCUSSION = 2;
-}
-
-message Chat {
-  string id = 1;
-  ChatType type = 2;
-  int32 index = 3;
-
-  string sender = 4;
-  string content = 5;
-}
-
 message RequestChatList {
   string rqid = 1;
 }
@@ -158,14 +87,6 @@ message AddChat {
   int32 maxMyChat = 4;
 }
 
-enum TargetType {
-  TARGET_UNKNOWN = 0;
-  TARGET_VOTE = 1;
-  TARGET_KILL = 2;
-  TARGET_TEST = 3;
-  TARGET_HEAL = 4;
-}
-
 message SetTarget {
   string rqid = 1;
   TargetType type = 2;
@@ -178,27 +99,18 @@ message SetTargetResponse {
 
 message GetVoteState {
   string rqid = 1;
-}
-
-message Voters {
-  repeated string voters = 1;
+  TargetType type = 2;
 }
 
 message VoteState {
   string rqid = 1;
-  map<string, Voters> votersMap = 2;
+  TargetType type = 2;
+  map<string, Voters> votersMap = 3;
 }
 
 message Removed {
   string rqid = 1;
   RemoveReason reason = 2;
-}
-
-enum GameEndReason {
-  GAME_END_UNKNOWN = 0;
-  GAME_END_CITIZEN_WIN = 1;
-  GAME_END_MAFIA_WIN = 2;
-  GAME_END_NO_HUMAN_PLAYER = 3;
 }
 
 message GameEnd {

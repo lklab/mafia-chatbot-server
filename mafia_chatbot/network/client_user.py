@@ -27,27 +27,32 @@ class ClientUser :
 
         # variables
         self.handler = None
-        self.refCount: int = 0
+        self.holders: dict[str, object] = {}
         self.logger: GameLogger = None
         self.subscribers: dict[type, Callable[[Any], None]] = {}
         self.isReleased: bool = False
 
-    ### ref count ###
-    def addRef(self) :
-        if self.isReleased :
-            return
-        self.refCount += 1
+    ### holder ###
+    def setHolder(self, key: str, holder: object) :
+        self.holders[key] = holder
 
-    def releaseRef(self) :
-        self.refCount -= 1
-        self._checkReleasable()
+    def getHolder(self, key: str) -> object :
+        return self.holders.get(key)
+
+    def releaseHolder(self, key) :
+        if key in self.holders :
+            del self.holders[key]
+            self._checkReleasable()
 
     def _checkReleasable(self) :
-        if self.refCount <= 0 and self.handler == None and not self.isReleased :
+        if len(self.holders) <= 0 and self.handler == None and not self.isReleased :
             self.isReleased = True
             self.onRelease(self)
 
     ### message ###
+    def isConnected(self) :
+        return self.handler != None
+
     def setMessageHandler(self, handler: MessageHandler) :
         if self.isReleased :
             return
@@ -59,7 +64,7 @@ class ClientUser :
 
     def forward(self, message) :
         if self.handler == None :
-            return
+            return False
 
         msgType = type(message)
         if msgType in self.subscribers :
@@ -71,7 +76,7 @@ class ClientUser :
     def send(self, message) :
         if self.handler != None :
             if self.logger != None :
-                self.logger.log(TAG.NETWORK, f'[ClientUser] send message to {self.clientName}: <{message}>')
+                self.logger.log(TAG.NETWORK, f'[ClientUser] send {type(message)} message to {self.clientName}: <{message}>')
             self.handler.send(message)
 
     def setLogger(self, logger: GameLogger) :
@@ -82,6 +87,7 @@ class ClientUser :
 
     def clearSubscribers(self) :
         self.subscribers.clear()
+        self.logger = None
 
     def disconnect(self) :
         if self.handler != None :
@@ -123,7 +129,7 @@ class ClientUser :
         return len(self.clientName) == 0
 
     def delete(self) -> bool :
-        if self.refCount > 0 :
+        if len(self.holders) > 0 :
             return False
 
         firebase.deleteUser(self.clientId) # TODO 삭제된 사용자 uid 일정 기간동안 보유하면서 새로운 연결 막기

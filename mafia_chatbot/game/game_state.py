@@ -12,7 +12,7 @@ from mafia_chatbot.game.game_logger import GameLogger, TAG, FakeGameLogger
 from mafia_chatbot.network.messages import *
 
 import mafia_chatbot.utils.utils as utils
-from mafia_chatbot.utils.name_bank import NAMES, ENGLISH_NAMES
+from mafia_chatbot.utils.name_bank import NAMES, ENGLISH_NAMES, languageToCodeDict
 
 TONES: list[str] = [
     'Affable', 'Amiable', 'Blunt', 'Breezy', 'Casual', 'Charming',
@@ -22,16 +22,18 @@ TONES: list[str] = [
 ]
 
 class Phase(Enum) :
-    NOT_PLAYING = 0
+    PREPARE = 0
     DAY = 1
     EVENING = 2
     NIGHT = 3
+    END = 4
 
-phaseToProtoDict: dict[Phase, game_pb2.Phase] = {
-    Phase.NOT_PLAYING: game_pb2.Phase.Phase_UNKNOWN,
-    Phase.DAY: game_pb2.Phase.Phase_DAY,
-    Phase.EVENING: game_pb2.Phase.Phase_EVENING,
-    Phase.NIGHT: game_pb2.Phase.Phase_NIGHT,
+phaseToProtoDict: dict[Phase, game_data_pb2.Phase] = {
+    Phase.PREPARE: game_data_pb2.Phase.Phase_PREPARE,
+    Phase.DAY: game_data_pb2.Phase.Phase_DAY,
+    Phase.EVENING: game_data_pb2.Phase.Phase_EVENING,
+    Phase.NIGHT: game_data_pb2.Phase.Phase_NIGHT,
+    Phase.END: game_data_pb2.Phase.Phase_END,
 }
 
 class VoteData :
@@ -105,15 +107,61 @@ class VoteData :
 
     def getVoteStateMessage(self) -> game_pb2.VoteState :
         message = game_pb2.VoteState()
+        message.type = game_data_pb2.TargetType.TARGET_VOTE
         for target, voters in self.voteDict.items() :
             ids = [voter.info.id for voter in voters]
             message.votersMap[target.id].voters.extend(ids)
         return message
 
-class NightTargetData :
-    def __init__(self, round) :
+class KillVoteData :
+    def __init__(self, round: int, mafiaUserPlayers: list[Player]) :
         self.round = round
-        self.killTarget: Player = None
+        self.mafiaUserPlayers = mafiaUserPlayers
+        self.voteDict: dict[Player, Player] = {}
+
+    def setKillTarget(self, voter: Player, target: Player) :
+        if not voter.isLive or voter.info.role != Role.MAFIA :
+            return
+
+        if voter not in self.voteDict :
+            self.voteDict[voter] = None
+
+        oldTarget: Player = self.voteDict[voter]
+
+        if target != oldTarget :
+            self.voteDict[voter] = target
+
+            message = self.getVoteStateMessage()
+            for player in self.mafiaUserPlayers :
+                player.user.send(message)
+
+    def evaluate(self) -> Player :
+        voteCounts: dict[Player, int] = {}
+        maxVoteCount = 0
+
+        # 투표 수 집계
+        for target in self.voteDict.values():
+            if target != None :
+                voteCounts[target] = voteCounts.get(target, 0) + 1
+                maxVoteCount = max(maxVoteCount, voteCounts[target])
+
+        # 최다 득표자 목록 생성
+        targets = [target for target, count in voteCounts.items() if count == maxVoteCount]
+
+        # 동률이면 랜덤으로 선택
+        return random.choice(targets) if targets else None
+
+    def getVoteStateMessage(self) -> game_pb2.VoteState :
+        message = game_pb2.VoteState()
+        message.type = game_data_pb2.TargetType.TARGET_KILL
+        for voter, target in self.voteDict.items() :
+            message.votersMap[target.info.id].voters.append(voter.info.id)
+        return message
+
+class NightTargetData :
+    def __init__(self, round: int, mafiaUserPlayers: list[Player]) :
+        self.round = round
+        self.killVoteData: KillVoteData = KillVoteData(round, mafiaUserPlayers)
         self.testTarget: Player = None
         self.healTarget: Player = None
 
@@ -128,11 +176,6 @@ class PlayerRemoveInfo :
         self.player = player
         self.reason = reason
         self.roundInfo = roundInfo
-
-languageToCodeDict: dict[str, str] = {
-    'english' : 'en',
-    'korean' : 'ko',
-}
 
 class GameState :
     def __init__(self, gameInfo: GameInfo, logger: GameLogger = None) :
@@ -324,11 +367,11 @@ class GameState :
 
         ### phase data
         self.round = 0
-        self.currentPhase = Phase.NOT_PLAYING
+        self.currentPhase = Phase.PREPARE
         self.daySeconds = 60
         self.eveningSeconds = 30
         self.nightSeconds = 30
-        self.timeLimit: float = None
+        self.timeLimit: float = time.monotonic()
 
         # phase data - debug
         if gameInfo.debugInfo != None :
@@ -413,6 +456,9 @@ class GameState :
     def addRound(self) :
         self.round += 1
 
+    def _switchPhaseNone(self) :
+        pass
+
     def _switchPhaseDay(self) :
         self._reloadAllChatingCounts()
         self.timeLimit: float = time.monotonic() + self.daySeconds
@@ -426,9 +472,11 @@ class GameState :
         self.timeLimit: float = time.monotonic() + self.nightSeconds
 
     _switchPhase = {
+        Phase.PREPARE : _switchPhaseNone,
         Phase.DAY : _switchPhaseDay,
         Phase.EVENING : _switchPhaseEvening,
         Phase.NIGHT : _switchPhaseNight,
+        Phase.END : _switchPhaseNone,
     }
 
     def _reloadAllChatingCounts(self) :
@@ -445,9 +493,8 @@ class GameState :
         self.currentPhase = phase
         self.logger.log(TAG.PHASE, f'round={self.round}, phase={self.currentPhase.name}')
 
-        if phase != Phase.NOT_PLAYING :
-            GameState._switchPhase[phase](self)
-            self.sendGameStateMessageToAllUsers()
+        GameState._switchPhase[phase](self)
+        self.sendGameStateMessageToAllUsers()
 
     def getCurrentRoundInfo(self) -> RoundInfo :
         return RoundInfo(self.round, len(self.players), len(self.mafiaPlayers))
@@ -475,21 +522,23 @@ class GameState :
         self.logger.log(TAG.CHAT, f'SYSTEM - {chat.index} - for {"everyone" if receiver == None else receiver.name}: {content}')
         self.sendAddChatMessageToAllUsers(chat)
 
-    def addHumanChat(self, sender: PlayerInfo, chat_out: game_pb2.Chat) :
+    def addHumanChat(self, sender: PlayerInfo, chat_out: game_data_pb2.Chat) :
         chat: ChatData = ChatData(
             type=ChatType.DISCUSSION,
             index=len(self.chatList),
             content=chat_out.content,
             sender=sender,
+            id=chat_out.id,
         )
         self.chatList.append(chat)
         self.chatLogs.append(f'{sender.name}: {chat.content}')
         self.logger.log(TAG.CHAT, f'DISCUSSION - {chat.index} - {sender.name}: {chat.content}')
 
+        chat_out.index = chat.index
+        self.sendAddChatMessageToAllUsers(chat)
+
         if self.onHumanChat != None :
             self.onHumanChat(chat)
-
-        chat_out.index = chat.index
 
     def getRecentConversationLogs(self, count: int) -> list[str] :
         logs: list[str] = []
@@ -533,7 +582,7 @@ class GameState :
 
         nightTargetData: NightTargetData = None
         if self.nightTargetHistory[self.round] == None :
-            nightTargetData = NightTargetData(self.round)
+            nightTargetData = NightTargetData(self.round, [user for user in self.userPlayers if user.info.role == Role.MAFIA])
             self.nightTargetHistory[self.round] = nightTargetData
         else :
             nightTargetData = self.nightTargetHistory[self.round]
