@@ -66,13 +66,13 @@ class Room :
         self.users.remove(user)
         user.releaseHolder('room')
 
-        if user.clientId == self.hostUser.clientId :
-            if len(self.users) > 0 :
+        if len(self.users) > 0 :
+            if user.clientId == self.hostUser.clientId :
                 self.hostUser = random.choice(self.users)
-                self._sendInfoToAllUsers()
-            else :
-                self.destroy()
-                self.onDestroy(self)
+            self._sendInfoToAllUsers()
+        else :
+            self.destroy()
+            self.onDestroy(self)
 
     def isHostUser(self, user: ClientUser) :
         return self.hostUser.clientId == user.clientId
