@@ -97,6 +97,7 @@ class LLM :
                     'sentence' : message,
                 }
             )
+        translatedMessage = message
 
         message = await self._ainvokeChain(
             chain=self.removeFirstPersonChain,
@@ -162,7 +163,7 @@ class LLM :
                 chain=self.checkClaimsMafiaChain,
                 input={
                     'name' : player.info.englishName,
-                    'sentence' : message,
+                    'sentence' : translatedMessage,
                 }
             )
 
@@ -384,9 +385,23 @@ class LLM :
 
         # setup prompt
         template = (
-            "Respond with \"true\" if the following sentence explicitly claims that {name}'s role is Mafia. Otherwise, respond with \"false\"."
+            "Respond with \"true\" if the following sentence explicitly claims that {name}'s role is Mafia. Otherwise, respond with \"false\". The likelihood of {name} claiming to be a mafia is extremely low, so you must assess conservatively. Respond with \"true\" only if the statement explicitly and clearly asserts that {name} is a mafia."
+            "\n\n"
+            "examples"
             "\n"
-            "{sentence}"
+            "I am a mafia. - \"true\""
+            "\n"
+            "{name} is a mafia. - \"true\""
+            "\n"
+            "{name} was acting strange, but we can't be sure of their role. - \"false\""
+            "\n"
+            "There's no proof that {name} is Mafia. - \"false\""
+            "\n"
+            "You are a Mafia. - \"false\""
+            "\n"
+            "The mafia is you. - \"false\""
+            "\n\n"
+            "sentence: {sentence}"
         )
         prompt = PromptTemplate.from_template(template)
 
