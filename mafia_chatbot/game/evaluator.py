@@ -280,6 +280,10 @@ def claimePoliceForPoliceResponse(gameState: GameState, recorder: TrustRecorder,
     for p in recorder.publicPolicePlayerInfos :
         if p not in me.testResults or me.testResults[p] != Role.CITIZEN :
             assumption: Assumption = _getTestResultsForPolice(gameState, recorder, me)
+
+            if assumption.assumptionType == AssumptionType.NORMAL :
+                assumption.estimations.append(Estimation(p, Role.MAFIA))
+
             strategy: Strategy = Strategy(Role.POLICE, [assumption])
             gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: claime police for police strategy result: {strategy}')
             return strategy
@@ -287,20 +291,28 @@ def claimePoliceForPoliceResponse(gameState: GameState, recorder: TrustRecorder,
     return None
 
 def _getTestResultsForPolice(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
-    estimations: list[Estimation] = []
-    for p, role in me.testResults.items() :
-        estimations.append(Estimation(
-            playerInfo=p.info,
-            role=Role.MAFIA if role == Role.MAFIA else Role.CITIZEN,
-        ))
+    if len(me.testResults) == 0 :
+        return Assumption(
+            estimations=[],
+            reason='You are a real police.',
+            assumptionType=AssumptionType.NORMAL,
+        )
 
-    random.shuffle(estimations)
-    estimations.sort(key=lambda estimation : estimation.role.value)
-    return Assumption(
-        estimations=estimations,
-        reason='You investigated them.',
-        assumptionType=AssumptionType.TEST_RESULT,
-    )
+    else :
+        estimations: list[Estimation] = []
+        for p, role in me.testResults.items() :
+            estimations.append(Estimation(
+                playerInfo=p.info,
+                role=Role.MAFIA if role == Role.MAFIA else Role.CITIZEN,
+            ))
+
+        random.shuffle(estimations)
+        estimations.sort(key=lambda estimation : estimation.role.value)
+        return Assumption(
+            estimations=estimations,
+            reason='You investigated them.',
+            assumptionType=AssumptionType.TEST_RESULT,
+        )
 
 def _claimePoliceForMafia(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
     # check state condition
