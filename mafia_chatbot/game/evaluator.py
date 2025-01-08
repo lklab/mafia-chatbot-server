@@ -178,9 +178,9 @@ def _getPolicePoiningMe(gameState: GameState, recorder: TrustRecorder, me: Playe
             return police, 'He pointed me of being the mafia, but I am not.'
     return None, None
 
-def _getTargetFormTowPolice(gameState: GameState, recorder: TrustRecorder, me: Player) -> tuple[Player, str] :
+def _getTargetFormTwoPolice(gameState: GameState, recorder: TrustRecorder, me: Player) -> tuple[Player, str] :
     if len(recorder.publicPolicePlayerInfos) >= 2 :
-        gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getTargetFormTowPolice')
+        gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getTargetFormTwoPolice')
         candidates: list[PlayerInfo] = []
         for policeInfo in recorder.publicPolicePlayerInfos :
             if policeInfo == me.info :
@@ -215,9 +215,9 @@ def _getTargetConfirmedMafia(gameState: GameState, recorder: TrustRecorder, me: 
 
     return None, None
 
-def _getTargetFormTowDoctor(gameState: GameState, recorder: TrustRecorder, me: Player) -> tuple[Player, str] :
+def _getTargetFormTwoDoctor(gameState: GameState, recorder: TrustRecorder, me: Player) -> tuple[Player, str] :
     if len(recorder.publicDoctorPlayerInfos) >= 2 :
-        gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getTargetFormTowDoctor')
+        gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getTargetFormTwoDoctor')
         candidates: list[PlayerInfo] = []
         for doctorInfo in recorder.publicDoctorPlayerInfos :
             if doctorInfo == me.info :
@@ -251,9 +251,9 @@ def _getTargetByTrustConformityRandom(gameState: GameState, recorder: TrustRecor
 
 _targetSelecters: list[Callable[[GameState, TrustRecorder, Player], tuple[Player, str]]] = [
     _getPolicePoiningMe,
-    _getTargetFormTowPolice,
+    _getTargetFormTwoPolice,
     _getTargetConfirmedMafia,
-    _getTargetFormTowDoctor,
+    _getTargetFormTwoDoctor,
     _getTargetByTrustConformityRandom,
 ]
 
@@ -534,11 +534,13 @@ _updateSelectors: dict[Role, Callable[[GameState, TrustRecorder, Player], Assump
 }
 
 def _choiceFromCandidates(gameState: GameState, recorder: TrustRecorder, me: Player, candidates: list[PlayerInfo]) -> PlayerInfo :
-    n: int = len(candidates)
-    if n <= 0 :
+    cn: int = len(candidates) # 후보의 수
+    if cn <= 0 :
         return None
-    if n == 1 :
+    if cn == 1 :
         return candidates[0]
+
+    vn: int = len(gameState.players) - 1 # 나를 제외한 유권자 수
 
     weights: list[float] = []
 
@@ -546,11 +548,11 @@ def _choiceFromCandidates(gameState: GameState, recorder: TrustRecorder, me: Pla
     b: float = 0.99 # 다른 모든 플레이어가 해당 플레이어를 지목할 때 그 플레이어를 지목할 확률
     c: float = 0.5 # 0 ~ 1 사이의 값으로 이 값이 0에 가까울수록 더 적은 수의 플레이어가 지목했을 때 지목할 확률이 올라감
 
-    d: float = 2.0 * a * n - 2.0
-    e: float = 0.5 / (a * n - 1.0)
-    f: float = 1.0 / n
-    g: float = b - 1.0 / n
-    h: float = 1.0 / (n - 1.0)
+    d: float = 2.0 * a * cn - 2.0
+    e: float = 0.5 / (a * cn - 1.0)
+    f: float = 1.0 / cn
+    g: float = b - 1.0 / cn
+    h: float = 1.0 / (vn - 1.0)
 
     myPointerOrVotersCount: int = len(recorder.getPointerOrVoters(me.info))
     isIFocused: bool = myPointerOrVotersCount >= round(gameState.getPlayerCount() / 2.5)
@@ -587,16 +589,20 @@ def _choiceFromCandidates(gameState: GameState, recorder: TrustRecorder, me: Pla
         # calculate weights using trust
         point: float = normalizePoint(recorder.getTrustPoint(candidate))
         tp: float = a / (d * (point + e)) # 다른 모든 플레이어의 신뢰도가 0일 때 현재 플레이어가 지목될 확률
-        tw: float = (n - 1.0) * tp / (1.0 - tp)
+        tw: float = (cn - 1.0) * tp / (1.0 - tp)
         tw = pow(tw, me.trustSensitivity)
 
         # update weights using conformity
         sumOfPoint: float = 0.0
         for pointer in pointerOrVoters :
-            sumOfPoint += normalizePoint(recorder.getTrustPoint(pointer)) * 2.0
+            if pointer != me.info :
+                sumOfPoint += normalizePoint(recorder.getTrustPoint(pointer)) * 2.0
+
+        # 대상에게 아무도 투표하지 않았다면 cp = 1 / cn
+        # 나를 제외하고 모두 대상에게 투표했다면 cp = b
         cp: float = f + g * pow(sumOfPoint * h, c)
         cp = min(cp, b)
-        cw: float = (n - 1.0) * cp / (1.0 - cp)
+        cw: float = (cn - 1.0) * cp / (1.0 - cp)
 
         conformity: float = me.conformity
 
