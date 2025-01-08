@@ -262,7 +262,7 @@ class LLM :
 
         names = '\n'.join(map(lambda p: f'"{p.info.name}": "{p.info.englishName}"', self.gameState.players))
         template = (
-            f"Translate the following ##sentence## into english. When translating, use the specified words from ##names## for proper nouns and the terms from ##terms## to ensure consistent vocabulary for similar or identical meanings."
+            f"Translate the following ##sentence## into English without altering its original meaning. Use the specified words from ##names## for proper nouns and the terms from ##terms## to ensure consistent vocabulary for similar or identical meanings. If ##sentence## does not contain meaningful content (e.g., numbers, empty strings, or non-sentential fragments), return an empty string instead."
             "\n\n"
             "##sentence##"
             "\n"
@@ -293,7 +293,19 @@ class LLM :
 
         # setup prompt
         template = (
-            "If ##sentence## contains any first-person pronouns (e.g., I, me, my, mine, myself), replace them with \"{name}\" and provide the modified sentence. Do not replace second-person pronouns (e.g., you, your) or any other words that are not first-person pronouns. Do not modify any other parts of the sentence, including other names or the overall sentence structure."
+            "If ##sentence## contains any first-person pronouns (e.g., I, me, my, mine, myself), replace them with \"{name}\" and provide the modified sentence. Do not replace second-person pronouns (e.g., you, your) or third-person pronouns (e.g., he, she, it, they, their, them, himself, herself), nor any other words that are not first-person pronouns. Do not modify any other parts of the sentence, including other names or the overall sentence structure."
+            "\n\n"
+            "Example 1 (First-person):"
+            "\n"
+            "Input: \"I think my idea will work better than mine.\""
+            "\n"
+            "Output: \"{name} think {name}'s idea will work better than {name}'s.\""
+            "\n\n"
+            "Example 2 (Third-person):"
+            "\n"
+            "Input: \"She thinks her idea is better than mine.\""
+            "\n"
+            "Output: \"She thinks her idea is better than {name}'s.\""
             "\n\n"
             "##sentence##"
             "\n"
