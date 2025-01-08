@@ -299,6 +299,14 @@ class TrustRecorder :
 
             for estimation in player.estimationsAsPolice.values() :
                 p = self.gameState.getPlayerByInfo(estimation.playerInfo)
+                if p == player : # 자신에 대한 평가 무시
+                    continue
+
+                if estimation.role == Role.MAFIA :
+                    mafiaEstimationCount += 1
+                else :
+                    citizenEstimationCount += 1
+
                 if p.publicRole == Role.POLICE and estimation.role != Role.MAFIA :
                     profile.setState(
                         state=TrustState.CONFIRMED_MAFIA,
@@ -313,10 +321,6 @@ class TrustRecorder :
                     )
                     return
 
-                if estimation.role == Role.MAFIA :
-                    mafiaEstimationCount += 1
-                else :
-                    citizenEstimationCount += 1
 
             if self.gameState.gameInfo.mafiaCount < mafiaEstimationCount :
                 profile.setState(
@@ -350,6 +354,11 @@ class TrustRecorder :
             citizenEstimationCount = 0
 
             for estimation in player.estimationsAsDoctor.values() :
+                if estimation.role == Role.MAFIA : # 의사는 마피아를 알 수 없음
+                    continue
+
+                citizenEstimationCount += 1
+
                 p = self.gameState.getPlayerByInfo(estimation.playerInfo)
                 if p == player : # 자힐한 경우 평가하지 않음
                     continue
@@ -374,8 +383,6 @@ class TrustRecorder :
                         reason='The doctor cannot identify who the mafia is even after successfully treating someone, but he pointed out a mafia member.',
                     )
                     return
-
-                citizenEstimationCount += 1
 
             if citizenEstimationCount > len(self.healSucceededList) :
                 profile.setState(

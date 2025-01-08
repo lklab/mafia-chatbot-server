@@ -106,10 +106,12 @@ class Player :
             # update estimationsAsPolice
             if assumption.assumptionType == AssumptionType.TEST_RESULT :
                 for estimation in assumption.estimations :
-                    self.estimationsAsPolice[estimation.playerInfo] = estimation
+                    if estimation.playerInfo != self.info :
+                        self.estimationsAsPolice[estimation.playerInfo] = estimation
             # update estimationsAsDoctor
             if assumption.assumptionType == AssumptionType.HEAL_SUCCESS :
                 for estimation in assumption.estimations :
+                    # 의사의 경우 자힐하는 경우도 있으므로 estimation에 포함해야 함
                     self.estimationsAsDoctor[estimation.playerInfo] = estimation
 
     def getChangeRole(self, role: Role) -> tuple[Role, bool] : # 바뀐 역할, 역할 모순 여부

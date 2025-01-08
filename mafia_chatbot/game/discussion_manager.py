@@ -317,6 +317,7 @@ class DiscussionManager :
 
             try :
                 strategy: Strategy = await self.llm.analyzeHumanMessage(player, discussion)
+                self.logger.log(TAG.DISCUSSION, f'{player.info.name}: analyzeHumanMessage result: {strategy}')
 
                 if strategy != None and strategy.isEffective() :
                     discussionData = DiscussionData(player, strategy=strategy)

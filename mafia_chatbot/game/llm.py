@@ -144,7 +144,7 @@ class LLM :
                                     assumptionType = AssumptionType.TEST_RESULT
                                 elif role == Role.DOCTOR :
                                     assumptionType = AssumptionType.HEAL_SUCCESS
-                            else :
+                            elif playerInfo != player.info :
                                 estimations.append(Estimation(playerInfo, role))
 
                     assumptions: list[Assumption] = [Assumption(estimations, '', assumptionType=assumptionType)]
