@@ -12,7 +12,7 @@ from mafia_chatbot.game.game_logger import GameLogger, TAG, FakeGameLogger
 from mafia_chatbot.network.messages import *
 
 import mafia_chatbot.utils.utils as utils
-from mafia_chatbot.utils.name_bank import NAMES, ENGLISH_NAMES, languageToCodeDict
+import mafia_chatbot.utils.name_bank as NameBank
 
 TONES: list[str] = [
     'Affable', 'Amiable', 'Blunt', 'Breezy', 'Casual', 'Charming',
@@ -34,6 +34,10 @@ phaseToProtoDict: dict[Phase, game_data_pb2.Phase] = {
     Phase.EVENING: game_data_pb2.Phase.Phase_EVENING,
     Phase.NIGHT: game_data_pb2.Phase.Phase_NIGHT,
     Phase.END: game_data_pb2.Phase.Phase_END,
+}
+languageToCodeDict: dict[str, str] = {
+    'english' : 'en',
+    'korean' : 'ko',
 }
 
 class VoteData :
@@ -184,10 +188,7 @@ class GameState :
         self.logger = logger or GameLogger(self.gameId, 'log')
 
         ### l10n
-        languageCode: str = languageToCodeDict.get(gameInfo.language)
-        if languageCode == None :
-            languageCode = 'en'
-
+        languageCode: str = languageToCodeDict.get(gameInfo.language, 'en')
         self.translation = gettext.translation(
             'messages',
             localedir='mafia_chatbot/locales',
@@ -245,12 +246,7 @@ class GameState :
             self.localPlayer = None
 
         # prepare names and tones for bot players
-        if gameInfo.language in NAMES :
-            names: list[str] = NAMES[gameInfo.language].copy()
-        else :
-            names: list[str] = NAMES['english'].copy()
-        random.shuffle(names)
-
+        names: list[str] = NameBank.getCopyAndShuffleNames(gameInfo.language)
         tones: list[str] = TONES.copy()
         random.shuffle(tones)
 
@@ -319,21 +315,9 @@ class GameState :
 
         ### setup english name
         if gameInfo.language != 'english' :
-            enNameIndex = 0
-            predefinedEnglishNames: set[str] = set(ENGLISH_NAMES.values())
-
-            # 사전 정의된 이름일 경우
+            englishNameMaker: NameBank.EnglishNameMaker = NameBank.EnglishNameMaker(gameInfo.language)
             for player in self.players :
-                if player.info.name in ENGLISH_NAMES :
-                    player.info.englishName = ENGLISH_NAMES[player.info.name]
-
-                # 사전에 정의되지 않은 이름일 경우 임의의 영어 이름을 사용
-                else :
-                    # 미리 정의된 영어 이름(NAMES['english'])과 다른 언어에서 영어로 번역한 이름(ENGLISH_NAMES.values())이 중복될 가능성이 있으므로 중복 검사
-                    while NAMES['english'][enNameIndex] in predefinedEnglishNames :
-                        enNameIndex += 1
-                    player.info.englishName = NAMES['english'][enNameIndex]
-                    enNameIndex += 1
+                player.info.englishName = englishNameMaker.getEnglishName(player.info.name)
 
         ### setup nameLists
         self.nameList: list[str] = list(map(lambda p: p.info.name, self.players))

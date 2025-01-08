@@ -2,54 +2,72 @@ from enum import Enum
 import re
 import json
 import os
+import random
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
-languageToCodeDict: dict[str, str] = {
-    'english' : 'en',
-    'korean' : 'ko',
-}
+NAMES: dict[str, list[str]] = None
+ENGLISH_NAMES: dict[str, dict[str, str]] = None
 
-NAMES: dict[str, list[str]] = {
-    'english' : [
-        'Oliver', 'Emma', 'Noah', 'Ava', 'Liam', 'Sophia', 'Mason', 'Isabella',
-        'James', 'Mia', 'Benjamin', 'Amelia', 'Ethan', 'Harper', 'Lucas',
-        'Charlotte', 'Henry', 'Evelyn', 'Jack', 'Grace',
-        'William', 'Ella', 'Logan', 'Chloe', 'Daniel', 'Lily', 'Alexander', 'Hannah',
-        'Michael', 'Emily', 'Samuel', 'Aria', 'Matthew', 'Scarlett', 'Joseph', 'Madison',
-        'David', 'Abigail', 'Sebastian', 'Nora',
-    ],
-    'korean' : [
-        '지민', '수현', '서준', '민서', '도윤', '하늘', '지우',
-        '연우', '소윤', '유진', '성민', '은비', '재현', '예린',
-        '태윤', '민지', '시우', '세영', '아린', '진우',
-    ],
-}
+def initialize() :
+    global NAMES
+    global ENGLISH_NAMES
 
-ENGLISH_NAMES = {
-    '지민': 'Jimin',
-    '수현': 'Suhyeon',
-    '서준': 'Seojun',
-    '민서': 'Minseo',
-    '도윤': 'Doyun',
-    '하늘': 'Haneul',
-    '지우': 'Jiwoo',
-    '연우': 'Yeonwoo',
-    '소윤': 'Soyoon',
-    '유진': 'Yujin',
-    '성민': 'Seongmin',
-    '은비': 'Eunbi',
-    '재현': 'Jaehyeon',
-    '예린': 'Yerin',
-    '태윤': 'Taeyun',
-    '민지': 'Minji',
-    '시우': 'Siwoo',
-    '세영': 'Seyoung',
-    '아린': 'Arin',
-    '진우': 'Jinwoo',
-}
+    NAMES = {}
+    ENGLISH_NAMES = {}
+
+    with open(os.path.join('mafia_chatbot/utils', 'names.json'), encoding='utf-8') as f :
+        data = json.load(f)
+
+    for language, nameList in data.items() :
+        names: list[str] = []
+        englishNames: dict[str, str] = {}
+        NAMES[language] = names
+        ENGLISH_NAMES[language] = englishNames
+
+        for name in nameList :
+            names.append(name['name'])
+            englishNames[name['name']] = name['en']
+
+def isSupportedLanguage(language: str) -> bool :
+    global NAMES
+    return language in NAMES
+
+def getCopyAndShuffleNames(language: str) -> list[str] :
+    global NAMES
+
+    if language in NAMES :
+        names = NAMES[language].copy()
+    else :
+        names = NAMES['english'].copy()
+
+    random.shuffle(names)
+    return names
+
+class EnglishNameMaker :
+    def __init__(self, language: str) :
+        self.enNameDict: dict[str, str] = ENGLISH_NAMES[language]
+        self.enNames: list[str] = NAMES['english']
+        self.enNameIndex: int = 0
+        self.enNameSet: set[str] = set(self.enNameDict.values())
+
+    def getEnglishName(self, name: str) -> str :
+        # 사전 정의된 이름인 경우
+        if name in self.enNameDict :
+            enName: str = self.enNameDict[name]
+
+        # 커스텀 이름인 경우 기존 이름과 상관 없이 영어 이름을 할당
+        else :
+            # 이름 데이터는 50개가 넘는데, 플레이어는 최대 10명이므로 인덱스 검사는 하지 않음
+            enName: str = self.enNames[self.enNameIndex]
+            while enName in self.enNameSet :
+                self.enNameIndex += 1
+                enName: str = self.enNames[self.enNameIndex]
+            self.enNameIndex += 1
+
+        return enName
 
 PROHIBITED_WORDS = [
     '시민', '마피아', '경찰', '의사',  # 기본 금칙어

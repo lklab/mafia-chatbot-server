@@ -8,7 +8,7 @@ from mafia_chatbot.network.utils import makeErrorResponse
 
 import mafia_chatbot.firebase.firebase as firebase
 from mafia_chatbot.db.user_db import userDB
-import mafia_chatbot.utils.name_bank as name_bank
+import mafia_chatbot.utils.name_bank as NameBank
 
 class ClientUser :
     pass
@@ -103,10 +103,10 @@ class ClientUser :
     async def updateInfo(self, message: auth_pb2.UpdateUserInfo) -> Any :
         # check name
         name = message.userInfo.name.strip()
-        result = await name_bank.checkName(name)
+        result = await NameBank.checkName(name)
 
         # success
-        if result == name_bank.Result.SUCCESS :
+        if result == NameBank.Result.SUCCESS :
             try :
                 userDB.upsert_user(self.clientId, name)
             except :

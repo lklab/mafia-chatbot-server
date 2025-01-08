@@ -168,6 +168,7 @@ firebase-adminsdk.json
 *.db
 *.db-shm
 *.db-wal
+server_log/
 
 # Custom - tls
 server.crt

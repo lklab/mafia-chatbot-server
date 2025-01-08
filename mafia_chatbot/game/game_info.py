@@ -3,7 +3,7 @@ from mafia_chatbot.game.player_info import Role, protoToRoleDict
 from mafia_chatbot.network.client_user import ClientUser
 from mafia_chatbot.network.messages import *
 
-from mafia_chatbot.utils.name_bank import languageToCodeDict
+from mafia_chatbot.utils.name_bank import isSupportedLanguage
 
 def varifyGameInfo(info: game_data_pb2.GameInfo) -> bool :
     if info.playerCount > 10 or info.playerCount < 3 :
@@ -15,7 +15,7 @@ def varifyGameInfo(info: game_data_pb2.GameInfo) -> bool :
     if info.mafiaCount <= 0 :
         return False
 
-    if info.language.lower() not in languageToCodeDict :
+    if not isSupportedLanguage(info.language.lower()) :
         return False
 
     return True

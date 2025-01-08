@@ -19,6 +19,7 @@ from mafia_chatbot.network.utils import makeErrorResponse
 import mafia_chatbot.firebase.firebase as firebase
 
 from mafia_chatbot.utils.wands_logger import WandsLogger
+import mafia_chatbot.utils.name_bank as NameBank
 
 MAIN_PROCESS_PORT = 30000
 
@@ -141,6 +142,9 @@ class GameProcess :
         self.logger = WandsLogger('network', f'game-{self.port}')
 
     async def run(self) :
+        # initialize name bank
+        NameBank.initialize()
+
         # initialize firebase
         firebase.initialize()
 

@@ -22,6 +22,7 @@ import mafia_chatbot.firebase.firebase as firebase
 from mafia_chatbot.db.user_db import userDB
 
 from mafia_chatbot.utils.wands_logger import WandsLogger
+import mafia_chatbot.utils.name_bank as NameBank
 
 GAME_PROCESS_COUNT = 8
 MAIN_PORT = 10015
@@ -89,6 +90,7 @@ class MainProcess :
         await gameProcessServer.start(onConnected=self._onGameProcessConnected)
         self._startGameProcesses()
 
+        NameBank.initialize()
         firebase.initialize()
         userDB.enable_wal()
 
