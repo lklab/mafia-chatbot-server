@@ -210,6 +210,13 @@ class GameState :
         self.userPlayers: list[Player] = []
         usedNames = set() # 사용된 이름 (인간 사용자의 이름만 들어감)
 
+        # prepare names and tones
+        names: list[str] = NameBank.getCopyAndShuffleNames(gameInfo.language)
+        tones: list[str] = TONES.copy()
+        random.shuffle(tones)
+        nameIndex = 0
+        toneIndex = 0
+
         # create human players
         self.observerPlayer: Player = None
         observerClientId: str = None
@@ -217,8 +224,13 @@ class GameState :
             observerClientId: str = gameInfo.debugInfo.observerClientId
 
         for user in gameInfo.users :
+            name: str = user.clientName
+            while name.lower() in usedNames :
+                name = names[nameIndex]
+                nameIndex += 1
+
             userPlayer: Player = Player(
-                name=user.clientName, # TODO 멀티플레이어 이름이 중복된 경우 임의 이름으로 바꾸기
+                name=name,
                 tone='',
                 isHuman=True,
                 user=user
@@ -231,31 +243,28 @@ class GameState :
                 userPlayer.setRemoved(RemoveReason.OBSERVER)
             else :
                 self.players.append(userPlayer)
-                usedNames.add(user.clientName.lower())
+                usedNames.add(userPlayer.info.name.lower())
 
         if gameInfo.localPlayerName != None :
+            name: str = gameInfo.localPlayerName
+            while name.lower() in usedNames :
+                name = names[nameIndex]
+                nameIndex += 1
+
             self.localPlayer: Player = Player(
-                name=gameInfo.localPlayerName,
+                name=name,
                 tone='',
                 isHuman=True,
                 user=None
             )
             self.players.append(self.localPlayer)
-            usedNames.add(gameInfo.localPlayerName.lower())
+            usedNames.add(self.localPlayer.info.name.lower())
         else :
             self.localPlayer = None
 
-        # prepare names and tones for bot players
-        names: list[str] = NameBank.getCopyAndShuffleNames(gameInfo.language)
-        tones: list[str] = TONES.copy()
-        random.shuffle(tones)
-
         # create bot players
-        nameIndex = 0
-        toneIndex = 0
-
         for i in range(len(self.players), gameInfo.playerCount) :
-            while names[nameIndex] in usedNames :
+            while names[nameIndex].lower() in usedNames :
                 nameIndex += 1
 
             self.players.append(Player(
