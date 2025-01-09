@@ -20,6 +20,7 @@ from mafia_chatbot.network.utils import makeErrorResponse
 
 import mafia_chatbot.firebase.firebase as firebase
 from mafia_chatbot.db.user_db import userDB
+from mafia_chatbot.db.test_account_db import testAccountDB
 
 from mafia_chatbot.utils.wands_logger import WandsLogger
 import mafia_chatbot.utils.name_bank as NameBank
@@ -93,6 +94,7 @@ class MainProcess :
         NameBank.initialize()
         firebase.initialize()
         userDB.enable_wal()
+        testAccountDB.enable_wal()
 
         await gameProcessServer.serve()
 

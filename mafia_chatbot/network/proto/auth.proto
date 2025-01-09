@@ -5,9 +5,17 @@ message UserInfo {
   string name = 2;
 }
 
+enum AuthMethod {
+  AUTH_METHOD_UNKNOWN = 0;
+  AUTH_METHOD_TEST = 1;
+  AUTH_METHOD_FIREBASE = 2;
+}
+
 message Auth {
   string rqid = 1;
-  string token = 2;
+  AuthMethod method = 2;
+  string token = 3;
+  string password = 4;
 }
 
 message AuthResponse {
