@@ -16,7 +16,7 @@ from mafia_chatbot.network.message_handler import MessageHandler
 from mafia_chatbot.network.messages import *
 from mafia_chatbot.network.client_server import ClientServer
 from mafia_chatbot.network.client_user import ClientUser
-from mafia_chatbot.network.utils import makeErrorResponse
+from mafia_chatbot.network.utils import makeErrorResponse, ErrorCode
 
 import mafia_chatbot.firebase.firebase as firebase
 from mafia_chatbot.db.user_db import userDB
@@ -189,7 +189,7 @@ class MainProcess :
         if type(message) in MainProcess._switchUserMessage :
             MainProcess._switchUserMessage[type(message)](self, user, message)
         else :
-            errorResponse = makeErrorResponse(message, 0, f'Cannot process the message.')
+            errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, f'Cannot process the message.')
             self._sendToUser(user, errorResponse, isError=True)
 
     def _onClientDisconnected(self, user: ClientUser) :
@@ -215,29 +215,41 @@ class MainProcess :
         self.roomManager.processMessageRequestMyRoomInfo(user, message)
 
     def _switchUserMessageCreateRoom(self, user: ClientUser, message) :
+        # check sign up
+        if user.isNeedToSignUp() :
+            errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'The player has not been fully configured.')
+            self._sendToUser(user, errorResponse, isError=True)
+            return
+
         # check current game
         if user.getHolder('gamehandler') != None :
-            errorResponse = makeErrorResponse(message, 0, 'The game is already running.')
+            errorResponse = makeErrorResponse(message, ErrorCode.ALREADY_EXISTS, 'The game is already running.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
         # check game info
         if not varifyGameInfo(message.gameInfo) :
-            errorResponse = makeErrorResponse(message, 0, 'The game information is invalid.')
+            errorResponse = makeErrorResponse(message, ErrorCode.INVALID_DATA, 'The game information is invalid.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
         # check human count
         if message.maxHumans > message.gameInfo.playerCount :
-            errorResponse = makeErrorResponse(message, 0, 'The number of humans cannot exceed the number of players.')
+            errorResponse = makeErrorResponse(message, ErrorCode.INVALID_DATA, 'The number of humans cannot exceed the number of players.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
         self.roomManager.processMessageCreateRoom(user, message)
 
     def _switchUserMessageJoinRoom(self, user: ClientUser, message) :
+        # check sign up
+        if user.isNeedToSignUp() :
+            errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'The player has not been fully configured.')
+            self._sendToUser(user, errorResponse, isError=True)
+            return
+
         if user.getHolder('gamehandler') != None :
-            errorResponse = makeErrorResponse(message, 0, 'The game is already running.')
+            errorResponse = makeErrorResponse(message, ErrorCode.ALREADY_EXISTS, 'The game is already running.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
@@ -292,7 +304,7 @@ class MainProcess :
                 await self._sendAwaitResponseToGameProcess(targetProcess.messageHandler, startNewGame)
             except Exception as e :
                 self.logger.error(f'startNewGame failed for {user.clientId}: {e}')
-                errorResponse = makeErrorResponse(message, 0, f'startNewGame failed {e}')
+                errorResponse = makeErrorResponse(message, ErrorCode.SERVER_ERROR, f'startNewGame failed {e}')
                 self._sendToUser(user, errorResponse, isError=True)
                 return
 
@@ -317,27 +329,27 @@ class MainProcess :
 
         # check ready
         if user.isNeedToSignUp() :
-            errorResponse = makeErrorResponse(message, 0, 'The player has not been fully configured.')
+            errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'The player has not been fully configured.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
         # check exist game
         if user.getHolder('gamehandler') != None :
-            errorResponse = makeErrorResponse(message, 0, 'The game is already running.')
+            errorResponse = makeErrorResponse(message, ErrorCode.ALREADY_EXISTS, 'The game is already running.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
         # check room
         room: Room = user.getHolder('room')
         if room != None and not room.isHostUser(user) :
-            errorResponse = makeErrorResponse(message, 0, 'You are not the host of the room.')
+            errorResponse = makeErrorResponse(message, ErrorCode.NO_PERMISSION, 'You are not the host of the room.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
         # check game info
         # 방이 있는 경우 방에 설정된 검증된 game info를 사용
         if room == None and not varifyGameInfo(message.gameInfo) :
-            errorResponse = makeErrorResponse(message, 0, 'The game information is invalid.')
+            errorResponse = makeErrorResponse(message, ErrorCode.INVALID_DATA, 'The game information is invalid.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 

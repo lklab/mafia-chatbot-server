@@ -14,7 +14,7 @@ from mafia_chatbot.network.message_handler import MessageHandler
 from mafia_chatbot.network.messages import *
 from mafia_chatbot.network.client_server import ClientServer
 from mafia_chatbot.network.client_user import ClientUser
-from mafia_chatbot.network.utils import makeErrorResponse
+from mafia_chatbot.network.utils import makeErrorResponse, ErrorCode
 
 import mafia_chatbot.firebase.firebase as firebase
 
@@ -219,7 +219,7 @@ class GameProcess :
             return None, True
 
         else :
-            errorResponse = makeErrorResponse(message, 0, 'This server does not contain your game. Please connect to the main server first to create a new game.')
+            errorResponse = makeErrorResponse(message, ErrorCode.NOT_FOUND, 'This server does not contain your game. Please connect to the main server first to create a new game.')
             self.logger.error(f'_onClientAuth failed clientId={user.clientId}, message=<{errorResponse}>')
 
             return errorResponse, False
@@ -234,7 +234,7 @@ class GameProcess :
             if user.forward(message) :
                 pass
             else :
-                errorResponse = makeErrorResponse(message, 0, 'Cannot process the message.')
+                errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'Cannot process the message.')
                 self._sendToUser(user, errorResponse, isError=True)
                 return
 
@@ -250,7 +250,7 @@ class GameProcess :
     def _switchUserMessageRequestCurrentGameInfo(self, user: ClientUser, message) :
         game: GameInstance = user.getHolder('game')
         if game == None :
-            errorResponse = makeErrorResponse(message, 0, 'There are no participating games.')
+            errorResponse = makeErrorResponse(message, ErrorCode.NOT_FOUND, 'There are no participating games.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
@@ -262,7 +262,7 @@ class GameProcess :
     def _switchUserMessageReadyGame(self, user: ClientUser, message) :
         game: GameInstance = user.getHolder('game')
         if game == None :
-            errorResponse = makeErrorResponse(message, 0, 'There are no participating games.')
+            errorResponse = makeErrorResponse(message, ErrorCode.NOT_FOUND, 'There are no participating games.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
@@ -293,7 +293,7 @@ class GameProcess :
 
         game: GameInstance = user.getHolder('game')
         if game == None :
-            errorResponse = makeErrorResponse(message, 0, 'There are no participating games.')
+            errorResponse = makeErrorResponse(message, ErrorCode.NOT_FOUND, 'There are no participating games.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 

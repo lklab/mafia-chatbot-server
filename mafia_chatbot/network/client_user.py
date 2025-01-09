@@ -4,7 +4,7 @@ from mafia_chatbot.game.game_logger import GameLogger, TAG
 
 from mafia_chatbot.network.message_handler import MessageHandler
 from mafia_chatbot.network.messages import *
-from mafia_chatbot.network.utils import makeErrorResponse
+from mafia_chatbot.network.utils import makeErrorResponse, ErrorCode
 
 import mafia_chatbot.firebase.firebase as firebase
 from mafia_chatbot.db.user_db import userDB
@@ -110,7 +110,7 @@ class ClientUser :
             try :
                 userDB.upsert_user(self.clientId, name)
             except :
-                errorResponse = makeErrorResponse(message, 0, 'DB error occurred. try again.')
+                errorResponse = makeErrorResponse(message, ErrorCode.SERVER_ERROR, 'DB error occurred. try again.')
                 return errorResponse
 
             self.clientName = name
@@ -122,7 +122,7 @@ class ClientUser :
 
         # fail
         else :
-            errorResponse = makeErrorResponse(message, 0, 'This name is not suitable for use in a Mafia game.')
+            errorResponse = makeErrorResponse(message, ErrorCode.INVALID_DATA, 'This name is not suitable for use in a Mafia game.')
             return errorResponse
 
     def isNeedToSignUp(self) -> bool :

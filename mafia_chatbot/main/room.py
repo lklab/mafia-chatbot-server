@@ -4,7 +4,7 @@ import asyncio
 
 from mafia_chatbot.network.messages import *
 from mafia_chatbot.network.client_user import ClientUser
-from mafia_chatbot.network.utils import MessageException
+from mafia_chatbot.network.utils import MessageException, ErrorCode
 
 from mafia_chatbot.utils.wands_logger import WandsLogger
 
@@ -41,16 +41,16 @@ class Room :
 
     def join(self, user: ClientUser, password: str) :
         if self.isDestroyed :
-            raise MessageException(0, 'This room has already expired.')
+            raise MessageException(ErrorCode.BAD_REQUEST, 'This room has already expired.')
 
         if user in self.users :
-            raise MessageException(0, 'You are already participating in this room.')
+            raise MessageException(ErrorCode.NO_CHANGES, 'You are already participating in this room.')
 
         if self.password != password :
-            raise MessageException(0, 'The password does not match.')
+            raise MessageException(ErrorCode.INVALID_DATA, 'The password does not match.')
 
         if len(self.users) >= self.maxHumans :
-            raise MessageException(0, 'This room is full.')
+            raise MessageException(ErrorCode.CANT_PROCESS, 'This room is full.')
 
         user.setHolder('room', self)
         self.users.append(user)
@@ -58,10 +58,10 @@ class Room :
 
     def quit(self, user: ClientUser) :
         if self.isDestroyed :
-            raise MessageException(0, 'This room has already expired.')
+            raise MessageException(ErrorCode.BAD_REQUEST, 'This room has already expired.')
 
         if user not in self.users :
-            raise MessageException(0, 'You are not participating in this room.')
+            raise MessageException(ErrorCode.BAD_REQUEST, 'You are not participating in this room.')
 
         self.users.remove(user)
         user.releaseHolder('room')

@@ -1,7 +1,7 @@
 from mafia_chatbot.main.room import Room, validateCreateRoomMessage
 
 from mafia_chatbot.network.messages import *
-from mafia_chatbot.network.utils import makeErrorResponse, MessageException
+from mafia_chatbot.network.utils import makeErrorResponse, MessageException, ErrorCode
 from mafia_chatbot.network.client_user import ClientUser
 
 from mafia_chatbot.utils.wands_logger import WandsLogger
@@ -28,18 +28,13 @@ class RoomManager :
         self._sendToUser(user, response)
 
     def processMessageCreateRoom(self, user: ClientUser, message) :
-        if user.isNeedToSignUp() :
-            errorResponse = makeErrorResponse(message, 0, 'The player has not been fully configured.')
-            self._sendToUser(user, errorResponse, isError=True)
-            return
-
         if user.getHolder('room') != None :
-            errorResponse = makeErrorResponse(message, 0, 'You are already participating in another room.')
+            errorResponse = makeErrorResponse(message, ErrorCode.ALREADY_EXISTS, 'You are already participating in another room.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
         if not validateCreateRoomMessage(message) :
-            errorResponse = makeErrorResponse(message, 0, 'The room information is invalid.')
+            errorResponse = makeErrorResponse(message, ErrorCode.INVALID_DATA, 'The room information is invalid.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
@@ -53,18 +48,13 @@ class RoomManager :
         self._sendToUser(user, response)
 
     def processMessageJoinRoom(self, user: ClientUser, message) :
-        if user.isNeedToSignUp() :
-            errorResponse = makeErrorResponse(message, 0, 'The player has not been fully configured.')
-            self._sendToUser(user, errorResponse, isError=True)
-            return
-
         if user.getHolder('room') != None :
-            errorResponse = makeErrorResponse(message, 0, 'You are already participating in another room.')
+            errorResponse = makeErrorResponse(message, ErrorCode.ALREADY_EXISTS, 'You are already participating in another room.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
         if message.code not in self.roomByCode :
-            errorResponse = makeErrorResponse(message, 0, 'No room matches the provided code.')
+            errorResponse = makeErrorResponse(message, ErrorCode.NOT_FOUND, 'No room matches the provided code.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 
@@ -85,7 +75,7 @@ class RoomManager :
     def processMessageQuitRoom(self, user: ClientUser, message) :
         room: Room = user.getHolder('room')
         if room == None :
-            errorResponse = makeErrorResponse(message, 0, 'You are not participating in any room.')
+            errorResponse = makeErrorResponse(message, ErrorCode.NOT_FOUND, 'You are not participating in any room.')
             self._sendToUser(user, errorResponse, isError=True)
             return
 

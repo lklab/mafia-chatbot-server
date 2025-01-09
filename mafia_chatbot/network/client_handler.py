@@ -7,7 +7,7 @@ from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.client_user import ClientUser
 from mafia_chatbot.network.message_handler import MessageHandler
 from mafia_chatbot.network.messages import *
-from mafia_chatbot.network.utils import makeErrorResponse
+from mafia_chatbot.network.utils import makeErrorResponse, ErrorCode
 
 import mafia_chatbot.firebase.firebase as firebase
 from mafia_chatbot.db.test_account_db import testAccountDB
@@ -49,7 +49,7 @@ class ClientHandler :
         elif message.method == auth_pb2.AuthMethod.AUTH_METHOD_FIREBASE :
             response, success = await self._authByFirebase(message)
         else :
-            response = makeErrorResponse(message, 0, 'The auth method is invalid.')
+            response = makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'The auth method is invalid.')
             self.logger.error(f'[ClientHandler] auth failed addr={self.addr} response=<{response}>')
             return response, False
 
@@ -76,7 +76,7 @@ class ClientHandler :
         # fail
         else :
             if response == None :
-                response = makeErrorResponse(message, 0, 'Auth failed')
+                response = makeErrorResponse(message, ErrorCode.INVALID_DATA, 'Auth failed')
             self.logger.error(f'[ClientHandler] auth failed addr={self.addr} response=<{response}>')
             return response, False
 
@@ -92,11 +92,11 @@ class ClientHandler :
     async def _authByTest(self, message) -> tuple[Any, bool] :
         dbData = testAccountDB.get_user_by_id(message.token)
         if dbData == None :
-            errorResponse = makeErrorResponse(message, 0, 'The account cannot be found.')
+            errorResponse = makeErrorResponse(message, ErrorCode.INVALID_DATA, 'The account cannot be found.')
             return errorResponse, False
 
         if dbData[0] != message.password.lower() :
-            errorResponse = makeErrorResponse(message, 0, 'The password does not match.')
+            errorResponse = makeErrorResponse(message, ErrorCode.INVALID_DATA, 'The password does not match.')
             return errorResponse, False
 
         return dbData[1], True
@@ -118,7 +118,7 @@ class ClientHandler :
             clientId = firebase.verifyIdToken(message.token)
         except Exception as e :
             self.logger.error(f'[ClientHandler] _onAuth() addr={self.addr}: verifyIdToken error [{type(e)}] {e}. token={message.token}')
-            errorResponse = makeErrorResponse(message, 0, 'Invalid ID token.')
+            errorResponse = makeErrorResponse(message, ErrorCode.INVALID_DATA, 'Invalid ID token.')
             return errorResponse, False
 
         return clientId, True
