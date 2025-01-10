@@ -203,7 +203,12 @@ class MainProcess :
         asyncio.create_task(_updateInfo()) # TODO 중복 호출에 대한 처리
 
     def _switchUserMessageDeleteUser(self, user: ClientUser, message) :
-        user.delete()
+        try :
+            user.delete()
+        except :
+            errorResponse = makeErrorResponse(message, ErrorCode.SERVER_ERROR, 'Fail to delete user')
+            self._sendToUser(user, errorResponse, isError=True)
+            return
 
         response = auth_pb2.DeleteUserResponse()
         response.rqid = message.rqid

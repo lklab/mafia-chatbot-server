@@ -4,6 +4,7 @@ from mafia_chatbot.network.tcp_server import TcpServer
 from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.client_handler import ClientHandler
 from mafia_chatbot.network.client_user import ClientUser
+from mafia_chatbot.network.messages import *
 
 from mafia_chatbot.utils.wands_logger import WandsLogger
 
@@ -70,6 +71,7 @@ class ClientServer :
 
         # success
         if success :
+            user.setAuthMethod(message.method)
             if not isUserExists :
                 self.users[clientId] = user
             return None, user

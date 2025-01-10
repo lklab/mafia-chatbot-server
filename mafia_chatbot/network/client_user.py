@@ -31,6 +31,7 @@ class ClientUser :
         self.logger: GameLogger = None
         self.subscribers: dict[type, Callable[[Any], None]] = {}
         self.isReleased: bool = False
+        self.authMethod: auth_pb2.AuthMethod = auth_pb2.AuthMethod.AUTH_METHOD_UNKNOWN
 
     ### holder ###
     def setHolder(self, key: str, holder: object) :
@@ -96,6 +97,9 @@ class ClientUser :
             messageHandler.disconnect()
 
     ### user info ###
+    def setAuthMethod(self, method: auth_pb2.AuthMethod) :
+        self.authMethod = method
+
     def toProtoUserInfoMessage(self, message_out: auth_pb2.UserInfo) :
         message_out.clientId = self.clientId
         message_out.name = self.clientName
@@ -132,7 +136,8 @@ class ClientUser :
         if len(self.holders) > 0 :
             return False
 
-        firebase.deleteUser(self.clientId) # TODO 삭제된 사용자 uid 일정 기간동안 보유하면서 새로운 연결 막기
-        userDB.delete_user_by_uid(self.clientId)
+        if self.authMethod == auth_pb2.AuthMethod.AUTH_METHOD_FIREBASE :
+            firebase.deleteUser(self.clientId) # TODO 삭제된 사용자 uid 일정 기간동안 보유하면서 새로운 연결 막기
+            userDB.delete_user_by_uid(self.clientId)
 
         return True
