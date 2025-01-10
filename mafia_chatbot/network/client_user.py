@@ -26,10 +26,11 @@ class ClientUser :
             self.clientName = ''
 
         # variables
-        self.handler = None
+        self.connections: set[MessageHandler] = set()
+        self.listenConnection: MessageHandler = None
         self.holders: dict[str, object] = {}
         self.logger: GameLogger = None
-        self.subscribers: dict[type, Callable[[Any], None]] = {}
+        self.subscribers: dict[type, Callable[[MessageHandler, Any], None]] = {}
         self.isReleased: bool = False
         self.authMethod: auth_pb2.AuthMethod = auth_pb2.AuthMethod.AUTH_METHOD_UNKNOWN
 
@@ -46,44 +47,56 @@ class ClientUser :
             self._checkReleasable()
 
     def _checkReleasable(self) :
-        if len(self.holders) <= 0 and self.handler == None and not self.isReleased :
+        if len(self.holders) == 0 and len(self.connections) == 0 and not self.isReleased :
             self.isReleased = True
             self.onRelease(self)
 
     ### message ###
     def isConnected(self) :
-        return self.handler != None
+        return len(self.connections) > 0
 
-    def setMessageHandler(self, handler: MessageHandler) :
+    def addConnection(self, connection: MessageHandler, isListen: bool) :
         if self.isReleased :
             return
-        self.handler = handler
 
-    def clearMessageHandler(self) :
-        self.handler = None
-        self._checkReleasable()
+        self.connections.add(connection)
+        if isListen :
+            if self.listenConnection != None :
+                self.listenConnection.disconnect() # TODO 이 때 removeConnection() 호출되는지 확인하기
+            self.listenConnection = connection
 
-    def forward(self, message) :
-        if self.handler == None :
-            return False
+    def removeConnection(self, connection: MessageHandler) :
+        if connection in self.connections :
+            self.connections.discard(connection)
+            if self.listenConnection == connection :
+                self.listenConnection = None
+            self._checkReleasable()
 
+    def forward(self, connection: MessageHandler, message) :
+        # connection이 본 User와 관련된 것임을 assert
         msgType = type(message)
         if msgType in self.subscribers :
-            self.subscribers[msgType](message)
+            self.subscribers[msgType](connection, message)
             return True
         else :
             return False
 
-    def send(self, message) :
-        if self.handler != None :
+    def respond(self, connection: MessageHandler, message) :
+        # connection이 본 User와 관련된 것임을 assert
+        if self.logger != None :
+            self.logger.log(TAG.NETWORK, f'[ClientUser] respond {type(message)} message to {self.clientName}: <{message}>')
+        connection.send(message)
+
+    def send(self, message) : # TODO change caller
+        if self.listenConnection != None :
             if self.logger != None :
                 self.logger.log(TAG.NETWORK, f'[ClientUser] send {type(message)} message to {self.clientName}: <{message}>')
-            self.handler.send(message)
+            self.listenConnection.send(message)
 
     def setLogger(self, logger: GameLogger) :
         self.logger = logger
 
-    def subscribeMessage(self, msgType: type, listener: Callable[[Any], None]) :
+    def subscribeMessage(self, msgType: type, listener: Callable[[MessageHandler, Any], None]) :
         self.subscribers[msgType] = listener
 
     def clearSubscribers(self) :
@@ -91,10 +104,13 @@ class ClientUser :
         self.logger = None
 
     def disconnect(self) :
-        if self.handler != None :
-            messageHandler: MessageHandler = self.handler
-            self.clearMessageHandler()
-            messageHandler.disconnect()
+        # disconnect 과정에서 self.removeConnection() 함수가 호출될 수 있으므로 복사
+        connections: set[MessageHandler] = self.connections.copy()
+        self.connections.clear()
+        self.listenConnection = None
+
+        for connection in connections :
+            connection.disconnect()
 
     ### user info ###
     def setAuthMethod(self, method: auth_pb2.AuthMethod) :

@@ -14,6 +14,7 @@ from mafia_chatbot.network.message_handler import MessageHandler
 from mafia_chatbot.network.messages import *
 from mafia_chatbot.network.client_server import ClientServer
 from mafia_chatbot.network.client_user import ClientUser
+from mafia_chatbot.network.client_handler import ClientHandler
 from mafia_chatbot.network.utils import makeErrorResponse, ErrorCode
 
 import mafia_chatbot.firebase.firebase as firebase
@@ -212,7 +213,7 @@ class GameProcess :
     }
 
     ### Handle client ###
-    def _onClientAuth(self, user: ClientUser, message) -> tuple[Any, bool] :
+    def _onClientAuth(self, user: ClientUser, messageHandler: MessageHandler, message) -> tuple[Any, bool] :
         self.logger.debug(f'_onClientAuth clientId={user.clientId}')
 
         if user.getHolder('game') != None :
@@ -224,83 +225,83 @@ class GameProcess :
 
             return errorResponse, False
 
-    def _onClientMessage(self, user: ClientUser, message) :
+    def _onClientMessage(self, client: ClientHandler, message) :
         if type(message) != time_pb2.RequestTimeSync :
-            self.logger.debug(f'_onClientMessage clientId={user.clientId} name={user.clientName}, type={type(message)}, message=<{message}>')
+            self.logger.debug(f'_onClientMessage clientId={client.user.clientId} name={client.user.clientName}, type={type(message)}, message=<{message}>')
 
-        if type(message) in GameProcess._switchUserMessage :
-            GameProcess._switchUserMessage[type(message)](self, user, message)
+        if type(message) in GameProcess._switchClientMessage :
+            GameProcess._switchClientMessage[type(message)](self, client, message)
         else :
-            if user.forward(message) :
+            if client.user.forward(message) :
                 pass
             else :
                 errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'Cannot process the message.')
-                self._sendToUser(user, errorResponse, isError=True)
+                self._respondToClient(client, errorResponse, isError=True)
                 return
 
-    def _onClientDisconnected(self, user: ClientUser) :
-        self.logger.debug(f'_onClientDisconnected clientId={user.clientId} name={user.clientName}')
+    def _onClientDisconnected(self, client: ClientHandler) :
+        self.logger.debug(f'_onClientDisconnected clientId={client.user.clientId} name={client.user.clientName}')
 
-    def _switchUserMessageRequestTimeSync(self, user: ClientUser, message) :
+    def _switchClientMessageRequestTimeSync(self, client: ClientHandler, message) :
         response = time_pb2.TimeSync()
         response.rqid = message.rqid
         response.time = int(time.monotonic() * 1000)
-        self._sendToUser(user, response, log=False)
+        self._respondToClient(client, response, log=False)
 
-    def _switchUserMessageRequestCurrentGameInfo(self, user: ClientUser, message) :
-        game: GameInstance = user.getHolder('game')
+    def _switchClientMessageRequestCurrentGameInfo(self, client: ClientHandler, message) :
+        game: GameInstance = client.user.getHolder('game')
         if game == None :
             errorResponse = makeErrorResponse(message, ErrorCode.NOT_FOUND, 'There are no participating games.')
-            self._sendToUser(user, errorResponse, isError=True)
+            self._respondToClient(client, errorResponse, isError=True)
             return
 
         response = game_pb2.CurrentGameInfo()
         response.rqid = message.rqid
         response.info.CopyFrom(game.gameInfoRaw)
-        self._sendToUser(user, response)
+        self._respondToClient(client, response)
 
-    def _switchUserMessageReadyGame(self, user: ClientUser, message) :
-        game: GameInstance = user.getHolder('game')
+    def _switchClientMessageReadyGame(self, client: ClientHandler, message) :
+        game: GameInstance = client.user.getHolder('game')
         if game == None :
             errorResponse = makeErrorResponse(message, ErrorCode.NOT_FOUND, 'There are no participating games.')
-            self._sendToUser(user, errorResponse, isError=True)
+            self._respondToClient(client, errorResponse, isError=True)
             return
 
-        game.readyUser(user)
+        game.readyUser(client.user)
 
         response = game_pb2.ReadyGameResponse()
         response.rqid = message.rqid
-        self._sendToUser(user, response)
+        self._respondToClient(client, response)
 
-    def _switchUserMessageQuitGame(self, user: ClientUser, message) :
+    def _switchClientMessageQuitGame(self, client: ClientHandler, message) :
         async def _quitGame(game: GameInstance) :
             clientExited = ipc_pb2.ClientExited()
             clientExited.gameId = game.id
-            clientExited.clientId = user.clientId
+            clientExited.clientId = client.user.clientId
 
             try :
                 await self._sendAwaitResponseToMainProcess(clientExited)
             except Exception as e :
-                self.logger.error(f'clientExited failed for {user.clientId}: {e}')
+                self.logger.error(f'clientExited failed for {client.user.clientId}: {e}')
 
             # 남은 사용자가 없는 경우 terminate에서 _clearGame이 호출되는데
             # ClientExited를 GameEnded보다 먼저 보내야 하므로 이 위치에 있어야 함
-            game.removeUser(user)
+            game.removeUser(client.user)
 
             response = game_pb2.QuitGameResponse()
             response.rqid = message.rqid
-            self._sendToUser(user, response)
+            self._respondToClient(client, response)
 
-        game: GameInstance = user.getHolder('game')
+        game: GameInstance = client.user.getHolder('game')
         if game == None :
             errorResponse = makeErrorResponse(message, ErrorCode.NOT_FOUND, 'There are no participating games.')
-            self._sendToUser(user, errorResponse, isError=True)
+            self._respondToClient(client, errorResponse, isError=True)
             return
 
         asyncio.create_task(_quitGame(game)) # TODO 중복 호출에 대한 처리
 
-    def _switchUserMessageReportChat(self, user: ClientUser, message) :
-        game: GameInstance = user.getHolder('game')
+    def _switchClientMessageReportChat(self, client: ClientHandler, message) :
+        game: GameInstance = client.user.getHolder('game')
         if game != None :
             gameId: str = game.id
 
@@ -321,14 +322,14 @@ class GameProcess :
 
         response = game_pb2.ReportChatResponse()
         response.rqid = message.rqid
-        self._sendToUser(user, response)
+        self._respondToClient(client, response)
 
-    _switchUserMessage = {
-        time_pb2.RequestTimeSync : _switchUserMessageRequestTimeSync,
-        game_pb2.RequestCurrentGameInfo : _switchUserMessageRequestCurrentGameInfo,
-        game_pb2.ReadyGame : _switchUserMessageReadyGame,
-        game_pb2.QuitGame : _switchUserMessageQuitGame,
-        game_pb2.ReportChat : _switchUserMessageReportChat,
+    _switchClientMessage = {
+        time_pb2.RequestTimeSync : _switchClientMessageRequestTimeSync,
+        game_pb2.RequestCurrentGameInfo : _switchClientMessageRequestCurrentGameInfo,
+        game_pb2.ReadyGame : _switchClientMessageReadyGame,
+        game_pb2.QuitGame : _switchClientMessageQuitGame,
+        game_pb2.ReportChat : _switchClientMessageReportChat,
     }
 
     async def _clearGame(self, game: GameInstance) :
@@ -349,6 +350,13 @@ class GameProcess :
         response = await self.mainProcessMessageHandler.sendAwaitResponse(message)
         self.logger.debug(f'_sendAwaitResponseToMainProcess() response type={type(response)}, message=<{response}>')
         return response
+
+    def _respondToClient(self, client: ClientHandler, message, isError: bool = False) :
+        if isError :
+            self.logger.error(f'_respondToClient id={client.user.clientId}, name={client.user.clientName}, type={type(message)}, message=<{message}>')
+        else :
+            self.logger.debug(f'_respondToClient id={client.user.clientId}, name={client.user.clientName}, type={type(message)}, message=<{message}>')
+        client.respond(message)
 
     def _sendToUser(self, user: ClientUser, message, log: bool = True, isError: bool = False) :
         if log :

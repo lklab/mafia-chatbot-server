@@ -16,6 +16,7 @@ message Auth {
   AuthMethod method = 2;
   string token = 3;
   string password = 4;
+  bool listen = 5;
 }
 
 message AuthResponse {

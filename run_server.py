@@ -16,6 +16,7 @@ from mafia_chatbot.network.message_handler import MessageHandler
 from mafia_chatbot.network.messages import *
 from mafia_chatbot.network.client_server import ClientServer
 from mafia_chatbot.network.client_user import ClientUser
+from mafia_chatbot.network.client_handler import ClientHandler
 from mafia_chatbot.network.utils import makeErrorResponse, ErrorCode
 
 import mafia_chatbot.firebase.firebase as firebase
@@ -180,90 +181,90 @@ class MainProcess :
     }
 
     ### Handle client ###
-    def _onClientAuth(self, user: ClientUser, message) -> tuple[Any, bool] :
+    def _onClientAuth(self, user: ClientUser, messageHandler: MessageHandler, message) -> tuple[Any, bool] :
         self.logger.debug(f'_onClientAuth clientId={user.clientId}')
         return None, True
 
-    def _onClientMessage(self, user: ClientUser, message) :
-        self.logger.debug(f'_onClientMessage clientId={user.clientId} name={user.clientName}, type={type(message)}, message=<{message}>')
-        if type(message) in MainProcess._switchUserMessage :
-            MainProcess._switchUserMessage[type(message)](self, user, message)
+    def _onClientMessage(self, client: ClientHandler, message) :
+        self.logger.debug(f'_onClientMessage clientId={client.user.clientId} name={client.user.clientName}, type={type(message)}, message=<{message}>')
+        if type(message) in MainProcess._switchClientMessage :
+            MainProcess._switchClientMessage[type(message)](self, client, message)
         else :
             errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, f'Cannot process the message.')
-            self._sendToUser(user, errorResponse, isError=True)
+            self._respondToClient(client, errorResponse, isError=True)
 
-    def _onClientDisconnected(self, user: ClientUser) :
-        self.logger.debug(f'_onClientDisconnected clientId={user.clientId} name={user.clientName}')
+    def _onClientDisconnected(self, client: ClientHandler) :
+        self.logger.debug(f'_onClientDisconnected clientId={client.user.clientId} name={client.user.clientName}')
 
-    def _switchUserMessageUpdateUserInfo(self, user: ClientUser, message) :
+    def _switchClientMessageUpdateUserInfo(self, client: ClientHandler, message) :
         async def _updateInfo() :
-            response = await user.updateInfo(message)
-            self._sendToUser(user, response, isError=isinstance(response, error_pb2.RequestError))
+            response = await client.user.updateInfo(message)
+            self._respondToClient(client, response, isError=isinstance(response, error_pb2.RequestError))
 
         asyncio.create_task(_updateInfo()) # TODO 중복 호출에 대한 처리
 
-    def _switchUserMessageDeleteUser(self, user: ClientUser, message) :
+    def _switchClientMessageDeleteUser(self, client: ClientHandler, message) :
         try :
-            user.delete()
+            client.user.delete()
         except :
             errorResponse = makeErrorResponse(message, ErrorCode.SERVER_ERROR, 'Fail to delete user')
-            self._sendToUser(user, errorResponse, isError=True)
+            self._respondToClient(client, errorResponse, isError=True)
             return
 
         response = auth_pb2.DeleteUserResponse()
         response.rqid = message.rqid
-        self._sendToUser(user, response)
+        self._respondToClient(client, response)
 
-        user.disconnect()
+        client.user.disconnect()
 
-    def _switchUserMessageRequestMyRoomInfo(self, user: ClientUser, message) :
-        self.roomManager.processMessageRequestMyRoomInfo(user, message)
+    def _switchClientMessageRequestMyRoomInfo(self, client: ClientHandler, message) :
+        self.roomManager.processMessageRequestMyRoomInfo(client, message)
 
-    def _switchUserMessageCreateRoom(self, user: ClientUser, message) :
+    def _switchClientMessageCreateRoom(self, client: ClientHandler, message) :
         # check sign up
-        if user.isNeedToSignUp() :
+        if client.user.isNeedToSignUp() :
             errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'The player has not been fully configured.')
-            self._sendToUser(user, errorResponse, isError=True)
+            self._respondToClient(client, errorResponse, isError=True)
             return
 
         # check current game
-        if user.getHolder('gamehandler') != None :
+        if client.user.getHolder('gamehandler') != None :
             errorResponse = makeErrorResponse(message, ErrorCode.ALREADY_EXISTS, 'The game is already running.')
-            self._sendToUser(user, errorResponse, isError=True)
+            self._respondToClient(client, errorResponse, isError=True)
             return
 
         # check game info
         if not varifyGameInfo(message.gameInfo) :
             errorResponse = makeErrorResponse(message, ErrorCode.INVALID_DATA, 'The game information is invalid.')
-            self._sendToUser(user, errorResponse, isError=True)
+            self._respondToClient(client, errorResponse, isError=True)
             return
 
         # check human count
         if message.maxHumans > message.gameInfo.playerCount :
             errorResponse = makeErrorResponse(message, ErrorCode.INVALID_DATA, 'The number of humans cannot exceed the number of players.')
-            self._sendToUser(user, errorResponse, isError=True)
+            self._respondToClient(client, errorResponse, isError=True)
             return
 
-        self.roomManager.processMessageCreateRoom(user, message)
+        self.roomManager.processMessageCreateRoom(client, message)
 
-    def _switchUserMessageJoinRoom(self, user: ClientUser, message) :
+    def _switchClientMessageJoinRoom(self, client: ClientHandler, message) :
         # check sign up
-        if user.isNeedToSignUp() :
+        if client.user.isNeedToSignUp() :
             errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'The player has not been fully configured.')
-            self._sendToUser(user, errorResponse, isError=True)
+            self._respondToClient(client, errorResponse, isError=True)
             return
 
-        if user.getHolder('gamehandler') != None :
+        if client.user.getHolder('gamehandler') != None :
             errorResponse = makeErrorResponse(message, ErrorCode.ALREADY_EXISTS, 'The game is already running.')
-            self._sendToUser(user, errorResponse, isError=True)
+            self._respondToClient(client, errorResponse, isError=True)
             return
 
-        self.roomManager.processMessageJoinRoom(user, message)
+        self.roomManager.processMessageJoinRoom(client, message)
 
-    def _switchUserMessageQuitRoom(self, user: ClientUser, message) :
-        self.roomManager.processMessageQuitRoom(user, message)
+    def _switchClientMessageQuitRoom(self, client: ClientHandler, message) :
+        self.roomManager.processMessageQuitRoom(client, message)
 
-    def _switchUserMessageNewGame(self, user: ClientUser, message) :
+    def _switchClientMessageNewGame(self, client: ClientHandler, message) :
         async def _newGame(room: Room) :
             # find free game process
             targetProcess: GameProcessHandler = None
@@ -308,9 +309,9 @@ class MainProcess :
             try :
                 await self._sendAwaitResponseToGameProcess(targetProcess.messageHandler, startNewGame)
             except Exception as e :
-                self.logger.error(f'startNewGame failed for {user.clientId}: {e}')
+                self.logger.error(f'startNewGame failed for {client.user.clientId}: {e}')
                 errorResponse = makeErrorResponse(message, ErrorCode.SERVER_ERROR, f'startNewGame failed {e}')
-                self._sendToUser(user, errorResponse, isError=True)
+                self._respondToClient(client, errorResponse, isError=True)
                 return
 
             # assign game
@@ -325,7 +326,7 @@ class MainProcess :
             newGameResponse = room_pb2.NewGameResponse()
             newGameResponse.rqid = message.rqid
             newGameResponse.port = game.process.port
-            self._sendToUser(user, newGameResponse)
+            self._respondToClient(client, newGameResponse)
 
             gameStartedMessage = room_pb2.GameStarted()
             gameStartedMessage.port = game.process.port
@@ -333,56 +334,56 @@ class MainProcess :
                 self._sendToUser(u, gameStartedMessage)
 
         # check ready
-        if user.isNeedToSignUp() :
+        if client.user.isNeedToSignUp() :
             errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'The player has not been fully configured.')
-            self._sendToUser(user, errorResponse, isError=True)
+            self._respondToClient(client, errorResponse, isError=True)
             return
 
         # check exist game
-        if user.getHolder('gamehandler') != None :
+        if client.user.getHolder('gamehandler') != None :
             errorResponse = makeErrorResponse(message, ErrorCode.ALREADY_EXISTS, 'The game is already running.')
-            self._sendToUser(user, errorResponse, isError=True)
+            self._respondToClient(client, errorResponse, isError=True)
             return
 
         # check room
-        room: Room = user.getHolder('room')
-        if room != None and not room.isHostUser(user) :
+        room: Room = client.user.getHolder('room')
+        if room != None and not room.isHostUser(client.user) :
             errorResponse = makeErrorResponse(message, ErrorCode.NO_PERMISSION, 'You are not the host of the room.')
-            self._sendToUser(user, errorResponse, isError=True)
+            self._respondToClient(client, errorResponse, isError=True)
             return
 
         # check game info
         # 방이 있는 경우 방에 설정된 검증된 game info를 사용
         if room == None and not varifyGameInfo(message.gameInfo) :
             errorResponse = makeErrorResponse(message, ErrorCode.INVALID_DATA, 'The game information is invalid.')
-            self._sendToUser(user, errorResponse, isError=True)
+            self._respondToClient(client, errorResponse, isError=True)
             return
 
         asyncio.create_task(_newGame(room)) # TODO 중복 호출에 대한 처리
 
-    def _switchUserMessageCheckCurrentGame(self, user: ClientUser, message) :
-        game: GameHandler = user.getHolder('gamehandler')
+    def _switchClientMessageCheckCurrentGame(self, client: ClientHandler, message) :
+        game: GameHandler = client.user.getHolder('gamehandler')
         if game != None :
             response = game_pb2.CurrentGame()
             response.rqid = message.rqid
             response.isGameExists = True
             response.port = game.process.port
-            self._sendToUser(user, response)
+            self._respondToClient(client, response)
         else :
             response = game_pb2.CurrentGame()
             response.rqid = message.rqid
             response.isGameExists = False
-            self._sendToUser(user, response)
+            self._respondToClient(client, response)
 
-    _switchUserMessage = {
-        auth_pb2.UpdateUserInfo : _switchUserMessageUpdateUserInfo,
-        auth_pb2.DeleteUser : _switchUserMessageDeleteUser,
-        room_pb2.RequestMyRoomInfo : _switchUserMessageRequestMyRoomInfo,
-        room_pb2.CreateRoom : _switchUserMessageCreateRoom,
-        room_pb2.JoinRoom : _switchUserMessageJoinRoom,
-        room_pb2.QuitRoom : _switchUserMessageQuitRoom,
-        room_pb2.NewGame : _switchUserMessageNewGame,
-        game_pb2.CheckCurrentGame : _switchUserMessageCheckCurrentGame,
+    _switchClientMessage = {
+        auth_pb2.UpdateUserInfo : _switchClientMessageUpdateUserInfo,
+        auth_pb2.DeleteUser : _switchClientMessageDeleteUser,
+        room_pb2.RequestMyRoomInfo : _switchClientMessageRequestMyRoomInfo,
+        room_pb2.CreateRoom : _switchClientMessageCreateRoom,
+        room_pb2.JoinRoom : _switchClientMessageJoinRoom,
+        room_pb2.QuitRoom : _switchClientMessageQuitRoom,
+        room_pb2.NewGame : _switchClientMessageNewGame,
+        game_pb2.CheckCurrentGame : _switchClientMessageCheckCurrentGame,
     }
 
     def _sendToGameProcess(self, messageHandler: MessageHandler, message) :
@@ -394,6 +395,13 @@ class MainProcess :
         response = await messageHandler.sendAwaitResponse(message)
         self.logger.debug(f'_sendAwaitResponseToGameProcess() response addr={messageHandler.addr}, desc={messageHandler.desc}, type={type(response)}, message=<{response}>')
         return response
+
+    def _respondToClient(self, client: ClientHandler, message, isError: bool = False) :
+        if isError :
+            self.logger.error(f'_respondToClient id={client.user.clientId}, name={client.user.clientName}, type={type(message)}, message=<{message}>')
+        else :
+            self.logger.debug(f'_respondToClient id={client.user.clientId}, name={client.user.clientName}, type={type(message)}, message=<{message}>')
+        client.respond(message)
 
     def _sendToUser(self, user: ClientUser, message, isError: bool = False) :
         if isError :

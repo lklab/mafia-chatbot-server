@@ -8,6 +8,7 @@ from mafia_chatbot.game.game_logger import GameLogger, TAG
 from mafia_chatbot.network.client_user import ClientUser
 from mafia_chatbot.network.messages import *
 from mafia_chatbot.network.utils import makeErrorResponse, ErrorCode
+from mafia_chatbot.network.message_handler import MessageHandler
 
 class UserMessageProcessor :
     def __init__(self, gameState: GameState, trustRecorder: TrustRecorder, player: Player) :
@@ -32,51 +33,51 @@ class UserMessageProcessor :
                 listener=listener,
             )
 
-    def _onRequestGameStateMessage(self, message: game_pb2.RequestGameState) :
+    def _onRequestGameStateMessage(self, messageHandler: MessageHandler, message: game_pb2.RequestGameState) :
         self.logger.log(TAG.NETWORK, f'[UserMessageProcessor] {self.player.info.name}: received RequestGameState: message=<{message}>')
         response = self.gameState.toProtoGameStateMessage(self.player)
         response.rqid = message.rqid
-        self.user.send(response)
+        self.user.respond(messageHandler, response)
 
-    def _onRequestChatListMessage(self, message: game_pb2.RequestChatList) :
+    def _onRequestChatListMessage(self, messageHandler: MessageHandler, message: game_pb2.RequestChatList) :
         self.logger.log(TAG.NETWORK, f'[UserMessageProcessor] {self.player.info.name}: received RequestChatList: message=<{message}>')
         response = game_pb2.ChatList()
         response.rqid = message.rqid
         response.chats.extend(list(map(lambda chat : chat.createProtoMessage(self.player.info), self.gameState.chatList)))
-        self.user.send(response)
+        self.user.respond(messageHandler, response)
 
-    def _onRequestAddChatMessage(self, message: game_pb2.RequestAddChat) :
+    def _onRequestAddChatMessage(self, messageHandler: MessageHandler, message: game_pb2.RequestAddChat) :
         self.logger.log(TAG.NETWORK, f'[UserMessageProcessor] {self.player.info.name}: received RequestAddChat: message=<{message}>')
 
         # check am I live
         if not self.player.isLive :
             errorResponse = self._makeErrorResponse(message, ErrorCode.NO_PERMISSION, 'You are not allowed to do that.')
-            self.user.send(errorResponse)
+            self.user.respond(messageHandler, errorResponse)
             return
 
         # check remain chat count
         if self.player.remainChatingCount <= 0 :
             errorResponse = self._makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'Chat count exceeded.')
-            self.user.send(errorResponse)
+            self.user.respond(messageHandler, errorResponse)
             return
 
         # check sender
         if self.player.info.id != message.chat.sender :
             errorResponse = self._makeErrorResponse(message, ErrorCode.INVALID_DATA, 'The sender id is incorrect.')
-            self.user.send(errorResponse)
+            self.user.respond(messageHandler, errorResponse)
             return
 
         # check phase
         if self.gameState.currentPhase != Phase.DAY :
             errorResponse = self._makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'Not a valid phase.')
-            self.user.send(errorResponse)
+            self.user.respond(messageHandler, errorResponse)
             return
 
         # check content length
         contentLength = len(message.chat.content)
         if contentLength > 200 :
             errorResponse = self._makeErrorResponse(message, ErrorCode.INVALID_DATA, 'The content exceeds 200 characters.')
-            self.user.send(errorResponse)
+            self.user.respond(messageHandler, errorResponse)
             return
 
         self.player.remainChatingCount -= 1
@@ -89,16 +90,16 @@ class UserMessageProcessor :
 
         self.gameState.addHumanChat(self.player.info, response.chat)
 
-        self.user.send(response)
+        self.user.respond(messageHandler, response)
 
-    def _onGetChatMessage(self, message: game_pb2.GetChat) :
+    def _onGetChatMessage(self, messageHandler: MessageHandler, message: game_pb2.GetChat) :
         self.logger.log(TAG.NETWORK, f'[UserMessageProcessor] {self.player.info.name}: received GetChat: message=<{message}>')
 
         index: int = message.index
 
         if index < 0 or index >= len(self.gameState.chatList) :
             errorResponse = self._makeErrorResponse(message, ErrorCode.NOT_FOUND, 'There is no chat corresponding to the index.')
-            self.user.send(errorResponse)
+            self.user.respond(messageHandler, errorResponse)
             return
 
         response = game_pb2.AddChat()
@@ -106,7 +107,7 @@ class UserMessageProcessor :
         self.gameState.chatList[index].toProtoMessage(self.player.info, response.chat)
         response.remainMyChat = self.player.remainChatingCount
         response.maxMyChat = self.player.maxChatingCount
-        self.user.send(response)
+        self.user.respond(messageHandler, response)
 
     _switchSetTargetCheckPhase = {
         game_data_pb2.TargetType.TARGET_VOTE : Phase.EVENING,
@@ -142,25 +143,25 @@ class UserMessageProcessor :
         game_data_pb2.TargetType.TARGET_HEAL : _switchSetTargetProcessHeal,
     }
 
-    def _onSetTargetMessage(self, message: game_pb2.SetTarget) :
+    def _onSetTargetMessage(self, messageHandler: MessageHandler, message: game_pb2.SetTarget) :
         self.logger.log(TAG.NETWORK, f'[UserMessageProcessor] {self.player.info.name}: received SetTarget: message=<{message}>')
 
         # check am I live
         if not self.player.isLive :
             errorResponse = self._makeErrorResponse(message, ErrorCode.NO_PERMISSION, 'You are not allowed to do that.')
-            self.user.send(errorResponse)
+            self.user.respond(messageHandler, errorResponse)
             return
 
         # check is type valid
         if message.type == game_data_pb2.TargetType.TARGET_UNKNOWN :
             errorResponse = self._makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'Not a valid type.')
-            self.user.send(errorResponse)
+            self.user.respond(messageHandler, errorResponse)
             return
 
         # check phase
         if self.gameState.currentPhase != UserMessageProcessor._switchSetTargetCheckPhase[message.type] :
             errorResponse = self._makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'Not a valid phase.')
-            self.user.send(errorResponse)
+            self.user.respond(messageHandler, errorResponse)
             return
 
         # check role
@@ -169,18 +170,18 @@ class UserMessageProcessor :
             self.player.info.role != UserMessageProcessor._switchSetTargetCheckRole[message.type]
         ) :
             errorResponse = self._makeErrorResponse(message, ErrorCode.NO_PERMISSION, 'You are not allowed to do that.')
-            self.user.send(errorResponse)
+            self.user.respond(messageHandler, errorResponse)
             return
 
         # check target
         target: Player = self.gameState.getPlayerById(message.target)
         if target == None :
             errorResponse = self._makeErrorResponse(message, ErrorCode.NOT_FOUND, 'There is no Player corresponding to ID.')
-            self.user.send(errorResponse)
+            self.user.respond(messageHandler, errorResponse)
             return
         if not target.isLive :
             errorResponse = self._makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'Not a valid target.')
-            self.user.send(errorResponse)
+            self.user.respond(messageHandler, errorResponse)
             return
 
         # process
@@ -190,9 +191,9 @@ class UserMessageProcessor :
         # response
         response = game_pb2.SetTargetResponse()
         response.rqid = message.rqid
-        self.user.send(response)
+        self.user.respond(messageHandler, response)
 
-    def _onGetVoteStateMessage(self, message: game_pb2.GetVoteState) :
+    def _onGetVoteStateMessage(self, messageHandler: MessageHandler, message: game_pb2.GetVoteState) :
         self.logger.log(TAG.NETWORK, f'[UserMessageProcessor] {self.player.info.name}: received GetVoteState: message=<{message}>')
 
         # for vote
@@ -200,37 +201,37 @@ class UserMessageProcessor :
             # check phase
             if self.gameState.currentPhase != Phase.EVENING :
                 errorResponse = self._makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'Not a valid phase.')
-                self.user.send(errorResponse)
+                self.user.respond(messageHandler, errorResponse)
                 return
 
             voteData: VoteData = self.gameState.getCurrentVoteData()
             response = voteData.getVoteStateMessage()
             response.rqid = message.rqid
-            self.user.send(response)
+            self.user.respond(messageHandler, response)
 
         # for kill
         elif message.type == game_data_pb2.TargetType.TARGET_KILL :
             # check role
             if self.player.info.role != Role.MAFIA :
                 errorResponse = self._makeErrorResponse(message, ErrorCode.NO_PERMISSION, 'You are not allowed to do that.')
-                self.user.send(errorResponse)
+                self.user.respond(messageHandler, errorResponse)
                 return
 
             # check phase
             if self.gameState.currentPhase != Phase.NIGHT :
                 errorResponse = self._makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'Not a valid phase.')
-                self.user.send(errorResponse)
+                self.user.respond(messageHandler, errorResponse)
                 return
 
             killVoteData: KillVoteData = self.gameState.getCurrentNightTargetData().killVoteData
             response = killVoteData.getVoteStateMessage()
             response.rqid = message.rqid
-            self.user.send(response)
+            self.user.respond(messageHandler, response)
 
         # others: error
         else :
             errorResponse = self._makeErrorResponse(message, ErrorCode.INVALID_DATA, 'The target type is invalid.')
-            self.user.send(errorResponse)
+            self.user.respond(messageHandler, errorResponse)
 
     def _makeErrorResponse(self, message, code: ErrorCode, detail: str) :
         self.logger.log(TAG.ERROR, f'[UserMessageProcessor] {self.player.info.name}: response error message: code={code.name}, detail={detail}')

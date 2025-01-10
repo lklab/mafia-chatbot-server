@@ -5,15 +5,16 @@ from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.client_handler import ClientHandler
 from mafia_chatbot.network.client_user import ClientUser
 from mafia_chatbot.network.messages import *
+from mafia_chatbot.network.message_handler import MessageHandler
 
 from mafia_chatbot.utils.wands_logger import WandsLogger
 
 class ClientServer :
     def __init__(self,
                  port: int,
-                 onAuth: Callable[[ClientUser, Any], tuple[Any, bool]],
-                 onMessage: Callable[[ClientUser, Any], None],
-                 onDisconnected: Callable[[ClientUser], None],
+                 onAuth: Callable[[ClientUser, MessageHandler, Any], tuple[Any, bool]],
+                 onMessage: Callable[[ClientHandler, Any], None],
+                 onDisconnected: Callable[[ClientHandler], None],
                  logger: WandsLogger,
         ) :
         self.onAuth = onAuth
@@ -67,7 +68,7 @@ class ClientServer :
             )
 
         # auth by upper layer
-        response, success = self.onAuth(user, message)
+        response, success = self.onAuth(user, client.messageHandler, message)
 
         # success
         if success :

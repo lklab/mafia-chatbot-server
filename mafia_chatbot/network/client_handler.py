@@ -21,8 +21,8 @@ class ClientHandler :
     def __init__(self,
                  tcpHandler: TcpHandler,
                  onAuth: Callable[[ClientHandler, str, Any], tuple[Any, ClientUser]],
-                 onMessage: Callable[[ClientUser, Any], None],
-                 onDisconnected: Callable[[ClientUser], None],
+                 onMessage: Callable[[ClientHandler, Any], None],
+                 onDisconnected: Callable[[ClientHandler], None],
                  logger: WandsLogger,
         ) :
         self.addr = tcpHandler.addr
@@ -40,6 +40,11 @@ class ClientHandler :
             onMessage=self._onMessage,
             onDisconnected=self._onDisconnected,
         )
+
+    def respond(self, message) :
+        if self.user == None :
+            return
+        self.user.respond(self.messageHandler, message)
 
     async def _onAuth(self, message) -> tuple[Any, bool] :
         self.logger.debug(f'[ClientHandler] _onAuth() addr={self.addr} message=<{message}>')
@@ -65,7 +70,7 @@ class ClientHandler :
         # success
         if user != None :
             self.user = user
-            user.setMessageHandler(self.messageHandler)
+            user.addConnection(self.messageHandler, message.listen)
 
             response = auth_pb2.AuthResponse()
             response.rqid = message.rqid
@@ -82,12 +87,12 @@ class ClientHandler :
 
     def _onMessage(self, message) :
         if self.user != None :
-            self.onMessage(self.user, message)
+            self.onMessage(self, message)
 
     def _onDisconnected(self) :
         if self.user != None :
-            self.user.clearMessageHandler()
-            self.onDisconnected(self.user)
+            self.user.removeConnection(self.messageHandler)
+            self.onDisconnected(self)
 
     async def _authByTest(self, message) -> tuple[Any, bool] :
         dbData = testAccountDB.get_user_by_id(message.token)
