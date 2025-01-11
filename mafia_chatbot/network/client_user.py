@@ -14,6 +14,10 @@ import mafia_chatbot.utils.name_bank as NameBank
 class ClientUser :
     pass
 
+class UserHolder :
+    def onUserReleased(self, user: ClientUser) :
+        pass
+
 class ClientUser :
     def __init__(self, clientId: str, onRelease: Callable[[ClientUser], None]) :
         self.clientId = clientId
@@ -29,7 +33,7 @@ class ClientUser :
         # variables
         self.connections: set[MessageHandler] = set()
         self.listenConnection: MessageHandler = None
-        self.holders: dict[str, object] = {}
+        self.holders: dict[str, UserHolder] = {}
         self.tasks: dict[str, asyncio.Task] = {}
         self.logger: GameLogger = None
         self.subscribers: dict[type, Callable[[MessageHandler, Any], None]] = {}
@@ -37,10 +41,10 @@ class ClientUser :
         self.authMethod: auth_pb2.AuthMethod = auth_pb2.AuthMethod.AUTH_METHOD_UNKNOWN
 
     ### holder ###
-    def setHolder(self, key: str, holder: object) :
+    def setHolder(self, key: str, holder: UserHolder) :
         self.holders[key] = holder
 
-    def getHolder(self, key: str) -> object :
+    def getHolder(self, key: str) -> UserHolder :
         return self.holders.get(key)
 
     def releaseHolder(self, key) :
@@ -168,12 +172,13 @@ class ClientUser :
     def isNeedToSignUp(self) -> bool :
         return len(self.clientName) == 0
 
-    def delete(self) -> bool :
-        if len(self.holders) > 0 : # TODO 삭제될 때 holder에 나가기 처리하기
-            return False
+    def delete(self) :
+        holders = list(self.holders.values())
+        self.holders.clear()
+
+        for holder in holders :
+            holder.onUserReleased(self)
 
         if self.authMethod == auth_pb2.AuthMethod.AUTH_METHOD_FIREBASE :
             firebase.deleteUser(self.clientId) # TODO 삭제된 사용자 uid 일정 기간동안 보유하면서 새로운 연결 막기
             userDB.delete_user_by_uid(self.clientId)
-
-        return True

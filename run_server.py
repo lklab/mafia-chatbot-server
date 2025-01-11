@@ -15,7 +15,7 @@ from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.message_handler import MessageHandler
 from mafia_chatbot.network.messages import *
 from mafia_chatbot.network.client_server import ClientServer
-from mafia_chatbot.network.client_user import ClientUser
+from mafia_chatbot.network.client_user import ClientUser, UserHolder
 from mafia_chatbot.network.client_handler import ClientHandler
 from mafia_chatbot.network.utils import makeErrorResponse, ErrorCode
 
@@ -52,7 +52,7 @@ class GameProcessHandler :
     def getGameCount(self) :
         return self.gameCount
 
-class GameHandler :
+class GameHandler(UserHolder) :
     def __init__(self, id: str, process: GameProcessHandler, users: list[ClientUser]) :
         self.id = id
         self.process = process
@@ -67,6 +67,9 @@ class GameHandler :
         if user in self.users :
             self.users.remove(user)
             user.releaseHolder('gamehandler')
+
+    def onUserReleased(self, user) :
+        self.removeUser(user)
 
     def terminate(self) :
         for user in self.users :

@@ -3,7 +3,7 @@ from typing import Callable
 import asyncio
 
 from mafia_chatbot.network.messages import *
-from mafia_chatbot.network.client_user import ClientUser
+from mafia_chatbot.network.client_user import ClientUser, UserHolder
 from mafia_chatbot.network.utils import MessageException, ErrorCode
 
 from mafia_chatbot.utils.wands_logger import WandsLogger
@@ -21,7 +21,7 @@ def validateCreateRoomMessage(message: room_pb2.CreateRoom) -> bool :
 class Room :
     pass
 
-class Room :
+class Room(UserHolder) :
     def __init__(self, createRoomMessage: room_pb2.CreateRoom, code: str, hostUser: ClientUser, logger: WandsLogger, onDestroy: Callable[[Room], None]) :
         self.maxHumans: int = createRoomMessage.maxHumans
         self.password: str = createRoomMessage.password
@@ -73,6 +73,12 @@ class Room :
         else :
             self.destroy()
             self.onDestroy(self)
+
+    def onUserReleased(self, user) :
+        try :
+            self.quit(user)
+        except :
+            pass
 
     def isHostUser(self, user: ClientUser) :
         return self.hostUser.clientId == user.clientId
