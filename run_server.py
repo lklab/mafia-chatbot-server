@@ -140,6 +140,7 @@ class MainProcess :
             MainProcess._switchGameProcessMessage[type(message)](self, messageHandler, message)
 
     def _onGameProcessDisconnected(self, messageHandler: MessageHandler) :
+        # TODO 게임프로세스 연결 해제 시 다시 연결 기다리기, 게임프로세스 상태 정보 담아두기
         self.logger.error(f'[FATAL] _onGameProcessDisconnected() addr={messageHandler.addr}, desc={messageHandler.desc}')
 
     def _switchGameProcessMessageGameServerStarted(self, messageHandler: MessageHandler, message) :
