@@ -33,9 +33,9 @@ class MessageHandler :
         self.onMessage = onMessage
         self.onDisconnected = onDisconnected
 
+        self.sendTask: asyncio.Task = None
         self.sendQueue: Deque[tuple[int, bytes]] = deque()
         self.responseAwaiters: dict[str, asyncio.Future] = {}
-        self.isSending = False
 
         self.tcpHandler.listen(
             onData=self._onData,
@@ -70,16 +70,25 @@ class MessageHandler :
         self.desc = desc
 
     def disconnect(self) :
-        asyncio.create_task(self.tcpHandler.close())
+        if self.state == MessageState.DISCONNECTED :
+            return
+        self.state = MessageState.DISCONNECTED
+
+        asyncio.create_task(self._disconnectTask())
 
     def _send(self, message) :
         if type(message) in messageTypeDict :
             msgType = messageTypeDict[type(message)]
             data = message.SerializeToString()
             self.sendQueue.append((msgType, data))
-            asyncio.create_task(self._sendQueuedMessages())
+
+            if self.sendTask == None :
+                self.sendTask = asyncio.create_task(self._sendQueuedMessages())
 
     def _onData(self, msgType: int, data: bytes) :
+        if self.state == MessageState.DISCONNECTED :
+            return
+
         if self.state == MessageState.AUTHENTICATING :
             if msgType == messageTypeDict[auth_pb2.Auth] :
                 try :
@@ -124,10 +133,6 @@ class MessageHandler :
         self.onDisconnected()
 
     async def _sendQueuedMessages(self) :
-        if self.isSending :
-            return
-        self.isSending = True
-
         while len(self.sendQueue) > 0 and self.state != MessageState.DISCONNECTED :
             msgType, data = self.sendQueue[0]
             success = await self.tcpHandler.send(msgType, data)
@@ -136,4 +141,11 @@ class MessageHandler :
             else :
                 break
 
-        self.isSending = False
+        self.sendTask = None
+
+    async def _disconnectTask(self) :
+        if self.sendTask != None :
+            sendTask: asyncio.Task = self.sendTask
+            await sendTask
+
+        await self.tcpHandler.close()
