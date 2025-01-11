@@ -2,9 +2,15 @@ syntax = "proto3";
 
 import "game_data.proto";
 
-message GameServerStarted {
+message GameParticipant {
+  string gameId = 1;
+  repeated string participants = 2;
+}
+
+message GameServerConnected {
   string rqid = 1;
   int32 port = 2;
+  repeated GameParticipant gameParticipants = 3;
 }
 
 message Client {

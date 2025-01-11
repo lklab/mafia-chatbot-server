@@ -5,7 +5,7 @@ from mafia_chatbot.network.messages import *
 
 messageTypeDict: dict[Type, int] = {
     error_pb2.RequestError : 0,
-    ipc_pb2.GameServerStarted : 1000,
+    ipc_pb2.GameServerConnected : 1000,
     ipc_pb2.StartNewGame : 1001,
     ipc_pb2.StartNewGameResponse : 1002,
     ipc_pb2.ClientExited : 1003,
@@ -65,8 +65,8 @@ def _RequestErrorMessageFactory(data: bytes) -> error_pb2.RequestError :
     message.ParseFromString(data)
     return message
 
-def _GameServerStartedMessageFactory(data: bytes) -> ipc_pb2.GameServerStarted :
-    message = ipc_pb2.GameServerStarted()
+def _GameServerConnectedMessageFactory(data: bytes) -> ipc_pb2.GameServerConnected :
+    message = ipc_pb2.GameServerConnected()
     message.ParseFromString(data)
     return message
 
@@ -333,7 +333,7 @@ def _ReportChatResponseMessageFactory(data: bytes) -> game_pb2.ReportChatRespons
 
 messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     0 : _RequestErrorMessageFactory,
-    1000 : _GameServerStartedMessageFactory,
+    1000 : _GameServerConnectedMessageFactory,
     1001 : _StartNewGameMessageFactory,
     1002 : _StartNewGameResponseMessageFactory,
     1003 : _ClientExitedMessageFactory,

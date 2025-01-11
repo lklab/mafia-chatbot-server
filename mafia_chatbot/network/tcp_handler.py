@@ -22,6 +22,7 @@ class TcpHandler :
         self.listenTask: asyncio.Task = None
 
         self.addr = self.writer.get_extra_info('peername')
+        self.port: int = self.writer.get_extra_info('peername')[1]
 
         self.failCount: int = 0
 

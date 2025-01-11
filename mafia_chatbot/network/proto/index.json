@@ -12,7 +12,7 @@
             "name" : "ipc",
             "messages" :
             [
-                "GameServerStarted",
+                "GameServerConnected",
                 "StartNewGame",
                 "StartNewGameResponse",
                 "ClientExited",

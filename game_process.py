@@ -142,6 +142,7 @@ class GameInstance(UserHolder) :
 class GameProcess :
     def __init__(self, port: int) :
         self.port: int = port
+        self.games: dict[str, GameInstance] = {}
 
         # setup logger
         self.logger = WandsLogger('network', f'game-{self.port}')
@@ -171,6 +172,14 @@ class GameProcess :
             break
 
         # connect to main process
+        await self._connectToMainProcess()
+
+        # serve game server
+        await self.gameServer.serve()
+
+    ### Handle main process ###
+    async def _connectToMainProcess(self) :
+        # connect to main process
         reader, writer = await asyncio.open_connection('127.0.0.1', MAIN_PROCESS_PORT)
         mainProcessTcpHandler = TcpHandler(reader, writer)
         self.mainProcessMessageHandler = MessageHandler(
@@ -179,23 +188,35 @@ class GameProcess :
             onMessage=self._onMainProcessMessage,
             onDisconnected=self._onMainProcessDisconnected,
         )
+        self.logger.debug(f'_connectToMainProcess() connected to main process')
 
-        # send GameServerStarted message to main process
-        message = ipc_pb2.GameServerStarted()
-        message.port = self.port
+        # send GameServerConnected message to main process
+        message = self._makeGameServerConnectedMessage()
         self._sendToMainProcess(message)
 
-        # serve game server
-        await self.gameServer.serve()
+    def _makeGameServerConnectedMessage(self) -> ipc_pb2.GameServerConnected :
+        message = ipc_pb2.GameServerConnected()
+        message.port = self.port
 
-    ### Handle main process ###
+        gameParticipants: list[ipc_pb2.GameParticipant] = []
+        for game in self.games.values() :
+            gameParticipant = ipc_pb2.GameParticipant()
+            gameParticipant.gameId = game.id
+            gameParticipant.participants.extend([user for user in game.users.keys()])
+            gameParticipants.append(gameParticipant)
+        message.gameParticipants.extend(gameParticipants)
+
+        return message
+
     def _onMainProcessMessage(self, message) :
         self.logger.debug(f'_onMainProcessMessage() type={type(message)}, message=<{message}>')
         if type(message) in GameProcess._switchMainProcessMessage :
             GameProcess._switchMainProcessMessage[type(message)](self, message)
 
     def _onMainProcessDisconnected(self) :
-        self.logger.error(f'[FATAL] _onMainProcessDisconnected()')
+        self.logger.error(f'_onMainProcessDisconnected()')
+        self.mainProcessMessageHandler = None
+        asyncio.create_task(self._connectToMainProcess())
 
     def _switchMainProcessMessageStartNewGame(self, message) :
         # prepare game
@@ -205,7 +226,8 @@ class GameProcess :
         for client in message.clients :
             users.append(self.gameServer.getUser(client.id))
 
-        GameInstance(gameId, users, message.gameInfo, self._clearGame, self.logger)
+        game: GameInstance = GameInstance(gameId, users, message.gameInfo, self._clearGame, self.logger)
+        self.games[gameId] = game
 
         # send response to main process
         response = ipc_pb2.StartNewGameResponse()
@@ -339,6 +361,8 @@ class GameProcess :
     }
 
     async def _clearGame(self, game: GameInstance) :
+        del self.games[game.id]
+
         gameEnded = ipc_pb2.GameEnded()
         gameEnded.gameId = game.id
 
@@ -349,11 +373,15 @@ class GameProcess :
 
     def _sendToMainProcess(self, message) :
         self.logger.debug(f'_sendToMainProcess() type={type(message)}, message=<{message}>')
-        self.mainProcessMessageHandler.send(message)
+        if self.mainProcessMessageHandler != None :
+            self.mainProcessMessageHandler.send(message)
 
     async def _sendAwaitResponseToMainProcess(self, message) :
         self.logger.debug(f'_sendAwaitResponseToMainProcess() send type={type(message)}, message=<{message}>')
-        response = await self.mainProcessMessageHandler.sendAwaitResponse(message)
+        if self.mainProcessMessageHandler != None :
+            response = await self.mainProcessMessageHandler.sendAwaitResponse(message)
+        else :
+            raise Exception('Main process is not connected')
         self.logger.debug(f'_sendAwaitResponseToMainProcess() response type={type(response)}, message=<{response}>')
         return response
 

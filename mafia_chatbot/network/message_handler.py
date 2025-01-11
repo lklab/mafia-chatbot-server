@@ -28,6 +28,7 @@ class MessageHandler :
             self.state = MessageState.CONNECTED
         self.tcpHandler = tcpHandler
         self.addr = tcpHandler.addr
+        self.port = tcpHandler.port
         self.desc: str = ''
 
         self.onAuth = onAuth

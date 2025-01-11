@@ -37,20 +37,36 @@ class GameProcessHandler :
         self.port = port
 
         self.games: set[str] = set()
-        self.gameCount = 0
 
     def addGame(self, gameId: str) :
         if gameId not in self.games :
             self.games.add(gameId)
-            self.gameCount += 1
 
     def removeGame(self, gameId: str) :
         if gameId in self.games :
             self.games.remove(gameId)
-            self.gameCount -= 1
 
     def getGameCount(self) :
-        return self.gameCount
+        return len(self.games)
+
+    def setMessageHandler(self, messageHandler: MessageHandler) :
+        self.messageHandler = messageHandler
+
+    def isConnected(self) -> bool :
+        return self.messageHandler != None
+
+    def updateGames(self, message: ipc_pb2.GameServerConnected) :
+        gameIds: set[str] = set()
+        for gameParticipant in message.gameParticipants :
+            gameIds.add(gameParticipant.gameId)
+
+        removeGames: list[str] = []
+        for gameId in self.games :
+            if gameId not in gameIds :
+                removeGames.append(gameId)
+
+        for gameId in removeGames :
+            self.games.discard(gameId)
 
 class GameHandler(UserHolder) :
     def __init__(self, id: str, process: GameProcessHandler, users: list[ClientUser]) :
@@ -78,12 +94,24 @@ class GameHandler(UserHolder) :
 
         self.process.removeGame(self.id)
 
+    def updateParticipants(self, message: ipc_pb2.GameParticipant) :
+        participants: set[str] = set()
+        for participant in message.participants :
+            participants.add(participant)
+
+        removeUsers: list[ClientUser] = []
+        for user in self.users :
+            if user.clientId not in participants :
+                removeUsers.append(user)
+
+        for user in removeUsers :
+            self.removeUser(user)
+
 class MainProcess :
     def __init__(self) :
         self.logger = WandsLogger('network', 'main')
 
-        self.gameProcesses: list[Process] = []
-        self.gameProcessHandlers: list[GameProcessHandler] = []
+        self.gameProcessHandlers: dict[int, GameProcessHandler] = {}
         self.mainServerTask = None
 
         self.gameDict: dict[str, GameHandler] = {}
@@ -106,7 +134,6 @@ class MainProcess :
         port: int = GAME_PORT_FRIST
         for _ in range(GAME_PROCESS_COUNT) :
             process = Process(target=startGameProcess, args=(port,))
-            self.gameProcesses.append(process)
             process.daemon = True
             process.start()
             port += 1
@@ -143,15 +170,30 @@ class MainProcess :
             MainProcess._switchGameProcessMessage[type(message)](self, messageHandler, message)
 
     def _onGameProcessDisconnected(self, messageHandler: MessageHandler) :
-        # TODO 게임프로세스 연결 해제 시 다시 연결 기다리기, 게임프로세스 상태 정보 담아두기
-        self.logger.error(f'[FATAL] _onGameProcessDisconnected() addr={messageHandler.addr}, desc={messageHandler.desc}')
+        self.logger.error(f'_onGameProcessDisconnected() addr={messageHandler.addr}, desc={messageHandler.desc}')
+        self.gameProcessHandlers[messageHandler.port].setMessageHandler(None)
 
-    def _switchGameProcessMessageGameServerStarted(self, messageHandler: MessageHandler, message) :
+    def _switchGameProcessMessageGameServerConnected(self, messageHandler: MessageHandler, message) :
         port = message.port
-        handler = GameProcessHandler(messageHandler, port)
-        self.gameProcessHandlers.append(handler)
-        messageHandler.setDesc(f'{port}')
-        self._startMainServer()
+
+        if port not in self.gameProcessHandlers :
+            handler = GameProcessHandler(messageHandler, port)
+            self.gameProcessHandlers[port] = handler
+            messageHandler.setDesc(f'{port}')
+            self._startMainServer()
+        else :
+            handler = self.gameProcessHandlers[port]
+            handler.setMessageHandler(messageHandler)
+
+            handler.updateGames(message)
+            for gameParticipant in message.gameParticipants :
+                if gameParticipant.gameId in self.gameDict :
+                    self.gameDict[gameParticipant.gameId].updateParticipants(gameParticipant)
+
+        participants: dict[str, list[str]] = {}
+        for gameId in handler.games :
+            participants[gameId] = [user.clientId for user in self.gameDict[gameId].users]
+        self.logger.debug(f'_switchGameProcessMessageGameServerConnected port={port} game participants = {participants}')
 
     def _switchGameProcessMessageClientExited(self, messageHandler: MessageHandler, message) :
         user: ClientUser = self.mainServer.getUser(message.clientId, onlyExists=True)
@@ -179,7 +221,7 @@ class MainProcess :
         self._sendToGameProcess(messageHandler, response)
 
     _switchGameProcessMessage = {
-        ipc_pb2.GameServerStarted : _switchGameProcessMessageGameServerStarted,
+        ipc_pb2.GameServerConnected : _switchGameProcessMessageGameServerConnected,
         ipc_pb2.ClientExited : _switchGameProcessMessageClientExited,
         ipc_pb2.GameEnded : _switchGameProcessMessageGameEnded,
     }
@@ -276,13 +318,21 @@ class MainProcess :
             targetProcess: GameProcessHandler = None
             gameCount: int = 0
 
-            for process in self.gameProcessHandlers :
+            for process in self.gameProcessHandlers.values() :
+                if not process.isConnected() :
+                    continue
+
                 count = process.getGameCount()
                 if targetProcess == None or count < gameCount :
                     targetProcess = process
                     gameCount = count
                 if count == 0 :
                     break
+
+            if targetProcess == None :
+                errorResponse = makeErrorResponse(message, ErrorCode.SERVER_ERROR, f'Unable to connect to the game process.')
+                self._respondToClient(client, errorResponse, isError=True)
+                return
 
             # create new game
             gameId: str = str(uuid.uuid4())

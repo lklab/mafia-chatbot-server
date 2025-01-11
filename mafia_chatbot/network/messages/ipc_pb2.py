@@ -25,27 +25,29 @@ _sym_db = _symbol_database.Default()
 import game_data_pb2 as game__data__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tipc.proto\x1a\x0fgame_data.proto\"/\n\x11GameServerStarted\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\"\"\n\x06\x43lient\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"c\n\x0cStartNewGame\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0e\n\x06gameId\x18\x02 \x01(\t\x12\x18\n\x07\x63lients\x18\x03 \x03(\x0b\x32\x07.Client\x12\x1b\n\x08gameInfo\x18\x04 \x01(\x0b\x32\t.GameInfo\"$\n\x14StartNewGameResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\">\n\x0c\x43lientExited\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0e\n\x06gameId\x18\x02 \x01(\t\x12\x10\n\x08\x63lientId\x18\x03 \x01(\t\"$\n\x14\x43lientExitedResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\")\n\tGameEnded\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0e\n\x06gameId\x18\x02 \x01(\t\"!\n\x11GameEndedResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\tb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tipc.proto\x1a\x0fgame_data.proto\"7\n\x0fGameParticipant\x12\x0e\n\x06gameId\x18\x01 \x01(\t\x12\x14\n\x0cparticipants\x18\x02 \x03(\t\"]\n\x13GameServerConnected\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\x12*\n\x10gameParticipants\x18\x03 \x03(\x0b\x32\x10.GameParticipant\"\"\n\x06\x43lient\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"c\n\x0cStartNewGame\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0e\n\x06gameId\x18\x02 \x01(\t\x12\x18\n\x07\x63lients\x18\x03 \x03(\x0b\x32\x07.Client\x12\x1b\n\x08gameInfo\x18\x04 \x01(\x0b\x32\t.GameInfo\"$\n\x14StartNewGameResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\">\n\x0c\x43lientExited\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0e\n\x06gameId\x18\x02 \x01(\t\x12\x10\n\x08\x63lientId\x18\x03 \x01(\t\"$\n\x14\x43lientExitedResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\")\n\tGameEnded\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0e\n\x06gameId\x18\x02 \x01(\t\"!\n\x11GameEndedResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\tb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'ipc_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_GAMESERVERSTARTED']._serialized_start=30
-  _globals['_GAMESERVERSTARTED']._serialized_end=77
-  _globals['_CLIENT']._serialized_start=79
-  _globals['_CLIENT']._serialized_end=113
-  _globals['_STARTNEWGAME']._serialized_start=115
-  _globals['_STARTNEWGAME']._serialized_end=214
-  _globals['_STARTNEWGAMERESPONSE']._serialized_start=216
-  _globals['_STARTNEWGAMERESPONSE']._serialized_end=252
-  _globals['_CLIENTEXITED']._serialized_start=254
-  _globals['_CLIENTEXITED']._serialized_end=316
-  _globals['_CLIENTEXITEDRESPONSE']._serialized_start=318
-  _globals['_CLIENTEXITEDRESPONSE']._serialized_end=354
-  _globals['_GAMEENDED']._serialized_start=356
-  _globals['_GAMEENDED']._serialized_end=397
-  _globals['_GAMEENDEDRESPONSE']._serialized_start=399
-  _globals['_GAMEENDEDRESPONSE']._serialized_end=432
+  _globals['_GAMEPARTICIPANT']._serialized_start=30
+  _globals['_GAMEPARTICIPANT']._serialized_end=85
+  _globals['_GAMESERVERCONNECTED']._serialized_start=87
+  _globals['_GAMESERVERCONNECTED']._serialized_end=180
+  _globals['_CLIENT']._serialized_start=182
+  _globals['_CLIENT']._serialized_end=216
+  _globals['_STARTNEWGAME']._serialized_start=218
+  _globals['_STARTNEWGAME']._serialized_end=317
+  _globals['_STARTNEWGAMERESPONSE']._serialized_start=319
+  _globals['_STARTNEWGAMERESPONSE']._serialized_end=355
+  _globals['_CLIENTEXITED']._serialized_start=357
+  _globals['_CLIENTEXITED']._serialized_end=419
+  _globals['_CLIENTEXITEDRESPONSE']._serialized_start=421
+  _globals['_CLIENTEXITEDRESPONSE']._serialized_end=457
+  _globals['_GAMEENDED']._serialized_start=459
+  _globals['_GAMEENDED']._serialized_end=500
+  _globals['_GAMEENDEDRESPONSE']._serialized_start=502
+  _globals['_GAMEENDEDRESPONSE']._serialized_end=535
 # @@protoc_insertion_point(module_scope)
