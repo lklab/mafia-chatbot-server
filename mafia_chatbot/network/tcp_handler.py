@@ -26,20 +26,20 @@ class TcpHandler :
         self.failCount: int = 0
 
     def listen(self, onData: Callable[[int, bytes], None], onDisconnected: Callable[[], None]) :
-        self.listenTask = asyncio.create_task(self._listen(onData, onDisconnected))
-
-    async def _listen(self, onData: Callable[[int, bytes], None], onDisconnected: Callable[[], None]) :
         if self.state != TcpState.INITIALIZED :
             return
         self.state = TcpState.CONNECTED
 
+        self.listenTask = asyncio.create_task(self._listen(onData, onDisconnected))
+
+    async def _listen(self, onData: Callable[[int, bytes], None], onDisconnected: Callable[[], None]) :
         buffer = b''
         self.onDisconnected = onDisconnected
 
         try:
             while True:
                 chunk = await self.reader.read(4096)
-                if not chunk:
+                if not chunk or self.state == TcpState.DISCONNECTED :
                     break
                 buffer += chunk
 
@@ -109,13 +109,13 @@ class TcpHandler :
         try:
             self.writer.write(data)
             await self.writer.drain()
-            return True
 
-        except (OSError, asyncio.CancelledError) as e:
+        except (OSError, asyncio.CancelledError, BrokenPipeError, ConnectionResetError) as e:
             print(f"[TcpHandler] {self.addr} fail to send data: {e}")
             await self.close()
+            return False
 
-        return False
+        return True
 
     def addFailCount(self) :
         self.failCount += 1
@@ -130,16 +130,22 @@ class TcpHandler :
             return
         self.state = TcpState.DISCONNECTED
 
-        try :
-            if self.listenTask != None :
-                task = self.listenTask
-                self.listenTask = None
-                task.cancel()
-                await task
+        # cancel listen task
+        if self.listenTask != None :
+            task = self.listenTask
+            self.listenTask = None
 
+        try :
+            task.cancel()
+            await task
+        except :
+            pass
+
+        # close writer
+        try :
             self.writer.close()
             await self.writer.wait_closed()
-        except Exception as e :
-            print(f"[TcpHandler] {self.addr} fail to close: {e}")
+        except :
+            pass
 
         self.onDisconnected()

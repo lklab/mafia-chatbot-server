@@ -60,10 +60,13 @@ class ClientUser :
             return
 
         self.connections.add(connection)
+
         if isListen :
-            if self.listenConnection != None :
-                self.listenConnection.disconnect() # TODO 이 때 removeConnection() 호출되는지 확인하기
+            listenConnection = self.listenConnection
             self.listenConnection = connection
+
+            if listenConnection != None :
+                listenConnection.disconnect()
 
     def removeConnection(self, connection: MessageHandler) :
         if connection in self.connections :
@@ -87,7 +90,7 @@ class ClientUser :
             self.logger.log(TAG.NETWORK, f'[ClientUser] respond {type(message)} message to {self.clientName}: <{message}>')
         connection.send(message)
 
-    def send(self, message) : # TODO change caller
+    def send(self, message) :
         if self.listenConnection != None :
             if self.logger != None :
                 self.logger.log(TAG.NETWORK, f'[ClientUser] send {type(message)} message to {self.clientName}: <{message}>')
@@ -111,6 +114,8 @@ class ClientUser :
 
         for connection in connections :
             connection.disconnect()
+
+        self._checkReleasable()
 
     ### user info ###
     def setAuthMethod(self, method: auth_pb2.AuthMethod) :
@@ -149,7 +154,7 @@ class ClientUser :
         return len(self.clientName) == 0
 
     def delete(self) -> bool :
-        if len(self.holders) > 0 :
+        if len(self.holders) > 0 : # TODO 삭제될 때 holder에 나가기 처리하기
             return False
 
         if self.authMethod == auth_pb2.AuthMethod.AUTH_METHOD_FIREBASE :
