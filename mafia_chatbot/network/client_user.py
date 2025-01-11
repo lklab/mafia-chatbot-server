@@ -1,4 +1,5 @@
-from typing import Callable, Any
+from typing import Callable, Awaitable, Any
+import asyncio
 
 from mafia_chatbot.game.game_logger import GameLogger, TAG
 
@@ -29,6 +30,7 @@ class ClientUser :
         self.connections: set[MessageHandler] = set()
         self.listenConnection: MessageHandler = None
         self.holders: dict[str, object] = {}
+        self.tasks: dict[str, asyncio.Task] = {}
         self.logger: GameLogger = None
         self.subscribers: dict[type, Callable[[MessageHandler, Any], None]] = {}
         self.isReleased: bool = False
@@ -51,7 +53,20 @@ class ClientUser :
             self.isReleased = True
             self.onRelease(self)
 
-    ### message ###
+    ### task ###
+    def createTask(self, key: str, task: Callable[[], Awaitable]) -> bool :
+        """동일한 key에 대해 동시에 하나의 태스크만 실행될 수 있도록 보장"""
+        if key in self.tasks :
+            return False
+
+        self.tasks[key] = asyncio.create_task(self._runTask(key, task))
+        return True
+
+    async def _runTask(self, key: str, task: Callable[[], Awaitable]) :
+        await task()
+        del self.tasks[key]
+
+    ### connection ###
     def isConnected(self) :
         return len(self.connections) > 0
 

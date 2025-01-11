@@ -64,25 +64,3 @@ class GameInfo :
             self.debugInfo = debugInfo
             self.isCUI = True
             self.useLLM = debugInfo.useLLM
-
-    def checkValid(self) -> bool :
-        if self.playerCount > 10 or self.playerCount < 3 :
-            return False
-
-        if self.playerCount <= self.mafiaCount * 2 :
-            return False
-
-        if self.mafiaCount <= 0 :
-            return False
-
-        humanCount: int = len(self.users)
-        if (self.localPlayerName != None) :
-            humanCount += 1
-
-        if self.playerCount < humanCount :
-            return False
-
-        # TODO check language
-        # TODO check duplicated names
-
-        return True

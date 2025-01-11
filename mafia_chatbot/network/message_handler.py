@@ -5,8 +5,9 @@ from typing import Callable, Awaitable, Deque, Any
 import uuid
 
 from mafia_chatbot.network.tcp_handler import TcpHandler
-from mafia_chatbot.network.messages.message_info import *
+from mafia_chatbot.network.messages.message_info import messageTypeDict, messageFactoryDict
 from mafia_chatbot.network.messages import *
+from mafia_chatbot.network.utils import makeErrorResponse, ErrorCode
 
 class MessageState(Enum) :
     AUTHENTICATING = 0
@@ -32,6 +33,8 @@ class MessageHandler :
         self.onAuth = onAuth
         self.onMessage = onMessage
         self.onDisconnected = onDisconnected
+
+        self.authTask: asyncio.Task = None
 
         self.sendTask: asyncio.Task = None
         self.sendQueue: Deque[tuple[int, bytes]] = deque()
@@ -105,8 +108,14 @@ class MessageHandler :
                     self._send(response)
                     if success :
                         self.state = MessageState.CONNECTED
+                    self.authTask = None
 
-                asyncio.create_task(_auth()) # TODO 중복 호출 처리
+                if self.authTask != None :
+                    errorResponse = makeErrorResponse(message, ErrorCode.BUSY, 'It is already being processed.')
+                    self._send(errorResponse)
+                    return
+
+                self.authTask = asyncio.create_task(_auth())
             else :
                 self.tcpHandler.addFailCount()
                 return

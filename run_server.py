@@ -202,7 +202,9 @@ class MainProcess :
             response = await client.user.updateInfo(message)
             self._respondToClient(client, response, isError=isinstance(response, error_pb2.RequestError))
 
-        asyncio.create_task(_updateInfo()) # TODO 중복 호출에 대한 처리
+        if not client.user.createTask('updateUserInfo', _updateInfo) :
+            errorResponse = makeErrorResponse(message, ErrorCode.BUSY, f'It is already being processed.')
+            self._respondToClient(client, errorResponse, isError=True)
 
     def _switchClientMessageDeleteUser(self, client: ClientHandler, message) :
         try :
@@ -360,7 +362,9 @@ class MainProcess :
             self._respondToClient(client, errorResponse, isError=True)
             return
 
-        asyncio.create_task(_newGame(room)) # TODO 중복 호출에 대한 처리
+        if not client.user.createTask('newGame', _newGame) :
+            errorResponse = makeErrorResponse(message, ErrorCode.BUSY, f'It is already being processed.')
+            self._respondToClient(client, errorResponse, isError=True)
 
     def _switchClientMessageCheckCurrentGame(self, client: ClientHandler, message) :
         game: GameHandler = client.user.getHolder('gamehandler')

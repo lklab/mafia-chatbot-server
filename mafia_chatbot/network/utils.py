@@ -1,7 +1,7 @@
 from enum import Enum
 
 from mafia_chatbot.network.messages import *
-from mafia_chatbot.network.message_handler import messageTypeDict
+from mafia_chatbot.network.messages.message_info import messageTypeDict
 
 class ErrorCode(Enum) :
     BAD_REQUEST = 1000
@@ -10,6 +10,7 @@ class ErrorCode(Enum) :
     NOT_FOUND = 1003
     NO_PERMISSION = 1004
     CANT_PROCESS = 1005
+    BUSY = 1006
     SERVER_ERROR = 2000
     NO_CHANGES = 3000
 

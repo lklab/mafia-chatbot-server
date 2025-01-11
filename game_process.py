@@ -298,7 +298,9 @@ class GameProcess :
             self._respondToClient(client, errorResponse, isError=True)
             return
 
-        asyncio.create_task(_quitGame(game)) # TODO 중복 호출에 대한 처리
+        if not client.user.createTask('quitGame', _quitGame) :
+            errorResponse = makeErrorResponse(message, ErrorCode.BUSY, f'It is already being processed.')
+            self._respondToClient(client, errorResponse, isError=True)
 
     def _switchClientMessageReportChat(self, client: ClientHandler, message) :
         game: GameInstance = client.user.getHolder('game')
