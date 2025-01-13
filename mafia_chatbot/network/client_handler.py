@@ -92,7 +92,7 @@ class ClientHandler :
     def _onDisconnected(self) :
         if self.user != None :
             self.user.removeConnection(self.messageHandler)
-            self.onDisconnected(self)
+        self.onDisconnected(self)
 
     async def _authByTest(self, message) -> tuple[Any, bool] :
         dbData = testAccountDB.get_user_by_id(message.token)

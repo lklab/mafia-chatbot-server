@@ -103,6 +103,7 @@ class ClientServer :
             return response, None
 
     def _onDisconnected(self, client: ClientHandler) :
+        self.logger.debug(f'[ClientServer] _onDisconnected() addr={client.addr}')
         ip = client.messageHandler.ip
         connectionCount = self._security_connectionCount[ip]
         if connectionCount > 1 :
@@ -118,5 +119,5 @@ class ClientServer :
 
     async def _security_connectionCountPerMinReset(self) :
         while True :
-            asyncio.sleep(60)
+            await asyncio.sleep(60)
             self._security_connectionCountPerMin.clear()

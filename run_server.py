@@ -250,7 +250,8 @@ class MainProcess :
             self._respondToClient(client, errorResponse, isError=True)
 
     def _onClientDisconnected(self, client: ClientHandler) :
-        self.logger.debug(f'_onClientDisconnected clientId={client.user.clientId} name={client.user.clientName}')
+        if client.user != None :
+            self.logger.debug(f'_onClientDisconnected clientId={client.user.clientId} name={client.user.clientName}')
 
     def _switchClientMessageUpdateUserInfo(self, client: ClientHandler, message) :
         async def _updateInfo() :
