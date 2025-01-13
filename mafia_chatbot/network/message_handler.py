@@ -170,8 +170,9 @@ class MessageHandler :
         self.onDisconnected()
 
     async def _sendQueuedMessages(self) :
-        while len(self.sendQueue) > 0 and self.state != MessageState.DISCONNECTED :
+        while len(self.sendQueue) > 0 :
             msgType, data = self.sendQueue[0]
+            # 연결이 해제된 경우 tcpHandler.send()에서 False를 반환하므로 따로 검사하지 않아도 괜찮음
             success = await self.tcpHandler.send(msgType, data)
             if success :
                 self.sendQueue.popleft()
