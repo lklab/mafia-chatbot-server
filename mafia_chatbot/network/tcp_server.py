@@ -5,11 +5,12 @@ from typing import Callable
 from mafia_chatbot.network.tcp_handler import TcpHandler
 
 class TcpServer :
-    def __init__(self, port: int, host: str = '0.0.0.0', useSSL: bool = True) :
+    def __init__(self, port: int, host: str = '0.0.0.0', useSSL: bool = True, trust: bool = False) :
         self.server = None
         self.host: str = host
         self.port: int = port
         self.useSSL: bool = useSSL
+        self.trust: bool = trust
 
     async def start(self, onConnected: Callable[[TcpHandler], None]) :
         self.onConnected = onConnected
@@ -52,6 +53,6 @@ class TcpServer :
             print("[TcpServer] Server is not running.")
 
     async def _handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) :
-        tcpHandler = TcpHandler(reader, writer)
+        tcpHandler = TcpHandler(reader, writer, trust=self.trust)
         print(f"[TcpServer] {tcpHandler.addr} Client connected")
         self.onConnected(tcpHandler)

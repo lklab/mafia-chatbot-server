@@ -14,11 +14,12 @@ maxPayloadSize = 10 * 1024 * 1024 # 10Mb
 MAX_FAIL_COUNT = 5
 
 class TcpHandler :
-    def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) :
+    def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, trust: bool = False) :
         self.state = TcpState.INITIALIZED
 
         self.reader = reader
         self.writer = writer
+        self.trust = trust
         self.listenTask: asyncio.Task = None
 
         self.addr = self.writer.get_extra_info('peername')
@@ -119,6 +120,9 @@ class TcpHandler :
         return True
 
     def addFailCount(self) :
+        if self.trust :
+            return
+
         self.failCount += 1
         if self.failCount >= MAX_FAIL_COUNT :
             asyncio.create_task(self.close())

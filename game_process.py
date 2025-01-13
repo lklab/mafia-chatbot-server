@@ -181,7 +181,7 @@ class GameProcess :
     async def _connectToMainProcess(self) :
         # connect to main process
         reader, writer = await asyncio.open_connection('127.0.0.1', MAIN_PROCESS_PORT)
-        mainProcessTcpHandler = TcpHandler(reader, writer)
+        mainProcessTcpHandler = TcpHandler(reader, writer, trust=True)
         self.mainProcessMessageHandler = MessageHandler(
             tcpHandler=mainProcessTcpHandler,
             onAuth=None,

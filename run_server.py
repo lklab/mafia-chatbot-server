@@ -121,7 +121,7 @@ class MainProcess :
         self.roomManager: RoomManager = RoomManager(self.logger)
 
     async def run(self) :
-        gameProcessServer = TcpServer(port=GAME_PROCESS_PORT, host='127.0.0.1', useSSL=False)
+        gameProcessServer = TcpServer(port=GAME_PROCESS_PORT, host='127.0.0.1', useSSL=False, trust=True)
         await gameProcessServer.start(onConnected=self._onGameProcessConnected)
         self._startGameProcesses()
 
