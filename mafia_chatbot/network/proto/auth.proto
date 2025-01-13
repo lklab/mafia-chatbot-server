@@ -41,3 +41,7 @@ message DeleteUser {
 message DeleteUserResponse {
   string rqid = 1;
 }
+
+message DuplicatedSignIn {
+  string rqid = 1;
+}

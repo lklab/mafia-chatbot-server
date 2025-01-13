@@ -89,6 +89,8 @@ class ClientUser :
             self.listenConnection = connection
 
             if listenConnection != None :
+                message = auth_pb2.DuplicatedSignIn()
+                listenConnection.send(message)
                 listenConnection.disconnect()
 
     def removeConnection(self, connection: MessageHandler) :

@@ -18,6 +18,7 @@ messageTypeDict: dict[Type, int] = {
     auth_pb2.UpdateUserInfoResponse : 2003,
     auth_pb2.DeleteUser : 2004,
     auth_pb2.DeleteUserResponse : 2005,
+    auth_pb2.DuplicatedSignIn : 2006,
     time_pb2.RequestTimeSync : 3000,
     time_pb2.TimeSync : 3001,
     room_pb2.RequestMyRoomInfo : 4000,
@@ -127,6 +128,11 @@ def _DeleteUserMessageFactory(data: bytes) -> auth_pb2.DeleteUser :
 
 def _DeleteUserResponseMessageFactory(data: bytes) -> auth_pb2.DeleteUserResponse :
     message = auth_pb2.DeleteUserResponse()
+    message.ParseFromString(data)
+    return message
+
+def _DuplicatedSignInMessageFactory(data: bytes) -> auth_pb2.DuplicatedSignIn :
+    message = auth_pb2.DuplicatedSignIn()
     message.ParseFromString(data)
     return message
 
@@ -346,6 +352,7 @@ messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     2003 : _UpdateUserInfoResponseMessageFactory,
     2004 : _DeleteUserMessageFactory,
     2005 : _DeleteUserResponseMessageFactory,
+    2006 : _DuplicatedSignInMessageFactory,
     3000 : _RequestTimeSyncMessageFactory,
     3001 : _TimeSyncMessageFactory,
     4000 : _RequestMyRoomInfoMessageFactory,

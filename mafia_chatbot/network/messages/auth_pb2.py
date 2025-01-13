@@ -24,15 +24,15 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nauth.proto\"*\n\x08UserInfo\x12\x10\n\x08\x63lientId\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"b\n\x04\x41uth\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x06method\x18\x02 \x01(\x0e\x32\x0b.AuthMethod\x12\r\n\x05token\x18\x03 \x01(\t\x12\x10\n\x08password\x18\x04 \x01(\t\x12\x0e\n\x06listen\x18\x05 \x01(\x08\"9\n\x0c\x41uthResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\";\n\x0eUpdateUserInfo\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\"C\n\x16UpdateUserInfoResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\"\x1a\n\nDeleteUser\x12\x0c\n\x04rqid\x18\x01 \x01(\t\"\"\n\x12\x44\x65leteUserResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t*U\n\nAuthMethod\x12\x17\n\x13\x41UTH_METHOD_UNKNOWN\x10\x00\x12\x14\n\x10\x41UTH_METHOD_TEST\x10\x01\x12\x18\n\x14\x41UTH_METHOD_FIREBASE\x10\x02\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nauth.proto\"*\n\x08UserInfo\x12\x10\n\x08\x63lientId\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"b\n\x04\x41uth\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x06method\x18\x02 \x01(\x0e\x32\x0b.AuthMethod\x12\r\n\x05token\x18\x03 \x01(\t\x12\x10\n\x08password\x18\x04 \x01(\t\x12\x0e\n\x06listen\x18\x05 \x01(\x08\"9\n\x0c\x41uthResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\";\n\x0eUpdateUserInfo\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\"C\n\x16UpdateUserInfoResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\"\x1a\n\nDeleteUser\x12\x0c\n\x04rqid\x18\x01 \x01(\t\"\"\n\x12\x44\x65leteUserResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\" \n\x10\x44uplicatedSignIn\x12\x0c\n\x04rqid\x18\x01 \x01(\t*U\n\nAuthMethod\x12\x17\n\x13\x41UTH_METHOD_UNKNOWN\x10\x00\x12\x14\n\x10\x41UTH_METHOD_TEST\x10\x01\x12\x18\n\x14\x41UTH_METHOD_FIREBASE\x10\x02\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'auth_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_AUTHMETHOD']._serialized_start=411
-  _globals['_AUTHMETHOD']._serialized_end=496
+  _globals['_AUTHMETHOD']._serialized_start=445
+  _globals['_AUTHMETHOD']._serialized_end=530
   _globals['_USERINFO']._serialized_start=14
   _globals['_USERINFO']._serialized_end=56
   _globals['_AUTH']._serialized_start=58
@@ -47,4 +47,6 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_DELETEUSER']._serialized_end=373
   _globals['_DELETEUSERRESPONSE']._serialized_start=375
   _globals['_DELETEUSERRESPONSE']._serialized_end=409
+  _globals['_DUPLICATEDSIGNIN']._serialized_start=411
+  _globals['_DUPLICATEDSIGNIN']._serialized_end=443
 # @@protoc_insertion_point(module_scope)

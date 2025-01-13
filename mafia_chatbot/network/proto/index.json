@@ -30,7 +30,8 @@
                 "UpdateUserInfo",
                 "UpdateUserInfoResponse",
                 "DeleteUser",
-                "DeleteUserResponse"
+                "DeleteUserResponse",
+                "DuplicatedSignIn"
             ]
         },
         {
