@@ -132,11 +132,11 @@ class MessageHandler :
                 async def _auth() :
                     response, success = await self.onAuth(message)
                     response.rqid = message.rqid
-                    self._send(response)
                     if success :
                         self._security_stopAuthTimeout()
                         self.state = MessageState.CONNECTED
                     self.authTask = None
+                    self._send(response)
 
                 if self.authTask != None :
                     errorResponse = makeErrorResponse(message, ErrorCode.BUSY, 'It is already being processed.')
