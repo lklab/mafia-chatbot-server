@@ -1,5 +1,5 @@
 from mafia_chatbot.game.game_state import GameState, VoteData, RemoveReason
-from mafia_chatbot.game.trust_profile import TrustProfile, TrustRecord, TrustState
+from mafia_chatbot.game.trust_profile import TrustProfile, TrustRecord, TrustState, normalizePoint
 from mafia_chatbot.game.player import Player
 from mafia_chatbot.game.player_info import PlayerInfo, Role
 from mafia_chatbot.game.strategy import Strategy, VoteStrategy, defaultReason
@@ -206,11 +206,11 @@ class TrustRecorder :
             return
 
         effectiveCitizenCount: int = self.getEffectiveCitizenCount()
+        removedPlayerPoint = self.profileByPlayerInfo[removedPlayerInfo].mainRecord.point
 
         if removedPlayerInfo.role != Role.MAFIA :
             # He pointed out the citizen
             point: float = -50.0 / effectiveCitizenCount
-            removedPlayerPoint = self.profileByPlayerInfo[removedPlayerInfo].mainRecord.point
             if removedPlayerPoint < -50.0 :
                 point *= (100.0 + removedPlayerPoint) / 50.0
 
@@ -236,6 +236,7 @@ class TrustRecorder :
         else :
             # He pointed out the mafia
             point: float = 80.0 / self.gameState.getMafiaCount()
+            point *= min(normalizePoint(removedPlayerPoint) * 2.0, 1.0) # 대상의 신뢰도가 낮으면 마피아를 지목해도 신뢰도가 크게 오르지 않음
             for playerInfo in self.everPointerInfosByTargetInfo[removedPlayerInfo] :
                 self.profileByPlayerInfo[playerInfo].addRecord(TrustRecord(
                     point=point,
