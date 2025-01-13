@@ -31,53 +31,14 @@ MAIN_PORT = 10015
 GAME_PORT_FRIST = 10016
 GAME_PROCESS_PORT = 30000
 
-class GameProcessHandler :
-    def __init__(self, messageHandler: MessageHandler, port: int) :
-        self.messageHandler = messageHandler
-        self.port = port
-
-        self.games: set[str] = set()
-
-    def addGame(self, gameId: str) :
-        if gameId not in self.games :
-            self.games.add(gameId)
-
-    def removeGame(self, gameId: str) :
-        if gameId in self.games :
-            self.games.remove(gameId)
-
-    def getGameCount(self) :
-        return len(self.games)
-
-    def setMessageHandler(self, messageHandler: MessageHandler) :
-        self.messageHandler = messageHandler
-
-    def isConnected(self) -> bool :
-        return self.messageHandler != None
-
-    def updateGames(self, message: ipc_pb2.GameServerConnected) :
-        gameIds: set[str] = set()
-        for gameParticipant in message.gameParticipants :
-            gameIds.add(gameParticipant.gameId)
-
-        removeGames: list[str] = []
-        for gameId in self.games :
-            if gameId not in gameIds :
-                removeGames.append(gameId)
-
-        for gameId in removeGames :
-            self.games.discard(gameId)
-
 class GameHandler(UserHolder) :
-    def __init__(self, id: str, process: GameProcessHandler, users: list[ClientUser]) :
+    def __init__(self, id: str, users: list[ClientUser], port: int) :
         self.id = id
-        self.process = process
         self.users = users
+        self.port = port
 
         for user in self.users :
             user.setHolder('gamehandler', self)
-
-        process.addGame(id)
 
     def removeUser(self, user: ClientUser) :
         if user in self.users :
@@ -92,8 +53,6 @@ class GameHandler(UserHolder) :
             user.releaseHolder('gamehandler')
         self.users.clear()
 
-        self.process.removeGame(self.id)
-
     def updateParticipants(self, message: ipc_pb2.GameParticipant) :
         participants: set[str] = set()
         for participant in message.participants :
@@ -107,14 +66,57 @@ class GameHandler(UserHolder) :
         for user in removeUsers :
             self.removeUser(user)
 
+class GameProcessHandler :
+    def __init__(self, messageHandler: MessageHandler, port: int) :
+        self.messageHandler = messageHandler
+        self.port = port
+
+        self.games: dict[str, GameHandler] = {}
+
+    def addGame(self, game: GameHandler) :
+        if game.id not in self.games :
+            self.games[game.id] = game
+
+    def removeGame(self, gameId: str) :
+        if gameId in self.games :
+            game: GameHandler = self.games[gameId]
+            game.terminate()
+            del self.games[gameId]
+
+    def getGameCount(self) :
+        return len(self.games)
+
+    def setMessageHandler(self, messageHandler: MessageHandler) :
+        self.messageHandler = messageHandler
+
+    def isConnected(self) -> bool :
+        return self.messageHandler != None
+
+    def updateGames(self, message: ipc_pb2.GameServerConnected) -> list[str] :
+        gameIds: set[str] = set()
+        for gameParticipant in message.gameParticipants :
+            gameIds.add(gameParticipant.gameId)
+            self.games[gameParticipant.gameId].updateParticipants(gameParticipant)
+
+        removeGames: list[str] = []
+        for gameId in self.games.keys() :
+            if gameId not in gameIds :
+                removeGames.append(gameId)
+
+        for gameId in removeGames :
+            self.removeGame(gameId)
+
+        return removeGames
+
 class MainProcess :
     def __init__(self) :
         self.logger = WandsLogger('network', 'main')
 
         self.gameProcessHandlers: dict[int, GameProcessHandler] = {}
+        self.gameProcessPortDict: dict[MessageHandler, int] = {}
         self.mainServerTask = None
 
-        self.gameDict: dict[str, GameHandler] = {}
+        self.gameToProcessDict: dict[str, GameProcessHandler] = {}
 
         self.roomManager: RoomManager = RoomManager(self.logger)
 
@@ -171,10 +173,13 @@ class MainProcess :
 
     def _onGameProcessDisconnected(self, messageHandler: MessageHandler) :
         self.logger.error(f'_onGameProcessDisconnected() addr={messageHandler.addr}, desc={messageHandler.desc}')
-        self.gameProcessHandlers[messageHandler.port].setMessageHandler(None)
+        port: int = self.gameProcessPortDict[messageHandler]
+        del self.gameProcessPortDict[messageHandler]
+        self.gameProcessHandlers[port].setMessageHandler(None)
 
     def _switchGameProcessMessageGameServerConnected(self, messageHandler: MessageHandler, message) :
         port = message.port
+        self.gameProcessPortDict[messageHandler] = port
 
         if port not in self.gameProcessHandlers :
             handler = GameProcessHandler(messageHandler, port)
@@ -185,15 +190,20 @@ class MainProcess :
             handler = self.gameProcessHandlers[port]
             handler.setMessageHandler(messageHandler)
 
-            handler.updateGames(message)
-            for gameParticipant in message.gameParticipants :
-                if gameParticipant.gameId in self.gameDict :
-                    self.gameDict[gameParticipant.gameId].updateParticipants(gameParticipant)
+            participants: dict[str, list[str]] = {} # TODO delete
+            for gameId in handler.games :
+                participants[gameId] = [user.clientId for user in self.gameToProcessDict[gameId].games[gameId].users]
+            self.logger.debug(f'_switchGameProcessMessageGameServerConnected port={port} game participants(before) = {participants}')
+
+            removedGames: list[str] = handler.updateGames(message)
+            for gameId in removedGames :
+                if gameId in self.gameToProcessDict :
+                    del self.gameToProcessDict[gameId]
 
         participants: dict[str, list[str]] = {}
         for gameId in handler.games :
-            participants[gameId] = [user.clientId for user in self.gameDict[gameId].users]
-        self.logger.debug(f'_switchGameProcessMessageGameServerConnected port={port} game participants = {participants}')
+            participants[gameId] = [user.clientId for user in self.gameToProcessDict[gameId].games[gameId].users]
+        self.logger.debug(f'_switchGameProcessMessageGameServerConnected port={port} game participants(after) = {participants}')
 
     def _switchGameProcessMessageClientExited(self, messageHandler: MessageHandler, message) :
         user: ClientUser = self.mainServer.getUser(message.clientId, onlyExists=True)
@@ -211,10 +221,10 @@ class MainProcess :
     def _switchGameProcessMessageGameEnded(self, messageHandler: MessageHandler, message) :
         gameId: str = message.gameId
 
-        if gameId in self.gameDict :
-            game: GameHandler = self.gameDict[gameId]
-            del self.gameDict[gameId]
-            game.terminate()
+        if gameId in self.gameToProcessDict :
+            process = self.gameToProcessDict[gameId]
+            process.removeGame(gameId)
+            del self.gameToProcessDict[gameId]
 
         response = ipc_pb2.GameEndedResponse()
         response.rqid = message.rqid
@@ -340,7 +350,7 @@ class MainProcess :
             # setup users
             users: list[ClientUser]
             if room == None :
-                users = [user]
+                users = [client.user]
             else :
                 users = room.users
 
@@ -371,8 +381,9 @@ class MainProcess :
                 return
 
             # assign game
-            game: GameHandler = GameHandler(gameId, targetProcess, users)
-            self.gameDict[gameId] = game
+            game: GameHandler = GameHandler(gameId, users, targetProcess.port)
+            targetProcess.addGame(game)
+            self.gameToProcessDict[game.id] = targetProcess
 
             # destroy room
             if room != None :
@@ -381,11 +392,11 @@ class MainProcess :
             # response port to users
             newGameResponse = room_pb2.NewGameResponse()
             newGameResponse.rqid = message.rqid
-            newGameResponse.port = game.process.port
+            newGameResponse.port = game.port
             self._respondToClient(client, newGameResponse)
 
             gameStartedMessage = room_pb2.GameStarted()
-            gameStartedMessage.port = game.process.port
+            gameStartedMessage.port = game.port
             for u in users :
                 self._sendToUser(u, gameStartedMessage)
 
@@ -415,7 +426,7 @@ class MainProcess :
             self._respondToClient(client, errorResponse, isError=True)
             return
 
-        if not client.user.createTask('newGame', _newGame) :
+        if not client.user.createTask('newGame', _newGame, room) :
             errorResponse = makeErrorResponse(message, ErrorCode.BUSY, f'It is already being processed.')
             self._respondToClient(client, errorResponse, isError=True)
 
@@ -425,7 +436,7 @@ class MainProcess :
             response = game_pb2.CurrentGame()
             response.rqid = message.rqid
             response.isGameExists = True
-            response.port = game.process.port
+            response.port = game.port
             self._respondToClient(client, response)
         else :
             response = game_pb2.CurrentGame()

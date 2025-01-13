@@ -258,7 +258,7 @@ class GameProcess :
         if type(message) in GameProcess._switchClientMessage :
             GameProcess._switchClientMessage[type(message)](self, client, message)
         else :
-            if client.user.forward(message) :
+            if client.user.forward(client.messageHandler, message) :
                 pass
             else :
                 errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'Cannot process the message.')
@@ -324,7 +324,7 @@ class GameProcess :
             self._respondToClient(client, errorResponse, isError=True)
             return
 
-        if not client.user.createTask('quitGame', _quitGame) :
+        if not client.user.createTask('quitGame', _quitGame, game) :
             errorResponse = makeErrorResponse(message, ErrorCode.BUSY, f'It is already being processed.')
             self._respondToClient(client, errorResponse, isError=True)
 
@@ -385,11 +385,12 @@ class GameProcess :
         self.logger.debug(f'_sendAwaitResponseToMainProcess() response type={type(response)}, message=<{response}>')
         return response
 
-    def _respondToClient(self, client: ClientHandler, message, isError: bool = False) :
-        if isError :
-            self.logger.error(f'_respondToClient id={client.user.clientId}, name={client.user.clientName}, type={type(message)}, message=<{message}>')
-        else :
-            self.logger.debug(f'_respondToClient id={client.user.clientId}, name={client.user.clientName}, type={type(message)}, message=<{message}>')
+    def _respondToClient(self, client: ClientHandler, message, log: bool = True, isError: bool = False) :
+        if log :
+            if isError :
+                self.logger.error(f'_respondToClient id={client.user.clientId}, name={client.user.clientName}, type={type(message)}, message=<{message}>')
+            else :
+                self.logger.debug(f'_respondToClient id={client.user.clientId}, name={client.user.clientName}, type={type(message)}, message=<{message}>')
         client.respond(message)
 
     def _sendToUser(self, user: ClientUser, message, log: bool = True, isError: bool = False) :

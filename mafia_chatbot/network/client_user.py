@@ -58,17 +58,21 @@ class ClientUser :
             self.onRelease(self)
 
     ### task ###
-    def createTask(self, key: str, task: Callable[[], Awaitable]) -> bool :
+    def createTask(self, key: str, task: Callable, *args, **kwargs) -> bool :
         """동일한 key에 대해 동시에 하나의 태스크만 실행될 수 있도록 보장"""
         if key in self.tasks :
             return False
 
-        self.tasks[key] = asyncio.create_task(self._runTask(key, task))
+        self.tasks[key] = asyncio.create_task(self._runTask(key, task, *args, **kwargs))
         return True
 
-    async def _runTask(self, key: str, task: Callable[[], Awaitable]) :
-        await task()
-        del self.tasks[key]
+    async def _runTask(self, key: str, task: Callable, *args, **kwargs) :
+        try :
+            await task(*args, **kwargs)
+        except :
+            raise
+        finally :
+            del self.tasks[key]
 
     ### connection ###
     def isConnected(self) :
