@@ -3,6 +3,7 @@ from enum import Enum
 from collections import deque
 from typing import Callable, Awaitable, Deque, Any
 import uuid
+from datetime import datetime, timedelta
 
 from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.messages.message_info import messageTypeDict, messageFactoryDict
@@ -28,6 +29,7 @@ class MessageHandler :
             self.state = MessageState.CONNECTED
         self.tcpHandler = tcpHandler
         self.addr = tcpHandler.addr
+        self.ip = tcpHandler.ip
         self.port = tcpHandler.port
         self.desc: str = ''
 
@@ -40,6 +42,18 @@ class MessageHandler :
         self.sendTask: asyncio.Task = None
         self.sendQueue: Deque[tuple[int, bytes]] = deque()
         self.responseAwaiters: dict[str, asyncio.Future] = {}
+
+        self._security_authTimeoutTask: asyncio.Task = None
+        self._security_noCommCheckTask: asyncio.Task = None
+        self._security_lastCommTime: datetime = datetime.now()
+        self._security_commCount: int = 0
+        self._security_resetCommLimitTask: asyncio.Task = None
+
+        if not tcpHandler.trust :
+            if onAuth != None :
+                self._security_startAuthTimeout()
+            self._security_startNoCommCheckTask()
+            self._security_startResetCommLimitTask()
 
         self.tcpHandler.listen(
             onData=self._onData,
@@ -78,6 +92,10 @@ class MessageHandler :
             return
         self.state = MessageState.DISCONNECTED
 
+        self._security_stopAuthTimeout()
+        self._security_stopNoCommCheckTask()
+        self._security_stopResetCommLimitTask()
+
         asyncio.create_task(self._disconnectTask())
 
     def _send(self, message) :
@@ -92,6 +110,14 @@ class MessageHandler :
     def _onData(self, msgType: int, data: bytes) :
         if self.state == MessageState.DISCONNECTED :
             return
+
+        if not self.tcpHandler.trust :
+            self._security_lastCommTime = datetime.now()
+
+            if self._security_commCount >= 300 :
+                self.disconnect()
+                return
+            self._security_commCount += 1
 
         if self.state == MessageState.AUTHENTICATING :
             if msgType == messageTypeDict[auth_pb2.Auth] :
@@ -108,6 +134,7 @@ class MessageHandler :
                     response.rqid = message.rqid
                     self._send(response)
                     if success :
+                        self._security_stopAuthTimeout()
                         self.state = MessageState.CONNECTED
                     self.authTask = None
 
@@ -159,3 +186,71 @@ class MessageHandler :
             await sendTask
 
         await self.tcpHandler.close()
+
+    def _security_startAuthTimeout(self) :
+        async def _task() :
+            await asyncio.sleep(60)
+            self.disconnect()
+
+        self._security_authTimeoutTask = asyncio.create_task(_task())
+
+    def _security_stopAuthTimeout(self) :
+        async def _task() :
+            if self._security_authTimeoutTask != None :
+                task = self._security_authTimeoutTask
+                self._security_authTimeoutTask = None
+
+                task.cancel()
+                try :
+                    await task
+                except :
+                    pass
+
+        asyncio.create_task(_task())
+
+    def _security_startNoCommCheckTask(self) :
+        async def _task() :
+            while True :
+                await asyncio.sleep(3600)
+                diff: timedelta = datetime.now() - self._security_lastCommTime
+                if diff > timedelta(hours=1) :
+                    self.disconnect()
+                    return
+
+        self._security_noCommCheckTask = asyncio.create_task(_task())
+
+    def _security_stopNoCommCheckTask(self) :
+        async def _task() :
+            if self._security_noCommCheckTask != None :
+                task = self._security_noCommCheckTask
+                self._security_noCommCheckTask = None
+
+                task.cancel()
+                try :
+                    await task
+                except :
+                    pass
+
+        asyncio.create_task(_task())
+
+    def _security_startResetCommLimitTask(self) :
+        async def _task() :
+            while True :
+                await asyncio.sleep(60)
+                self._security_commCount = 0
+
+        self._security_resetCommLimitTask = asyncio.create_task(_task())
+
+    def _security_stopResetCommLimitTask(self) :
+        async def _task() :
+            if self._security_resetCommLimitTask != None :
+                task = self._security_resetCommLimitTask
+                self._security_resetCommLimitTask = None
+
+                task.cancel()
+                try :
+                    await task
+                except :
+                    pass
+
+        asyncio.create_task(_task())

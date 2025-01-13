@@ -23,6 +23,7 @@ class TcpHandler :
         self.listenTask: asyncio.Task = None
 
         self.addr = self.writer.get_extra_info('peername')
+        self.ip: str = self.writer.get_extra_info('peername')[0]
         self.port: int = self.writer.get_extra_info('peername')[1]
 
         self.failCount: int = 0
@@ -153,4 +154,7 @@ class TcpHandler :
         except :
             pass
 
-        self.onDisconnected()
+        try :
+            self.onDisconnected()
+        except :
+            pass

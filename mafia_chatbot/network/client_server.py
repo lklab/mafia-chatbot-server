@@ -1,4 +1,5 @@
 from typing import Callable, Any
+import asyncio
 
 from mafia_chatbot.network.tcp_server import TcpServer
 from mafia_chatbot.network.tcp_handler import TcpHandler
@@ -25,6 +26,10 @@ class ClientServer :
         self.tcpServer = TcpServer(port)
         self.users: dict[str, ClientUser] = {}
 
+        self._security_connectionCountPerMin: dict[str, int] = {}
+        self._security_connectionCountPerMinResetTask = asyncio.create_task(self._security_connectionCountPerMinReset())
+        self._security_connectionCount: dict[str, int] = {}
+
     async def start(self) :
         await self.tcpServer.start(onConnected=self._onConnected)
 
@@ -46,11 +51,27 @@ class ClientServer :
 
     def _onConnected(self, tcpHandler: TcpHandler) :
         self.logger.debug(f'[ClientServer] _onConnected() addr={tcpHandler.addr}')
+
+        connectionCountPerMin: int = self._security_connectionCountPerMin.get(tcpHandler.ip, 0)
+        if connectionCountPerMin >= 600 :
+            asyncio.create_task(tcpHandler.close())
+            self.logger.error(f'[ClientServer] _onConnected() addr={tcpHandler.addr} connection was refused due to the limit on the number of connections per minute.')
+            return
+
+        connectionCount: int = self._security_connectionCount.get(tcpHandler.ip, 0)
+        if connectionCount >= 30 :
+            asyncio.create_task(tcpHandler.close())
+            self.logger.error(f'[ClientServer] _onConnected() addr={tcpHandler.addr} connection was refused due to the limit on the number of simultaneous connections.')
+            return
+
+        self._security_connectionCountPerMin[tcpHandler.ip] = connectionCountPerMin + 1
+        self._security_connectionCount[tcpHandler.ip] = connectionCount + 1
+
         ClientHandler(
             tcpHandler=tcpHandler,
             onAuth=self._onAuth,
             onMessage=self.onMessage,
-            onDisconnected=self.onDisconnected,
+            onDisconnected=self._onDisconnected,
             logger=self.logger,
         )
 
@@ -81,6 +102,21 @@ class ClientServer :
         else :
             return response, None
 
+    def _onDisconnected(self, client: ClientHandler) :
+        ip = client.messageHandler.ip
+        connectionCount = self._security_connectionCount[ip]
+        if connectionCount > 1 :
+            self._security_connectionCount[ip] = connectionCount - 1
+        else :
+            del self._security_connectionCount[ip]
+
+        self.onDisconnected(client)
+
     def _onUserRelease(self, user: ClientUser) :
         if user.clientId in self.users :
             del self.users[user.clientId]
+
+    async def _security_connectionCountPerMinReset(self) :
+        while True :
+            asyncio.sleep(60)
+            self._security_connectionCountPerMin.clear()
