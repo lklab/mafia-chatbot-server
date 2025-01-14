@@ -7,5 +7,6 @@ __all__ = [
     'time_pb2',
     'room_pb2',
     'game_pb2',
+    'operation_pb2',
     'game_data_pb2',
 ]

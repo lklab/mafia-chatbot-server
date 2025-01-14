@@ -59,6 +59,8 @@ messageTypeDict: dict[Type, int] = {
     game_pb2.QuitGameResponse : 5022,
     game_pb2.ReportChat : 5023,
     game_pb2.ReportChatResponse : 5024,
+    operation_pb2.GetServerState : 6000,
+    operation_pb2.ServerState : 6001,
 }
 
 def _RequestErrorMessageFactory(data: bytes) -> error_pb2.RequestError :
@@ -336,6 +338,16 @@ def _ReportChatResponseMessageFactory(data: bytes) -> game_pb2.ReportChatRespons
     message.ParseFromString(data)
     return message
 
+def _GetServerStateMessageFactory(data: bytes) -> operation_pb2.GetServerState :
+    message = operation_pb2.GetServerState()
+    message.ParseFromString(data)
+    return message
+
+def _ServerStateMessageFactory(data: bytes) -> operation_pb2.ServerState :
+    message = operation_pb2.ServerState()
+    message.ParseFromString(data)
+    return message
+
 
 messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     0 : _RequestErrorMessageFactory,
@@ -393,4 +405,6 @@ messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     5022 : _QuitGameResponseMessageFactory,
     5023 : _ReportChatMessageFactory,
     5024 : _ReportChatResponseMessageFactory,
+    6000 : _GetServerStateMessageFactory,
+    6001 : _ServerStateMessageFactory,
 }

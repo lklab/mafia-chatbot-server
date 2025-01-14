@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+message GetServerState {
+  string rqid = 1;
+  string language = 2;
+}
+
+message ServerState {
+  string rqid = 1;
+  bool operating = 2;
+  string stateMessage = 3;
+}

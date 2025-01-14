@@ -45,7 +45,12 @@ pip install firebase-admin
 ``` json
 {
     "requiredVersion": "0.2.1",
-    "operating": true
+    "operating": true,
+    "stateMessage": {
+        "english": "",
+        "korean": "",
+        "trailingComma": ""
+    }
 }
 ```
 

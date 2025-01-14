@@ -93,6 +93,14 @@
             ]
         },
         {
+            "name" : "operation",
+            "messages" :
+            [
+                "GetServerState",
+                "ServerState"
+            ]
+        },
+        {
             "name" : "game_data",
             "messages" : []
         }
