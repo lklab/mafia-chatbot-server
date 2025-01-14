@@ -12,6 +12,7 @@ class ErrorCode(Enum) :
     CANT_PROCESS = 1005
     BUSY = 1006
     SERVER_ERROR = 2000
+    NOT_OPERATING = 2001
     NO_CHANGES = 3000
 
 def makeErrorResponse(message, code: ErrorCode, detail: str) :

@@ -15,7 +15,7 @@ class OperationManager :
 
     async def _readOpInfoTask(self) :
         while True :
-            await asyncio.sleep(1)
+            await asyncio.sleep(60)
             self._readOpInfo()
 
     def _readOpInfo(self) :
@@ -23,5 +23,6 @@ class OperationManager :
             info = json.load(f)
 
         self.requiredVersion: str = info['requiredVersion']
+        self.operating: bool = info['operating']
 
 operationManager: OperationManager = OperationManager()

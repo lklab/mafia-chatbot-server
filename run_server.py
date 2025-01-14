@@ -283,6 +283,12 @@ class MainProcess :
         self.roomManager.processMessageRequestMyRoomInfo(client, message)
 
     def _switchClientMessageCreateRoom(self, client: ClientHandler, message) :
+        # check operating
+        if not operationManager.operating :
+            errorResponse = makeErrorResponse(message, ErrorCode.NOT_OPERATING, 'The server is currently undergoing maintenance.')
+            self._respondToClient(client, errorResponse, isError=True)
+            return
+
         # check sign up
         if client.user.isNeedToSignUp() :
             errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'The player has not been fully configured.')
@@ -404,7 +410,13 @@ class MainProcess :
             for u in users :
                 self._sendToUser(u, gameStartedMessage)
 
-        # check ready
+        # check operating
+        if not operationManager.operating :
+            errorResponse = makeErrorResponse(message, ErrorCode.NOT_OPERATING, 'The server is currently undergoing maintenance.')
+            self._respondToClient(client, errorResponse, isError=True)
+            return
+
+        # check sign up
         if client.user.isNeedToSignUp() :
             errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'The player has not been fully configured.')
             self._respondToClient(client, errorResponse, isError=True)
