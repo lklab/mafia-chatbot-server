@@ -40,6 +40,14 @@ pip install firebase-admin
     * run /mafia_chatbot/locales/tools/msgfmt.py file
     * gettext required
 
+5. Create `operation_info.json` file
+
+``` json
+{
+    "requiredVersion": "0.2.1"
+}
+```
+
 ### Run
 
 1. Move your working directory to the root of the repository:

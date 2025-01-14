@@ -9,6 +9,8 @@ from mafia_chatbot.network.message_handler import MessageHandler
 from mafia_chatbot.network.messages import *
 from mafia_chatbot.network.utils import makeErrorResponse, ErrorCode
 
+from mafia_chatbot.operation.operation_manager import operationManager
+
 import mafia_chatbot.firebase.firebase as firebase
 from mafia_chatbot.db.test_account_db import testAccountDB
 
@@ -75,6 +77,7 @@ class ClientHandler :
             response = auth_pb2.AuthResponse()
             response.rqid = message.rqid
             self.user.toProtoUserInfoMessage(response.userInfo)
+            response.requiredVersion = operationManager.requiredVersion
 
             return response, True
 

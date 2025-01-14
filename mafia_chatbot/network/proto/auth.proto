@@ -22,6 +22,7 @@ message Auth {
 message AuthResponse {
   string rqid = 1;
   UserInfo userInfo = 2;
+  string requiredVersion = 3;
 }
 
 message UpdateUserInfo {

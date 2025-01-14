@@ -19,6 +19,8 @@ from mafia_chatbot.network.client_user import ClientUser, UserHolder
 from mafia_chatbot.network.client_handler import ClientHandler
 from mafia_chatbot.network.utils import makeErrorResponse, ErrorCode
 
+from mafia_chatbot.operation.operation_manager import operationManager
+
 import mafia_chatbot.firebase.firebase as firebase
 from mafia_chatbot.db.user_db import userDB
 from mafia_chatbot.db.test_account_db import testAccountDB
@@ -125,6 +127,7 @@ class MainProcess :
         await gameProcessServer.start(onConnected=self._onGameProcessConnected)
         self._startGameProcesses()
 
+        operationManager.initialize()
         NameBank.initialize()
         firebase.initialize()
         userDB.enable_wal()
