@@ -8,6 +8,7 @@ from mafia_chatbot.game.player_info import PlayerInfo
 from mafia_chatbot.game.player import *
 from mafia_chatbot.game.chat_data import ChatData, ChatType
 from mafia_chatbot.game.game_logger import GameLogger, TAG, FakeGameLogger
+from mafia_chatbot.game.kill_cancel_checker import KillCancelChecker
 
 from mafia_chatbot.network.messages import *
 
@@ -372,10 +373,13 @@ class GameState :
             self.eveningSeconds = 30 if gameInfo.debugInfo.eveningSeconds <= 0 else max(gameInfo.debugInfo.eveningSeconds, 5)
             self.nightSeconds = 30 if gameInfo.debugInfo.nightSeconds <= 0 else max(gameInfo.debugInfo.nightSeconds, 5)
 
-        ## debug data
+        ### debug data
         self.continueOnlyBots: bool = False
         if gameInfo.debugInfo != None :
             self.continueOnlyBots = self.observerPlayer != None or gameInfo.debugInfo.continueOnlyBots
+
+        ### kill cancel data
+        self.killCancelCheckers: dict[Player, KillCancelChecker] = {}
 
     def removePlayer(self, player: Player, reason: RemoveReason) :
         if player == None or not player.isLive :
@@ -594,6 +598,12 @@ class GameState :
     def getCitizenCount(self) -> int :
         return self.getPlayerCount() - self.getMafiaCount()
 
+    def getHumanPlayerCount(self) -> int :
+        return len(self.userPlayers)
+
+    def getLiveHumanPlayerCount(self) -> int :
+        return len(list(filter(lambda player : player.isLive, self.userPlayers)))
+
     def toProtoGameStateMessage(self, player: Player) -> game_pb2.GameState :
         message = game_pb2.GameState()
 
@@ -608,6 +618,8 @@ class GameState :
 
         message.remainMyChat = player.remainChatingCount
         message.maxMyChat = player.maxChatingCount
+
+        message.canCancelKillWithAds = player in self.killCancelCheckers
 
         return message
 
@@ -635,7 +647,27 @@ class GameState :
             if userPlayer.user == user :
                 userPlayer.user = None
                 self.userPlayers.remove(userPlayer)
+                self.clearKillCancelChecker(userPlayer)
                 break
+
+    def startKillCancelChecker(self, player: Player) -> KillCancelChecker :
+        checker: KillCancelChecker = KillCancelChecker(player)
+        self.killCancelCheckers[player] = checker
+        checker.start()
+        return checker
+
+    def setKillCancelRequest(self, player: Player, message: game_pb2.CancelKillWithAds) -> bool :
+        if player in self.killCancelCheckers :
+            self.killCancelCheckers[player].setUserMessage(message)
+            del self.killCancelCheckers[player]
+            return True
+        else :
+            return False
+
+    def clearKillCancelChecker(self, player) :
+        if player in self.killCancelCheckers :
+            self.killCancelCheckers[player].interrupt()
+            del self.killCancelCheckers[player]
 
     def expandList(self, l: list, size: int, fillValue = None) :
         for _ in range(len(l), size) :

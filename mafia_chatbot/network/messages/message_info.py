@@ -59,6 +59,9 @@ messageTypeDict: dict[Type, int] = {
     game_pb2.QuitGameResponse : 5022,
     game_pb2.ReportChat : 5023,
     game_pb2.ReportChatResponse : 5024,
+    game_pb2.CanCancelKillWithAds : 5025,
+    game_pb2.CancelKillWithAds : 5026,
+    game_pb2.CancelKillWithAdsResponse : 5027,
     operation_pb2.GetServerState : 6000,
     operation_pb2.ServerState : 6001,
 }
@@ -338,6 +341,21 @@ def _ReportChatResponseMessageFactory(data: bytes) -> game_pb2.ReportChatRespons
     message.ParseFromString(data)
     return message
 
+def _CanCancelKillWithAdsMessageFactory(data: bytes) -> game_pb2.CanCancelKillWithAds :
+    message = game_pb2.CanCancelKillWithAds()
+    message.ParseFromString(data)
+    return message
+
+def _CancelKillWithAdsMessageFactory(data: bytes) -> game_pb2.CancelKillWithAds :
+    message = game_pb2.CancelKillWithAds()
+    message.ParseFromString(data)
+    return message
+
+def _CancelKillWithAdsResponseMessageFactory(data: bytes) -> game_pb2.CancelKillWithAdsResponse :
+    message = game_pb2.CancelKillWithAdsResponse()
+    message.ParseFromString(data)
+    return message
+
 def _GetServerStateMessageFactory(data: bytes) -> operation_pb2.GetServerState :
     message = operation_pb2.GetServerState()
     message.ParseFromString(data)
@@ -405,6 +423,9 @@ messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     5022 : _QuitGameResponseMessageFactory,
     5023 : _ReportChatMessageFactory,
     5024 : _ReportChatResponseMessageFactory,
+    5025 : _CanCancelKillWithAdsMessageFactory,
+    5026 : _CancelKillWithAdsMessageFactory,
+    5027 : _CancelKillWithAdsResponseMessageFactory,
     6000 : _GetServerStateMessageFactory,
     6001 : _ServerStateMessageFactory,
 }

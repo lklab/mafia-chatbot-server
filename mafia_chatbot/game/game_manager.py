@@ -10,6 +10,7 @@ from mafia_chatbot.game.game_end_info import GameEndInfo, GameEndReason, gameEnd
 from mafia_chatbot.game.trust_recorder import TrustRecorder
 from mafia_chatbot.game.discussion_manager import DiscussionManager
 from mafia_chatbot.game.game_logger import TAG
+from mafia_chatbot.game.kill_cancel_checker import KillCancelChecker
 
 from mafia_chatbot.network.client_user import ClientUser
 
@@ -221,11 +222,23 @@ class GameManager :
                 self.trustRecorder.healSucceeded(nightTargetData.healTarget.info)
                 self._addSystemChat(self._('The Mafia attempted to assassinate someone but failed.'))
             else :
-                self.gameState.removePlayerByInfo(killTargetPlayer.info, RemoveReason.KILL)
-                self.trustRecorder.playerRemoved(killTargetPlayer.info, RemoveReason.KILL)
-                _name = killTargetPlayer.info.name
-                _role = self.gameState.translateRole[killTargetPlayer.info.role]
-                self._addSystemChat(self._('{name} was assassinated by the Mafia. Their role was {role}.').format(name=_name, role=_role))
+                cancelAssassination: bool = False
+
+                # check ads available
+                if self.gameState.getHumanPlayerCount() == 1 and killTargetPlayer.info.isHuman : # 암살 대상이 유일한 인간 참가자인 경우
+                    checker: KillCancelChecker = self.gameState.startKillCancelChecker(killTargetPlayer)
+                    cancelAssassination = await checker.isCancel()
+                    self.gameState.clearKillCancelChecker(killTargetPlayer)
+                    if cancelAssassination :
+                        self._addSystemChat(self._('The Mafia did not assassinate anyone.'))
+
+                # 원래대로 암살 진행
+                if not cancelAssassination :
+                    self.gameState.removePlayerByInfo(killTargetPlayer.info, RemoveReason.KILL)
+                    self.trustRecorder.playerRemoved(killTargetPlayer.info, RemoveReason.KILL)
+                    _name = killTargetPlayer.info.name
+                    _role = self.gameState.translateRole[killTargetPlayer.info.role]
+                    self._addSystemChat(self._('{name} was assassinated by the Mafia. Their role was {role}.').format(name=_name, role=_role))
 
         ### execute test
         if nightTargetData.testTarget != None :
@@ -259,9 +272,9 @@ class GameManager :
         survivorsListText = ', '.join(map(lambda p: str(p), self.gameState.players))
         self.gameState.logger.log(TAG.INFO, f'survivors list: {survivorsListText}')
 
-        mafiaCount = len(self.gameState.mafiaPlayers)
-        civilCount = len(self.gameState.players) - mafiaCount
-        humanCount = len(list(filter(lambda p : p.info.isHuman, self.gameState.players)))
+        mafiaCount = self.gameState.getMafiaCount()
+        civilCount = self.gameState.getCitizenCount()
+        humanCount = self.gameState.getLiveHumanPlayerCount()
 
         if mafiaCount == 0 :
             self.gameState.logger.log(TAG.INFO, f'game end: it is a victory for the Citizens.')

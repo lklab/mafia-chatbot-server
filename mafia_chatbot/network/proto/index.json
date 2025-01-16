@@ -89,7 +89,10 @@
                 "QuitGame",
                 "QuitGameResponse",
                 "ReportChat",
-                "ReportChatResponse"
+                "ReportChatResponse",
+                "CanCancelKillWithAds",
+                "CancelKillWithAds",
+                "CancelKillWithAdsResponse"
             ]
         },
         {

@@ -25,6 +25,7 @@ class UserMessageProcessor :
             game_pb2.GetChat : self._onGetChatMessage,
             game_pb2.SetTarget : self._onSetTargetMessage,
             game_pb2.GetVoteState : self._onGetVoteStateMessage,
+            game_pb2.CancelKillWithAds : self._onCancelKillWithAdsMessage,
         }
 
         for msgType, listener in listeners.items() :
@@ -231,6 +232,25 @@ class UserMessageProcessor :
         # others: error
         else :
             errorResponse = self._makeErrorResponse(message, ErrorCode.INVALID_DATA, 'The target type is invalid.')
+            self.user.respond(messageHandler, errorResponse)
+
+    def _onCancelKillWithAdsMessage(self, messageHandler: MessageHandler, message: game_pb2.CancelKillWithAds) :
+        self.logger.log(TAG.NETWORK, f'[UserMessageProcessor] {self.player.info.name}: received CancelKillWithAds: message=<{message}>')
+
+        # check phase
+        if self.gameState.currentPhase != Phase.NIGHT :
+            errorResponse = self._makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'Not a valid phase.')
+            self.user.respond(messageHandler, errorResponse)
+            return
+
+        success = self.gameState.setKillCancelRequest(self.player, message)
+
+        if success :
+            response = game_pb2.CancelKillWithAdsResponse()
+            response.rqid = message.rqid
+            self.user.respond(messageHandler, response)
+        else :
+            errorResponse = self._makeErrorResponse(message, ErrorCode.NOT_FOUND, 'Canceling the assassination was not requested of you.')
             self.user.respond(messageHandler, errorResponse)
 
     def _makeErrorResponse(self, message, code: ErrorCode, detail: str) :

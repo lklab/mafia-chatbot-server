@@ -59,6 +59,8 @@ message GameState {
 
   int32 remainMyChat = 8;
   int32 maxMyChat = 9;
+
+  bool canCancelKillWithAds = 10;
 }
 
 message RequestChatList {
@@ -134,5 +136,18 @@ message ReportChat {
 }
 
 message ReportChatResponse {
+  string rqid = 1;
+}
+
+message CanCancelKillWithAds {
+  string rqid = 1;
+}
+
+message CancelKillWithAds {
+  string rqid = 1;
+  bool cancel = 2;
+}
+
+message CancelKillWithAdsResponse {
   string rqid = 1;
 }
