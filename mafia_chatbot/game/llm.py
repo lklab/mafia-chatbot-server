@@ -14,6 +14,7 @@ from typing import Optional, Type, List
 from pydantic import BaseModel, Field
 
 from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableSerializable
 from langchain_core.callbacks import (
@@ -41,6 +42,8 @@ class LLM :
             keys = json.load(f)
 
         os.environ["OPENAI_API_KEY"] = keys['OPENAI_API_KEY']
+        os.environ["GOOGLE_API_KEY"] = keys['GOOGLE_API_KEY']
+
         if 'LANGCHAIN_API_KEY' in keys :
             os.environ["LANGCHAIN_TRACING_V2"] = "true"
             os.environ["LANGCHAIN_API_KEY"] = keys['LANGCHAIN_API_KEY']
@@ -227,8 +230,8 @@ class LLM :
 
     def _setupDiscussionChain(self, gameInfo: GameInfo) :
         # setup model
-        model = ChatOpenAI(
-            model="gpt-3.5-turbo",
+        model = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash",
             temperature=0.7,
         )
 
@@ -255,8 +258,8 @@ class LLM :
 
     def _setupTranslateChain(self) :
         # setup model
-        model = ChatOpenAI(
-            model="gpt-3.5-turbo",
+        model = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash",
             temperature=0.1,
         )
 
@@ -471,8 +474,8 @@ class LLM :
 
     def _setupGenerateResponseChain(self) :
         # setup model
-        model = ChatOpenAI(
-            model="gpt-3.5-turbo",
+        model = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash",
             temperature=0.9,
         )
 
