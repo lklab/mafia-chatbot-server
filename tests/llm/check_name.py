@@ -71,6 +71,8 @@ names2 = [
 import mafia_chatbot.utils.name_bank as NameBank
 
 async def main() :
+    NameBank.initialize()
+
     global names2
     for name in names2 :
         result = await NameBank.checkName(name)

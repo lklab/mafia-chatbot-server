@@ -317,7 +317,7 @@ class LLM :
             "\n\n"
             "##sentence##"
             "\n"
-            "{name}: {sentence}"
+            "{sentence}"
         )
         prompt = PromptTemplate.from_template(template)
 
@@ -398,8 +398,8 @@ class LLM :
 
     def _setupCheckClaimsMafiaChain(self) :
         # setup model
-        model = ChatAnthropic(
-            model="claude-3-5-haiku-20241022",
+        model = ChatOpenAI(
+            model="gpt-3.5-turbo",
             temperature=0.1,
         )
 

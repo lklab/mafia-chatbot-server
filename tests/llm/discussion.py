@@ -42,7 +42,7 @@ async def main() :
 
     # result = await llm.checkContainsEstimation('태윤이 더 마피아같아')
     # print(result)
-    strategy = await llm.analyzeHumanMessage(player, f'나는 {names[0]}의 의견에 동의해서 {names[1]}가 마피아라고 생각해')
+    # strategy = await llm.analyzeHumanMessage(player, f'나는 {names[0]}의 의견에 동의해서 {names[1]}가 마피아라고 생각해')
     # strategy = await llm.analyzeHumanMessage(player, f'나는 {names[0]}이 시민라고 생각해. 왜냐면 내가 그를 암살로부터 구했어.')
     # strategy = await llm.analyzeHumanMessage(player, f'나는 마피아야.')
     # strategy = await llm.analyzeHumanMessage(player, f'나는 마피아가 아니야.')
@@ -55,7 +55,7 @@ async def main() :
     # strategy = await llm.analyzeHumanMessage(player, f'I am police and {names[0]} is a mafia')
     # strategy = await llm.analyzeHumanMessage(player, f'ㅁㄴㅁㄴㅇㅁㄴㅇㅈ')
 
-    print(f'{player.info.name}: {strategy}')
+    # print(f'{player.info.name}: {strategy}')
 
     # result = await llm._ainvokeChain(
     #     chain=llm.checkClaimsMafiaChain,
@@ -74,5 +74,7 @@ async def main() :
     #     }
     # )
     # print(result)
+
+    print(await llm.isMessageQuestion('시우가 마피아라는 것에 대해 어떻게 생각해'))
 
 asyncio.run(main())

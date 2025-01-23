@@ -5,6 +5,9 @@ import os
 import random
 
 from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_anthropic import ChatAnthropic
+
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
@@ -136,19 +139,22 @@ def _setupChain() :
         keys = json.load(f)
 
     os.environ["OPENAI_API_KEY"] = keys['OPENAI_API_KEY']
+    os.environ["GOOGLE_API_KEY"] = keys['GOOGLE_API_KEY']
+    os.environ["ANTHROPIC_API_KEY"] = keys['ANTHROPIC_API_KEY']
+
     if 'LANGCHAIN_API_KEY' in keys :
         os.environ["LANGCHAIN_TRACING_V2"] = "true"
         os.environ["LANGCHAIN_API_KEY"] = keys['LANGCHAIN_API_KEY']
 
     # setup model
-    model = ChatOpenAI(
-        model="gpt-3.5-turbo",
+    model = ChatAnthropic(
+        model="claude-3-5-haiku-20241022",
         temperature=0.2,
     )
 
     # setup prompt
     template = (
-        "You are tasked with evaluating names submitted by users for use in a Mafia game to determine if they are suitable. If the name is any of the following:"
+        "You are tasked with evaluating names submitted by users for use in a Mafia game to determine if they are suitable. If the ##name## is any of the following:"
         "\n"
         "A term commonly used in Mafia games (e.g., \"citizen,\" \"mafia,\" \"police,\" \"doctor,\" \"vote,\" \"execution\")."
         "\n"
@@ -156,8 +162,10 @@ def _setupChain() :
         "\n"
         "A word that is generally not recognized as a name (e.g., \"unknown,\" \"no\")."
         "\n"
-        "Return \"true\". Otherwise, return \"false\"."
+        "Return \"true\". Otherwise, return \"false\". Return only \"true\" or \"false\". Do not include any explanations or additional text."
         "\n\n"
+        "##name##"
+        "\n"
         "{name}"
     )
     prompt = PromptTemplate.from_template(template)
