@@ -58,7 +58,7 @@ class LLM :
         self._setupHumanMessageAgent()
         self._setupCheckClaimsMafiaChain()
         self._setupCheckQuestionChain()
-        self._setupGenerateResponseChain()
+        self._setupGenerateResponseChain(gameState.gameInfo)
 
     async def getDiscussion(self, player: Player, strategy: Strategy) -> str :
         self.logger.log(TAG.LLM, f'{player.info.name}: getDiscussion input: {strategy}')
@@ -66,10 +66,16 @@ class LLM :
         publicRole, _ = player.getChangeRole(strategy.publicRole)
         isPublicRoleChanged: bool = player.publicRole != publicRole
 
+        publicRoleStrategy: str = ""
+        if isPublicRoleChanged :
+            publicRoleStrategy = f"You must claim that your role is {roleToStrDict[publicRole]}."
+        elif player.info.role != Role.CITIZEN and publicRole == Role.CITIZEN :
+            publicRoleStrategy = "You must not disclose your role."
+
         input: dict[str, str] = {
             'my_name' : player.info.name,
             'my_role' : roleToStrDict[player.info.role],
-            'claim_public_role' : f"You must claim that your role is {roleToStrDict[publicRole]}. " if isPublicRoleChanged else "",
+            'public_role_strategy' : publicRoleStrategy,
             'estimations' : ', '.join(map(lambda e: f"{e.playerInfo.name}'s role is {roleToStrDict[e.role]}", strategy.assumptions[0].estimations)),
             'tone': player.info.tone,
             'conversation_logs' : '\n'.join(self.gameState.getRecentConversationLogs(5)),
@@ -209,6 +215,7 @@ class LLM :
             chain=self.generateResponseChain,
             input={
                 'nameList' : nameList,
+                'lastMessage': conversation[-1],
                 'messages' : messages,
             }
         )
@@ -228,7 +235,7 @@ class LLM :
 
         # get respondent player
         respondent: Player = self.gameState.getPlayerByName(name)
-        if respondent == None or respondent.info.isHuman :
+        if respondent == None or respondent.info.isHuman or respondent == speaker :
             return (None, None)
 
         return (respondent, message)
@@ -242,7 +249,7 @@ class LLM :
 
         # setup prompt
         template = (
-            "You are a player participating in a Mafia game. Your name is {my_name}, and your role is {my_role}. {claim_public_role}It is currently the discussion phase, and it is your turn to speak. You must claim that {estimations}. Use the provided ##Conversation Logs## and ##Evidence## as references, or base your claim on your logical reasoning. Keep your statement concise, limited to two sentences, and written in a {tone} tone, written in %(language)s and resembling natural dialogue.%(dont_tranlate)s Your response should differ from previous statements and introduce variety in phrasing."
+            "You are a player participating in a Mafia game. Your name is {my_name}, and your role is {my_role}. {public_role_strategy} It is currently the discussion phase, and it is your turn to speak. You must claim that {estimations}. Use the provided ##Conversation Logs## and ##Evidence## as references, or base your claim on your logical reasoning. Keep your statement concise, limited to two sentences, and written in a {tone} tone, written in %(language)s and resembling natural dialogue.%(dont_tranlate)s Your response should differ from previous statements and introduce variety in phrasing."
             "\n\n"
             "##Conversation Logs##"
             "\n"
@@ -454,7 +461,7 @@ class LLM :
         # setup chain
         self.checkQuestionChain = prompt | model | parser
 
-    def _setupGenerateResponseChain(self) :
+    def _setupGenerateResponseChain(self, gameInfo: GameInfo) :
         # setup model
         model = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash",
@@ -463,12 +470,15 @@ class LLM :
 
         # setup prompt
         systemMessageTemplate = (
-            "Below is a conversation snippet from a Mafia game. Generate the name of the participant who will respond to the last message and their response message in JSON format. The name must be one from the {nameList}. You can freely and creatively write the content of the response message, but it must be something plausible within the context of a Mafia game and must not contradict the participant's previous claims. For the JSON format, provide only the JSON itself as the output, without enclosing it in code blocks or additional text."
+            "Below is a conversation snippet from a Mafia game. Generate the name of the participant who will respond to the message \"{lastMessage}\" and their response message in JSON format. The name must be one from the {nameList}. You can freely and creatively write the content of the response message, but it must be something plausible within the context of a Mafia game and must not contradict the participant's previous claims. Keep your statement concise, limited to two sentences, written in %(language)s and resembling natural dialogue. For the JSON format, provide only the JSON itself as the output, without enclosing it in code blocks or additional text."
             "\n\n"
             "##JSON format##"
             "\n"
             '\"{{"name":"", "message":""}}\"'
         )
+        systemMessageTemplate = systemMessageTemplate % {
+            'language' : gameInfo.language,
+        }
         prompt = ChatPromptTemplate.from_messages(
             [
                 ('system', systemMessageTemplate),
