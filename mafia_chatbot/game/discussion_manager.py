@@ -1,8 +1,6 @@
 import random
 import asyncio
-import time
-from typing import Callable, Deque
-from collections import deque
+from typing import Callable
 
 from mafia_chatbot.game.game_state import GameState
 from mafia_chatbot.game.trust_recorder import TrustRecorder
@@ -27,24 +25,16 @@ class DiscussionPlayer :
     def addDiscussionCount(self) :
         self.discussionCount += 1
 
-class DiscussionData :
-    def __init__(self, speaker: Player, strategy: Strategy = None, respondent: Player = None, response: str = None) :
+class SpeakerStrategy :
+    def __init__(self, speaker: Player, strategy: Strategy) :
         self.speaker = speaker
         self.strategy = strategy
-        self.respondent = respondent
-        self.response = response
 
-class ResponseContent :
-    def __init__(self, player: Player, strategy: Strategy = None, message: str = None) :
-        self.player = player
+class RespondentStrategy :
+    def __init__(self, dPlayer: DiscussionPlayer, strategy: Strategy) :
+        self.respondent = dPlayer.player
+        self.dPlayer = dPlayer
         self.strategy = strategy
-        self.message = message
-
-    def __str__(self) :
-        return f'{self.player.info.name}: {self.strategy if self.strategy != None else self.message}'
-
-    def __repr__(self) :
-        return self.__str__()
 
 class DiscussionManager :
     def __init__(self, gameState: GameState, trustRecorder: TrustRecorder, llm: LLM) :
@@ -54,8 +44,9 @@ class DiscussionManager :
         self.logger: GameLogger = gameState.logger
 
         self._isRunning: bool = False
-        self._normalDiscussionTask: asyncio.Task = None
-        self._responseDiscussionTask: asyncio.Task = None
+        self._mainLogicTask: asyncio.Task = None
+        self._responseLogicTasks: list[asyncio.Task] = []
+        self._humanChatLogicTasks: list[asyncio.Task] = []
 
         self.gameState.setOnHumanChatListener(self._onHumanChat)
 
@@ -65,9 +56,6 @@ class DiscussionManager :
         # initialize variables
         self._isRunning = True
         self._allDiscussionCount: int = 0
-        self._processingHumanDiscussionCount: int = 0
-        self._lastDiscussionTime: float = time.monotonic()
-        self._responseContentQueue: Deque[ResponseContent] = deque()
 
         # setup dPlayers
         players: list[Player] = list(filter(lambda p: not p.info.isHuman, self.gameState.players))
@@ -87,10 +75,11 @@ class DiscussionManager :
             self.dPlayersByPlayer[dPlayer.player] = dPlayer
 
         # process local player
-        asyncio.create_task(self._processLocalPlayer())
+        if self.gameState.localPlayer != None :
+            asyncio.create_task(self._processLocalPlayer())
 
-        # generate first discussion
-        self._generateNormalDiscussion()
+        # start main logic
+        self._mainLogicTask: asyncio.Task = asyncio.create_task(self._mainLogic())
 
     async def stop(self) :
         self.logger.log(TAG.DISCUSSION, 'stop discussion')
@@ -99,152 +88,172 @@ class DiscussionManager :
         self._stopTask()
         self._isRunning = False
 
-        await utils.waitUntil(self._isNotProcessingHumanDiscussion)
+        # wait for human message processing
+        for task in self._humanChatLogicTasks :
+            try :
+                if not task.done() :
+                    self.logger.log(TAG.DISCUSSION, 'wait for human message processing ...')
+                    await task
+            except asyncio.CancelledError :
+                pass
+            except Exception as e:
+                self.logger.logError("[DiscussionManager] Unhandled exception in humanChatLogicTask", e)
+            except :
+                pass
 
         self.logger.log(TAG.DISCUSSION, 'stop discussion completed')
 
-    def _generateDiscussion(self, lastDiscussionData: DiscussionData) :
-        if not self._isRunning :
-            return
-
-        if lastDiscussionData != None :
-            if lastDiscussionData.strategy != None :
-                for getter in DiscussionManager._responseContentGetters :
-                    content: ResponseContent = getter(self, lastDiscussionData)
-                    if content != None :
-                        self.logger.log(TAG.DISCUSSION, f'Response content: {content}')
-                        self._responseContentQueue.append(content)
-                        break
-            elif lastDiscussionData.respondent != None :
-                content: ResponseContent = ResponseContent(lastDiscussionData.respondent, message=lastDiscussionData.response)
-                self.logger.log(TAG.DISCUSSION, f'Response content: {content}')
-                self._responseContentQueue.append(content)
-
-        if len(self._responseContentQueue) > 0 :
-            self._generateResponseDiscussion()
-        else :
-            self._generateNormalDiscussion()
-
-    def _generateResponseDiscussion(self) :
-        if self._responseDiscussionTask != None :
-            return
-        self._stopTask()
-
-        content: ResponseContent = self._responseContentQueue[0]
-        self._responseDiscussionTask = asyncio.create_task(self._generateResponseDiscussionTask(content))
-
-    async def _generateResponseDiscussionTask(self, content: ResponseContent) :
-        # get info
-        dPlayer: DiscussionPlayer = self.dPlayersByPlayer[content.player]
-        discussionTime: float = time.monotonic()
-
-        if content.strategy != None :
-            # publish discussion
-            await self._generateAndPublishDiscussion(dPlayer, content.strategy, discussionTime)
+    async def _mainLogic(self) :
+        while self._isRunning :
+            # wait for discussion time
+            waitTime: float = random.uniform(5.0, 10.0)
+            await asyncio.sleep(waitTime)
             if not self._isRunning :
                 return
-        else :
-            # publish discussion
-            self._publishDiscussion(dPlayer, content.message, discussionTime)
 
-        # remove content form queue
-        self._responseContentQueue.popleft()
-        self._responseDiscussionTask = None
+            # update trust records for evaluate strategy
+            self.trustRecorder.updateTrustRecords()
 
-        # generate next discussion
-        if content.strategy != None :
-            self._generateDiscussion(DiscussionData(content.player, strategy=content.strategy))
-        else :
-            self._generateDiscussion(None)
+            limit: int = 10
+            while limit > 0 :
+                limit -= 1
 
-    def _generateNormalDiscussion(self) :
-        self._stopTask()
-
-        # decide discussion time
-        discussionTime: float = self._lastDiscussionTime + random.uniform(5.0, 10.0)
-
-        # start task
-        self._normalDiscussionTask = asyncio.create_task(self._generateNormalDiscussionTask(discussionTime))
-
-    async def _generateNormalDiscussionTask(self, discussionTime: float) :
-        # wait for discussion time
-        waitTime: float = discussionTime - time.monotonic()
-        await asyncio.sleep(waitTime)
-        if not self._isRunning :
-            return
-
-        # update trust records for evaluate strategy
-        self.trustRecorder.updateTrustRecords()
-
-        limit: int = 10
-        while limit > 0 :
-            limit -= 1
-
-            # select player
-            dPlayer: DiscussionPlayer = self.dPlayers[0]
-
-            # get player's past strategy
-            pastStrategy: Strategy = dPlayer.player.getDiscussionStrategy(self.gameState.round)
-
-            # evaluate strategy
-            strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, self.trustRecorder, dPlayer.player)
-
-            # check strategy is changed
-            if (
-                limit > 0 and # 제한을 초과하지 않음
-                not strategy.isDefaultReasonIncluded() and # 전략에 default reason이 포함되지 않음
-                pastStrategy != None and # 현재 라운드에 이전 전략이 이미 존재
-                strategy == pastStrategy # 현재 라운드의 이전 전략과 동일
-            ) :
-                self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}\'s strategy is same, skip(limit={limit}). before={pastStrategy}, after={strategy}')
-                # rearrange player and select other player
+                # select player
+                dPlayer: DiscussionPlayer = self.dPlayers[0]
                 self._addDiscussionCount(dPlayer)
-            else :
-                break
 
-        # publish discussion
-        await self._generateAndPublishDiscussion(dPlayer, strategy, discussionTime)
+                # get player's past strategy
+                pastStrategy: Strategy = dPlayer.player.getDiscussionStrategy(self.gameState.round)
+
+                # evaluate strategy
+                strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, self.trustRecorder, dPlayer.player)
+
+                # check strategy is changed
+                if (
+                    limit > 0 and # 제한을 초과하지 않음
+                    not strategy.isDefaultReasonIncluded() and # 전략에 default reason이 포함되지 않음
+                    pastStrategy != None and # 현재 라운드에 이전 전략이 이미 존재
+                    strategy == pastStrategy # 현재 라운드의 이전 전략과 동일
+                ) :
+                    self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}\'s strategy is same, skip(limit={limit}). before={pastStrategy}, after={strategy}')
+                else :
+                    break
+
+            # generate discussion
+            if self.gameState.gameInfo.useLLM :
+                discussion: str = await self.llm.getDiscussion(dPlayer.player, strategy)
+                if not self._isRunning :
+                    return
+                discussion = discussion.removeprefix(f'{dPlayer.player.info.name}: ')
+            else :
+                discussion: str = str(strategy)
+
+            # save data
+            dPlayer.player.setDiscussionStrategy(self.gameState.round, strategy)
+            self.trustRecorder.discussionStrategyUpdated(dPlayer.player.info, strategy)
+            chat: ChatData = self.gameState.appendDiscussionChat(dPlayer.player.info, discussion)
+
+            # response
+            self._checkResponse(dPlayer.player, strategy, chat)
+
+    def _checkResponse(self, speaker: Player, strategy: Strategy, chat: ChatData) :
         if not self._isRunning :
             return
 
-        # generate next discussion
-        self._generateDiscussion(DiscussionData(dPlayer.player, strategy=strategy))
+        if strategy != None :
+            speakerStrategy: SpeakerStrategy = SpeakerStrategy(speaker, strategy)
+            for getter in DiscussionManager._respondentStrategyGetters :
+                respondentStrategy = getter(self, speakerStrategy)
+                if respondentStrategy != None :
+                    task: asyncio.Task = asyncio.create_task(self._responseStrategyLogic(respondentStrategy))
+                    self._responseLogicTasks.append(task)
+                    return
 
-    async def _generateAndPublishDiscussion(self, dPlayer: DiscussionPlayer, strategy: Strategy, discussionTime: float) :
+        willResponse: bool = strategy == None
+        if strategy != None :
+            willResponse = 0.2 > random.random()
+
+        if willResponse :
+            task: asyncio.Task = asyncio.create_task(self._responseNormalLogic(speaker, chat))
+            self._responseLogicTasks.append(task)
+            return
+
+    async def _responseStrategyLogic(self, respondentStrategy: RespondentStrategy) :
+        respondent: Player = respondentStrategy.respondent
+        strategy: Strategy = respondentStrategy.strategy
+        self._addDiscussionCount(respondentStrategy.dPlayer)
+
         # generate discussion
         if self.gameState.gameInfo.useLLM :
-            self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}: isRunning={self._isRunning} call getDiscussion') # TODO delete
-            discussion: str = await self.llm.getDiscussion(dPlayer.player, strategy)
-            self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}: isRunning={self._isRunning} getDiscussion result = {discussion}') # TODO delete
+            discussion: str = await self.llm.getDiscussion(respondent, strategy)
             if not self._isRunning :
                 return
-            discussion = discussion.removeprefix(f'{dPlayer.player.info.name}: ')
-            self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}: removeprefix = {discussion}') # TODO delete
+            discussion = discussion.removeprefix(f'{respondent.info.name}: ')
         else :
             discussion: str = str(strategy)
 
-        # apply strategy and discussion
-        self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}: call setDiscussionStrategy') # TODO delete
-        dPlayer.player.setDiscussionStrategy(self.gameState.round, strategy)
+        # save data
+        respondent.setDiscussionStrategy(self.gameState.round, strategy)
+        self.trustRecorder.discussionStrategyUpdated(respondent.info, strategy)
+        self.gameState.appendDiscussionChat(respondent.info, discussion)
 
-        # record trust info
-        self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}: call discussionStrategyUpdated') # TODO delete
-        self.trustRecorder.discussionStrategyUpdated(dPlayer.player.info, strategy)
+    async def _responseNormalLogic(self, speaker: Player, chat: ChatData) :
+        if not self.gameState.gameInfo.useLLM :
+            return
 
-        # publish discussion
-        self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}: call _publishDiscussion') # TODO delete
-        self._publishDiscussion(dPlayer, discussion, discussionTime)
-        self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}: _generateAndPublishDiscussion finished') # TODO delete
+        # chat을 마지막으로 하는 대화 내역 가져오기
+        conversation: list[str] = self.gameState.getDiscussionChatLogs(5, lastChat=chat)
 
-    def _publishDiscussion(self, dPlayer: DiscussionPlayer, discussion: str, discussionTime: float) :
-        # set last discussion time
-        self._lastDiscussionTime = discussionTime
+        # 응답 생성하기
+        respondent, response = await self.llm.generateResponse(speaker, conversation)
+        if respondent == None or not self._isRunning :
+            return
 
-        # add chat
-        self.gameState.appendDiscussionChat(dPlayer.player.info, discussion)
+        # save data
+        self._addDiscussionCount(self.dPlayersByPlayer[respondent])
+        self.gameState.appendDiscussionChat(respondent.info, response)
 
-        # rearrange player
-        self._addDiscussionCount(dPlayer)
+    def _onHumanChat(self, chat: ChatData) :
+        # check state
+        if not self._isRunning :
+            return
+
+        # process discussion
+        player: Player = self.gameState.getPlayerByInfo(chat.sender)
+        self._humanChatLogicTasks.append(asyncio.create_task(self._humanChatLogic(player, chat)))
+
+    async def _humanChatLogic(self, speaker: Player, chat: ChatData) :
+        if self.gameState.gameInfo.useLLM :
+            # 질문인 경우 바로 응답 메시지 생성
+            isQuestion: bool = await self.llm.isMessageQuestion(chat.content)
+            if isQuestion :
+                self._checkResponse(speaker, None, chat)
+                return
+
+            # 사용자의 메시지 분석
+            strategy: Strategy = await self.llm.analyzeHumanMessage(speaker, chat.content)
+            self.logger.log(TAG.DISCUSSION, f'{speaker.info.name}: analyzeHumanMessage result: {strategy}')
+
+            # 유효한 전략일 경우
+            if strategy != None and strategy.isEffective() :
+                # save data
+                speaker.setDiscussionStrategy(self.gameState.round, strategy)
+                self.trustRecorder.discussionStrategyUpdated(speaker.info, strategy)
+
+                # response
+                self._checkResponse(speaker, strategy, chat)
+
+            # 유효하지 않은 전략일 경우
+            else :
+                self._checkResponse(speaker, None, chat)
+
+        else :
+            target: Player = self.gameState.getPlayerByName(chat.content)
+            if target == None :
+                return None
+            strategy: Strategy = evaluator.getOneTargetStrategy(speaker.publicRole, target.info, '')
+            self.logger.log(TAG.DISCUSSION, f'{speaker.info.name}: strategy is {strategy}')
+            self._checkResponse(speaker, strategy, chat)
 
     def _addDiscussionCount(self, dPlayer: DiscussionPlayer) :
         self._allDiscussionCount += 1
@@ -257,164 +266,52 @@ class DiscussionManager :
         self.dPlayers.insert(index, dPlayer)
 
     async def _processLocalPlayer(self) :
-        if self.gameState.localPlayer != None :
-            player: Player = self.gameState.localPlayer
+        player: Player = self.gameState.localPlayer
 
-            while True :
-                discussion: str = await utils.getCuiInputAsync('Enter your discussion: ')
-                if not self._isRunning :
-                    return
-
-                # process discussion
-                await self._processHumanDiscussionTask(player, discussion)
-                if not self._isRunning :
-                    return
-
-    def _onHumanChat(self, chat: ChatData) :
-        # check state
-        if not self._isRunning :
-            return
-
-        # process discussion
-        player: Player = self.gameState.getPlayerByInfo(chat.sender)
-        asyncio.create_task(self._processHumanDiscussionTask(player, chat.content))
-
-    async def _processHumanDiscussionTask(self, player: Player, discussion: str) :
-        discussionData: DiscussionData = None
-
-        # 인간 사용자의 토론은 처리가 완료될 때까지 낮 phase에서 대기해야 함
-        self._processingHumanDiscussionCount += 1
-
-        try :
-            discussionData = await self._processHumanDiscussion(player, discussion)
-        except Exception as e :
-            self.logger.logError("[DiscussionManager] Exception in _processHumanDiscussionTask()", e)
-
-        self._processingHumanDiscussionCount -= 1
-
-        if discussionData == None :
-            return
-
-        if discussionData.strategy != None :
-            # apply strategy and discussion
-            player.setDiscussionStrategy(self.gameState.round, discussionData.strategy)
-
-            # record trust info
-            self.trustRecorder.discussionStrategyUpdated(player.info, discussionData.strategy)
-
-        # add chat
-        if player.info.isLocalPlayer :
-            self.gameState.appendDiscussionChat(player.info, discussion)
-
-        # generate next discussion
-        self._generateDiscussion(discussionData)
-
-    async def _processHumanDiscussion(self, player: Player, discussion: str) -> DiscussionData :
-        discussionData: DiscussionData = None
-
-        if self.gameState.gameInfo.useLLM :
-            conversation: list[str] = self.gameState.chatLogs[-5:]
-
-            try :
-                strategy: Strategy = await self.llm.analyzeHumanMessage(player, discussion)
-                self.logger.log(TAG.DISCUSSION, f'{player.info.name}: analyzeHumanMessage result: {strategy}')
-
-                if strategy != None and strategy.isEffective() :
-                    discussionData = DiscussionData(player, strategy=strategy)
-
-                else :
-                    isQuestion: bool = await self.llm.isMessageQuestion(discussion)
-                    if not isQuestion and 0.5 > random.random() :
-                        isQuestion = True
-
-                    if isQuestion :
-                        respondent, response = await self.llm.generateResponse(player, conversation)
-                        if respondent == None :
-                            return None
-                        discussionData = DiscussionData(player, respondent=respondent, response=response)
-
-            except Exception as e :
-                self.logger.logError("[DiscussionManager] Exception in _processHumanDiscussion()", e)
-                return None
-
-        else :
-            target: Player = self.gameState.getPlayerByName(discussion)
-            if target == None :
-                return None
-            strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, target.info, '')
-            discussionData = DiscussionData(player, strategy=strategy)
-            self.logger.log(TAG.STRATEGY, f'{player.info.name}: strategy is {strategy}')
-
-        return discussionData
-
-    def _isNotProcessingHumanDiscussion(self) -> bool :
-        self.logger.log(TAG.DISCUSSION, 'waiting for processing human discussion')
-        return self._processingHumanDiscussionCount == 0
+        while self._isRunning :
+            discussion: str = await utils.getCuiInputAsync('Enter your discussion: ')
+            chat: ChatData = self.gameState.appendDiscussionChat(player.info, discussion)
+            await self._humanChatLogic(player, chat)
 
     # 마피아 플레이어의 경찰 주장
-    def _getResponseContent_claimePoliceForMafia(self, data: DiscussionData) -> ResponseContent :
-        if data.strategy == None :
-            return None
-
+    def _getRespondentStrategy_claimePoliceForMafia(self, data: SpeakerStrategy) -> RespondentStrategy :
         if data.speaker.publicRole == Role.POLICE :
-            for player in self.gameState.players :
-                if player == data.speaker or player.info.isHuman :
+            for dPlayer in self.dPlayers :
+                if dPlayer.player == data.speaker :
                     continue
-                if player.publicRole == Role.CITIZEN and player.info.role == Role.MAFIA :
-                    strategy: Strategy = evaluator.claimePoliceForMafiaResponse(self.gameState, self.trustRecorder, player)
+                if dPlayer.player.publicRole == Role.CITIZEN and dPlayer.player.info.role == Role.MAFIA :
+                    strategy: Strategy = evaluator.claimePoliceForMafiaResponse(self.gameState, self.trustRecorder, dPlayer.player)
                     if strategy != None :
-                        return ResponseContent(player, strategy=strategy)
+                        self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}: claimePoliceForMafia {strategy}')
+                        return RespondentStrategy(dPlayer, strategy)
 
         return None
 
     # 경찰 플레이어의 경찰 주장
-    def _getResponseContent_claimePoliceForPolice(self, data: DiscussionData) -> ResponseContent :
-        if data.strategy == None :
-            return None
-
+    def _getRespondentStrategy_claimePoliceForPolice(self, data: SpeakerStrategy) -> RespondentStrategy :
         if data.speaker.publicRole == Role.POLICE :
             police: Player = self.gameState.policePlayer
             if not police.info.isHuman and police.isLive and police.publicRole == Role.CITIZEN :
                 strategy: Strategy = evaluator.claimePoliceForPoliceResponse(self.gameState, self.trustRecorder, police)
                 if strategy != None :
-                    return ResponseContent(police, strategy=strategy)
+                    self.logger.log(TAG.DISCUSSION, f'{police.info.name}: claimePoliceForPolice {strategy}')
+                    return RespondentStrategy(self.dPlayersByPlayer[police], strategy)
 
         return None
 
     # 의사 플레이어의 의사 주장
-    def _getResponseContent_claimeDoctorForDoctor(self, data: DiscussionData) -> ResponseContent :
-        if data.strategy == None :
-            return None
-
+    def _getRespondentStrategy_claimeDoctorForDoctor(self, data: SpeakerStrategy) -> RespondentStrategy :
         doctor: Player = self.gameState.doctorPlayer
         if not doctor.info.isHuman and doctor.isLive and doctor.publicRole == Role.CITIZEN :
             strategy: Strategy = evaluator.claimeDoctorForDoctorResponse(self.gameState, self.trustRecorder, doctor)
             if strategy != None :
-                return ResponseContent(doctor, strategy=strategy)
-
-        return None
-
-    # 내가 지목당함
-    def _getResponseContent_iampointed(self, data: DiscussionData) -> ResponseContent :
-        if data.strategy == None :
-            return None
-
-        for estimation in data.strategy.mafiaEstimations :
-            player: Player = self.gameState.getPlayerByInfo(estimation.playerInfo)
-            if player == data.speaker or player.info.isHuman :
-                continue
-            if player.positiveness * player.positiveness > random.random() : # 낮은 확률로 반박
-                strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, self.trustRecorder, player)
-                strategy.assumptions[0].reason = 'You claim that you are not the mafia. And you suspect someone else of being the mafia. ' + strategy.assumptions[0].reason
-                return ResponseContent(player, strategy=strategy)
+                self.logger.log(TAG.DISCUSSION, f'{doctor.info.name}: claimeDoctorForDoctor {strategy}')
+                return RespondentStrategy(self.dPlayersByPlayer[doctor], strategy)
 
         return None
 
     # 경찰이 나를 지목함
-    def _getResponseContent_thePolicePointedMe(self, data: DiscussionData) -> ResponseContent :
-        if data.strategy == None :
-            return None
-
+    def _getRespondentStrategy_thePolicePointedMe(self, data: SpeakerStrategy) -> RespondentStrategy :
         if data.speaker.publicRole == Role.POLICE :
             for assumption in data.strategy.assumptions :
                 if assumption.assumptionType == AssumptionType.TEST_RESULT :
@@ -424,61 +321,79 @@ class DiscussionManager :
                             if player == data.speaker or player.info.isHuman :
                                 continue
                             strategy: Strategy = evaluator.getOneTargetStrategy(player.publicRole, data.speaker.info, 'He pointed me of being the mafia, but I am not.')
-                            return ResponseContent(player, strategy=strategy)
+                            self.logger.log(TAG.DISCUSSION, f'{player.info.name}: thePolicePointedMe {strategy}')
+                            return RespondentStrategy(self.dPlayersByPlayer[player], strategy)
+
+        return None
+
+    # 내가 지목당함
+    def _getRespondentStrategy_iampointed(self, data: SpeakerStrategy) -> RespondentStrategy :
+        for estimation in data.strategy.mafiaEstimations :
+            player: Player = self.gameState.getPlayerByInfo(estimation.playerInfo)
+
+            # 이번 라운드에 토론하지 않았을 경우
+            if player == data.speaker or player.info.isHuman or player.getDiscussionStrategy(self.gameState.round) != None :
+                continue
+
+            # 나를 지목하는 플레이어 수에 따라 일정 확률로 발언함
+            pointerCount: int = len(self.trustRecorder.getPointerOrVoters(player.info))
+            ratio: float = pointerCount / (self.gameState.getPlayerCount() - 1)
+            if ratio > random.random() :
+                strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, self.trustRecorder, player)
+                self.logger.log(TAG.DISCUSSION, f'{player.info.name}: iampointed {strategy}')
+                return RespondentStrategy(self.dPlayersByPlayer[player], strategy)
 
         return None
 
     # 신뢰도가 높은 플레이어가 마피아로 지목됨
-    def _getResponseContent_supportCitizen(self, data: DiscussionData) -> ResponseContent :
-        if data.strategy == None :
-            return None
-
+    def _getRespondentStrategy_supportCitizen(self, data: SpeakerStrategy) -> RespondentStrategy :
         for estimation in data.strategy.mafiaEstimations :
             point: float = self.trustRecorder.getTrustPoint(estimation.playerInfo)
             if point > 30.0 and (point / 100.0) > random.random() :
-                player: Player = None
+                respondentDPlayer: DiscussionPlayer = None
                 for dPlayer in self.dPlayers : # AI 사용자 및 발언 우선순위로 선택해야 하므로 gameState.players 대신 dPlayers 사용
                     if dPlayer.player != data.speaker and dPlayer.player.info != estimation.playerInfo :
-                        player = dPlayer.player
+                        respondentDPlayer = dPlayer
                         break
 
-                if player != None :
+                if respondentDPlayer != None :
                     strategy: Strategy = Strategy(
-                        publicRole=player.publicRole,
+                        publicRole=respondentDPlayer.player.publicRole,
                         assumptions=[
                             Assumption(
                                 estimations=[Estimation(estimation.playerInfo, Role.CITIZEN)],
-                                reason=self.trustRecorder.getPositiveTrustReason(estimation.playerInfo, 'You believe that he is a citizen'),
+                                reason=self.trustRecorder.getPositiveTrustReason(estimation.playerInfo, 'You believe that he is not a mafia'),
                             )
                         ]
                     )
-                    return ResponseContent(player, strategy=strategy)
+                    self.logger.log(TAG.DISCUSSION, f'{respondentDPlayer.player.info.name}: supportCitizen {strategy}')
+                    return RespondentStrategy(respondentDPlayer, strategy)
 
         return None
 
-    _responseContentGetters: list[Callable[[DiscussionManager, DiscussionData], ResponseContent]] = [
-        _getResponseContent_claimePoliceForMafia,
-        _getResponseContent_claimePoliceForPolice,
-        _getResponseContent_claimeDoctorForDoctor,
-        # _getResponseContent_iampointed,
-        _getResponseContent_thePolicePointedMe,
-        _getResponseContent_supportCitizen,
+    _respondentStrategyGetters: list[Callable[[DiscussionManager, SpeakerStrategy], RespondentStrategy]] = [
+        _getRespondentStrategy_claimePoliceForMafia,
+        _getRespondentStrategy_claimePoliceForPolice,
+        _getRespondentStrategy_claimeDoctorForDoctor,
+        _getRespondentStrategy_thePolicePointedMe,
+        _getRespondentStrategy_iampointed,
+        _getRespondentStrategy_supportCitizen,
     ]
 
     def _stopTask(self) :
-        if self._normalDiscussionTask != None :
-            self._normalDiscussionTask.cancel()
-            asyncio.create_task(self._reapTask(self._normalDiscussionTask))
-            self._normalDiscussionTask = None
+        if self._mainLogicTask != None :
+            self._mainLogicTask.cancel()
+            asyncio.create_task(self._reapTask(self._mainLogicTask))
+            self._mainLogicTask = None
 
-        if self._responseDiscussionTask != None :
-            self._responseDiscussionTask.cancel()
-            asyncio.create_task(self._reapTask(self._responseDiscussionTask))
-            self._responseDiscussionTask = None
+        for task in self._responseLogicTasks :
+            task.cancel()
+            asyncio.create_task(self._reapTask(task))
+        self._responseLogicTasks.clear()
 
     async def _reapTask(self, task: asyncio.Task) :
         try :
-            if not task.done():
+            if not task.done() :
                 await task
         except asyncio.CancelledError :
             pass

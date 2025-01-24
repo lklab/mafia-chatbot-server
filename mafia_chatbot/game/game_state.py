@@ -351,7 +351,6 @@ class GameState :
 
         ### history
         self.chatList: list[ChatData] = []
-        self.chatLogs: list[str] = []
         self.voteHistory: list[VoteData] = []
         self.nightTargetHistory: list[NightTargetData] = []
         self.removedPlayers: dict[Player, PlayerRemoveInfo] = {}
@@ -496,7 +495,7 @@ class GameState :
     def getCurrentRoundInfo(self) -> RoundInfo :
         return RoundInfo(self.round, len(self.players), len(self.mafiaPlayers))
 
-    def appendDiscussionChat(self, sender: PlayerInfo, content: str) :
+    def appendDiscussionChat(self, sender: PlayerInfo, content: str) -> ChatData :
         chat: ChatData = ChatData(
             type=ChatType.DISCUSSION,
             index=len(self.chatList),
@@ -504,9 +503,10 @@ class GameState :
             sender=sender,
         )
         self.chatList.append(chat)
-        self.chatLogs.append(f'{sender.name}: {content}')
         self.logger.log(TAG.CHAT, f'DISCUSSION - {chat.index} - {sender.name}: {content}')
         self.sendAddChatMessageToAllUsers(chat)
+
+        return chat
 
     def appendSystemChat(self, content: str, receiver: PlayerInfo = None) :
         chat: ChatData = ChatData(
@@ -528,7 +528,6 @@ class GameState :
             id=chat_out.id,
         )
         self.chatList.append(chat)
-        self.chatLogs.append(f'{sender.name}: {chat.content}')
         self.logger.log(TAG.CHAT, f'DISCUSSION - {chat.index} - {sender.name}: {chat.content}')
 
         chat_out.index = chat.index
@@ -551,6 +550,18 @@ class GameState :
                 count -= 1
             elif chat.receiver == None :
                 logs.append(f'{systemText}: {chat.content}')
+
+        return logs[::-1]
+
+    def getDiscussionChatLogs(self, count: int, lastChat: ChatData = None) -> list[str] :
+        logs: list[str] = []
+        index: int = len(self.chatList) - 1 if lastChat == None else lastChat.index
+
+        while index >= 0 and len(logs) < count :
+            chat: ChatData = self.chatList[index]
+            if chat.type == ChatType.DISCUSSION :
+                logs.append(f'{chat.sender.name}: {chat.content}')
+            index -= 1
 
         return logs[::-1]
 

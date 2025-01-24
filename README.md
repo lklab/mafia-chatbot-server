@@ -18,20 +18,24 @@ source .venv/bin/activate  # On Windows use `.venv\Scripts\activate`
 2. Install the required Python packages:
 
 ``` bash
-pip install -U langchain langchain-openai langgraph protobuf
+pip install -U langchain langchain-openai langchain-google-genai langchain-anthropic langgraph
 ```
 
 ``` bash
-pip install firebase-admin
+pip install protobuf firebase-admin
 ```
 
 3. In the root directory of the repository, create a file called `apikeys.json` and configure your API keys:
     * To get an OpenAI API key, visit [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys). Please note that payment is required to use the key.
+    * To get an Google API key, visit [https://aistudio.google.com/apikey](https://aistudio.google.com/apikey). Please note that payment is required to use the key.
+    * To get an Anthropic API key, visit [https://console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys). Please note that payment is required to use the key.
     * (optional) To obtain a Langchain API key, log in at [https://smith.langchain.com](https://smith.langchain.com) and generate your key.
 
 ``` json
 {
     "OPENAI_API_KEY": "your_openai_api_key_here",
+    "GOOGLE_API_KEY": "your_google_api_key_here",
+    "ANTHROPIC_API_KEY": "your_anthropic_api_key_here",
     "LANGCHAIN_API_KEY": "(optional) your_langchain_api_key_here"
 }
 ```
