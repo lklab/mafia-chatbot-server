@@ -63,6 +63,7 @@ class Player :
         # doctor's private data
         self.healSuccesses: set[Player] = set()
         self.lastHealSuccess: Player = None
+        self.healTargets: list[Player] = []
 
         # human chating count
         self.maxChatingCount = 5
@@ -179,6 +180,10 @@ class Player :
         if player != None :
             self.healSuccesses.add(player)
         self.lastHealSuccess = player
+
+    def addHealTarget(self, player: Player) :
+        if player != None :
+            self.healTargets.append(player)
 
     def reloadChatingCount(self) :
         self.remainChatingCount = self.maxChatingCount

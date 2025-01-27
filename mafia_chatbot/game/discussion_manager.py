@@ -11,6 +11,7 @@ from mafia_chatbot.game.strategy import Strategy, Assumption, AssumptionType, Es
 from mafia_chatbot.game.llm import LLM
 from mafia_chatbot.game.chat_data import ChatData
 from mafia_chatbot.game.game_logger import GameLogger, TAG
+from mafia_chatbot.game.achievements_manager import AchievementsManager
 
 import  mafia_chatbot.utils.utils as utils
 
@@ -37,10 +38,11 @@ class RespondentStrategy :
         self.strategy = strategy
 
 class DiscussionManager :
-    def __init__(self, gameState: GameState, trustRecorder: TrustRecorder, llm: LLM) :
+    def __init__(self, gameState: GameState, trustRecorder: TrustRecorder, llm: LLM, achievementsManager: AchievementsManager) :
         self.gameState: GameState = gameState
         self.trustRecorder: TrustRecorder = trustRecorder
         self.llm: LLM = llm
+        self.achievementsManager = achievementsManager
         self.logger: GameLogger = gameState.logger
 
         self._isRunning: bool = False
@@ -151,6 +153,7 @@ class DiscussionManager :
             # save data
             dPlayer.player.setDiscussionStrategy(self.gameState.round, strategy)
             self.trustRecorder.discussionStrategyUpdated(dPlayer.player.info, strategy)
+            self.achievementsManager.onStrategyUpdated(dPlayer.player, strategy)
             chat: ChatData = self.gameState.appendDiscussionChat(dPlayer.player.info, discussion)
 
             # response
@@ -195,6 +198,7 @@ class DiscussionManager :
         # save data
         respondent.setDiscussionStrategy(self.gameState.round, strategy)
         self.trustRecorder.discussionStrategyUpdated(respondent.info, strategy)
+        self.achievementsManager.onStrategyUpdated(respondent, strategy)
         self.gameState.appendDiscussionChat(respondent.info, discussion)
 
     async def _responseNormalLogic(self, speaker: Player, chat: ChatData) :
@@ -239,6 +243,7 @@ class DiscussionManager :
                 # save data
                 speaker.setDiscussionStrategy(self.gameState.round, strategy)
                 self.trustRecorder.discussionStrategyUpdated(speaker.info, strategy)
+                self.achievementsManager.onStrategyUpdated(speaker, strategy)
 
                 # response
                 self._checkResponse(speaker, strategy, chat)

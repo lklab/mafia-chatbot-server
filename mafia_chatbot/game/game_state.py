@@ -118,6 +118,9 @@ class VoteData :
             message.votersMap[target.id].voters.extend(ids)
         return message
 
+    def getVoters(self, targetInfo: PlayerInfo) -> list[Player] :
+        return self.voteDict[targetInfo]
+
 class KillVoteData :
     def __init__(self, round: int, mafiaUserPlayers: list[Player]) :
         self.round = round
