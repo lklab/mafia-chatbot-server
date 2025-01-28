@@ -2,8 +2,6 @@ syntax = "proto3";
 
 message DebugInfo {
   bool isDebug = 1;
-  Role fixedRole = 2;
-  string fixedRoleClientId = 3;
   int32 daySeconds = 4;
   int32 eveningSeconds = 5;
   int32 nightSeconds = 6;
@@ -17,7 +15,8 @@ message GameInfo {
   int32 playerCount = 1;
   int32 mafiaCount = 2;
   string language = 3;
-  DebugInfo debugInfo = 4;
+  Role fixedRole = 4;
+  DebugInfo debugInfo = 5;
 }
 
 enum Role {

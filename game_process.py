@@ -8,6 +8,7 @@ from typing import Callable, Awaitable, Any
 
 from mafia_chatbot.game.game_manager import GameManager
 from mafia_chatbot.game.game_info import GameInfo, DebugInfo
+from mafia_chatbot.game.player_info import protoToRoleDict
 
 from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.message_handler import MessageHandler
@@ -104,6 +105,7 @@ class GameInstance(UserHolder) :
             users=list(self.users.values()),
             localPlayerName=None,
             language=self.gameInfoRaw.language,
+            fixedRole = protoToRoleDict[self.gameInfoRaw.fixedRole],
             debugInfo=DebugInfo(self.gameInfoRaw.debugInfo) if self.gameInfoRaw.debugInfo.isDebug else None,
         )
         self.gameManager = GameManager(gameInfo)

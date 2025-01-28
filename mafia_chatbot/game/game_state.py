@@ -286,24 +286,18 @@ class GameState :
         self.mafiaPlayers: list[Player] = []
         self.humanMafiaPlayers: list[Player] = []
 
-        # assign debug role
-        if gameInfo.debugInfo != None and gameInfo.debugInfo.fixedRole != None :
-            fixedRolePlayer: Player = None
-            for player in self.userPlayers :
-                if player.user.clientId == gameInfo.debugInfo.fixedRoleClientId :
-                    fixedRolePlayer = player
-                    self.players.remove(fixedRolePlayer)
-                    break
+        # assign fixed role
+        if gameInfo.fixedRole != None and len(self.userPlayers) == 1 :
+            fixedRolePlayer: Player = self.userPlayers[0]
+            self.players.remove(fixedRolePlayer)
 
-            if fixedRolePlayer == None :
-                pass
-            elif gameInfo.debugInfo.fixedRole == Role.CITIZEN :
+            if gameInfo.fixedRole == Role.CITIZEN :
                 self.players.insert(gameInfo.mafiaCount+2, fixedRolePlayer)
-            elif gameInfo.debugInfo.fixedRole == Role.MAFIA :
+            elif gameInfo.fixedRole == Role.MAFIA :
                 self.players.insert(                    0, fixedRolePlayer)
-            elif gameInfo.debugInfo.fixedRole == Role.POLICE :
+            elif gameInfo.fixedRole == Role.POLICE :
                 self.players.insert(gameInfo.mafiaCount+0, fixedRolePlayer)
-            elif gameInfo.debugInfo.fixedRole == Role.DOCTOR :
+            elif gameInfo.fixedRole == Role.DOCTOR :
                 self.players.insert(gameInfo.mafiaCount+1, fixedRolePlayer)
 
         # assign role
