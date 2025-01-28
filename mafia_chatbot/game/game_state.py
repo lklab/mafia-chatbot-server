@@ -92,14 +92,15 @@ class VoteData :
                 maxVoteCount = vote
                 self.targetPlayer = playerInfo
 
-        targetVotersSet: set[Player] = set()
-        for voter in self.voteDict[self.targetPlayer] :
-            targetVotersSet.add(voter)
+        if self.targetPlayer != None :
+            targetVotersSet: set[Player] = set()
+            for voter in self.voteDict[self.targetPlayer] :
+                targetVotersSet.add(voter)
 
-        self.notVoteTargetPlayers: list[Player] = []
-        for player in self.players :
-            if player not in targetVotersSet and player.info != self.targetPlayer :
-                self.notVoteTargetPlayers.append(player)
+            self.notVoteTargetPlayers: list[Player] = []
+            for player in self.players :
+                if player not in targetVotersSet and player.info != self.targetPlayer :
+                    self.notVoteTargetPlayers.append(player)
 
     def getVoteResultStr(self) -> list[str] :
         targets: list[PlayerInfo] = list(self.voteDict.keys())
