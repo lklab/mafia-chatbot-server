@@ -70,18 +70,20 @@ class TcpServer :
 
     async def _certCheckTask(self) :
         lastTime = min(os.path.getmtime(server_config.getCertfile()), os.path.getmtime(server_config.getKeyfile()))
+        print(f'@@@ lastTime={lastTime}')
 
         while True :
             await asyncio.sleep(5)
             mTime = min(os.path.getmtime(server_config.getCertfile()), os.path.getmtime(server_config.getKeyfile()))
             if mTime > lastTime :
+                print(f'@@@ cert: {os.path.getmtime(server_config.getCertfile())}, key: {os.path.getmtime(server_config.getKeyfile())}, mTime: {mTime}')
                 try :
                     await self._reloadSslContext()
+                    lastTime = mTime
                 except Exception as e :
                     print(f'@@@ fail to _reloadSslContext: {e}')
                 except :
                     print('@@@ fail to _reloadSslContext')
-                lastTime = mTime
 
     def _createSslContext(self) :
         """새로운 SSL 컨텍스트를 생성하여 업데이트하는 내부 함수"""
