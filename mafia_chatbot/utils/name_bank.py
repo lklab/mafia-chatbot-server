@@ -21,7 +21,7 @@ def initialize() :
     NAMES = {}
     ENGLISH_NAMES = {}
 
-    with open(os.path.join('mafia_chatbot/utils', 'names.json'), encoding='utf-8') as f :
+    with open(os.path.join('data', 'names.json'), encoding='utf-8') as f :
         data = json.load(f)
 
     for language, nameList in data.items() :

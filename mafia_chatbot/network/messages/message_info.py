@@ -62,6 +62,7 @@ messageTypeDict: dict[Type, int] = {
     game_pb2.CanCancelKillWithAds : 5025,
     game_pb2.CancelKillWithAds : 5026,
     game_pb2.CancelKillWithAdsResponse : 5027,
+    game_pb2.UnlockAchievement : 5028,
     operation_pb2.GetServerState : 6000,
     operation_pb2.ServerState : 6001,
 }
@@ -356,6 +357,11 @@ def _CancelKillWithAdsResponseMessageFactory(data: bytes) -> game_pb2.CancelKill
     message.ParseFromString(data)
     return message
 
+def _UnlockAchievementMessageFactory(data: bytes) -> game_pb2.UnlockAchievement :
+    message = game_pb2.UnlockAchievement()
+    message.ParseFromString(data)
+    return message
+
 def _GetServerStateMessageFactory(data: bytes) -> operation_pb2.GetServerState :
     message = operation_pb2.GetServerState()
     message.ParseFromString(data)
@@ -426,6 +432,7 @@ messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     5025 : _CanCancelKillWithAdsMessageFactory,
     5026 : _CancelKillWithAdsMessageFactory,
     5027 : _CancelKillWithAdsResponseMessageFactory,
+    5028 : _UnlockAchievementMessageFactory,
     6000 : _GetServerStateMessageFactory,
     6001 : _ServerStateMessageFactory,
 }

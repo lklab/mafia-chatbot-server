@@ -151,3 +151,8 @@ message CancelKillWithAds {
 message CancelKillWithAdsResponse {
   string rqid = 1;
 }
+
+message UnlockAchievement {
+  string rqid = 1;
+  string achievementKey = 2;
+}

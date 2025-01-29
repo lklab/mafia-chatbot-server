@@ -92,14 +92,15 @@ class VoteData :
                 maxVoteCount = vote
                 self.targetPlayer = playerInfo
 
-        targetVotersSet: set[Player] = set()
-        for voter in self.voteDict[self.targetPlayer] :
-            targetVotersSet.add(voter)
+        if self.targetPlayer != None :
+            targetVotersSet: set[Player] = set()
+            for voter in self.voteDict[self.targetPlayer] :
+                targetVotersSet.add(voter)
 
-        self.notVoteTargetPlayers: list[Player] = []
-        for player in self.players :
-            if player not in targetVotersSet and player.info != self.targetPlayer :
-                self.notVoteTargetPlayers.append(player)
+            self.notVoteTargetPlayers: list[Player] = []
+            for player in self.players :
+                if player not in targetVotersSet and player.info != self.targetPlayer :
+                    self.notVoteTargetPlayers.append(player)
 
     def getVoteResultStr(self) -> list[str] :
         targets: list[PlayerInfo] = list(self.voteDict.keys())
@@ -117,6 +118,9 @@ class VoteData :
             ids = [voter.info.id for voter in voters]
             message.votersMap[target.id].voters.extend(ids)
         return message
+
+    def getVoters(self, targetInfo: PlayerInfo) -> list[Player] :
+        return self.voteDict[targetInfo]
 
 class KillVoteData :
     def __init__(self, round: int, mafiaUserPlayers: list[Player]) :
@@ -283,24 +287,18 @@ class GameState :
         self.mafiaPlayers: list[Player] = []
         self.humanMafiaPlayers: list[Player] = []
 
-        # assign debug role
-        if gameInfo.debugInfo != None and gameInfo.debugInfo.fixedRole != None :
-            fixedRolePlayer: Player = None
-            for player in self.userPlayers :
-                if player.user.clientId == gameInfo.debugInfo.fixedRoleClientId :
-                    fixedRolePlayer = player
-                    self.players.remove(fixedRolePlayer)
-                    break
+        # assign fixed role
+        if gameInfo.fixedRole != None and len(self.userPlayers) == 1 :
+            fixedRolePlayer: Player = self.userPlayers[0]
+            self.players.remove(fixedRolePlayer)
 
-            if fixedRolePlayer == None :
-                pass
-            elif gameInfo.debugInfo.fixedRole == Role.CITIZEN :
+            if gameInfo.fixedRole == Role.CITIZEN :
                 self.players.insert(gameInfo.mafiaCount+2, fixedRolePlayer)
-            elif gameInfo.debugInfo.fixedRole == Role.MAFIA :
+            elif gameInfo.fixedRole == Role.MAFIA :
                 self.players.insert(                    0, fixedRolePlayer)
-            elif gameInfo.debugInfo.fixedRole == Role.POLICE :
+            elif gameInfo.fixedRole == Role.POLICE :
                 self.players.insert(gameInfo.mafiaCount+0, fixedRolePlayer)
-            elif gameInfo.debugInfo.fixedRole == Role.DOCTOR :
+            elif gameInfo.fixedRole == Role.DOCTOR :
                 self.players.insert(gameInfo.mafiaCount+1, fixedRolePlayer)
 
         # assign role

@@ -11,6 +11,7 @@ from mafia_chatbot.game.trust_recorder import TrustRecorder
 from mafia_chatbot.game.discussion_manager import DiscussionManager
 from mafia_chatbot.game.game_logger import TAG
 from mafia_chatbot.game.kill_cancel_checker import KillCancelChecker
+from mafia_chatbot.game.achievements_manager import AchievementsManager
 
 from mafia_chatbot.network.client_user import ClientUser
 
@@ -26,6 +27,7 @@ class GameManager :
         self.llm = LLM(self.gameState)
 
         self.discussionManager: DiscussionManager = None
+        self.achievementsManager: AchievementsManager = AchievementsManager(self.gameState)
 
         for player in self.gameState.players :
             self.gameState.logger.log(TAG.INFO, player.getFullRepr())
@@ -61,6 +63,8 @@ class GameManager :
         self.gameState.logger.close()
 
     async def _mainLogic(self) :
+        self.achievementsManager.onGameStart()
+
         gameEndInfo: GameEndInfo = None
 
         while True :
@@ -85,6 +89,7 @@ class GameManager :
             self.gameState.addRound()
 
         self.gameState.setPhase(Phase.END)
+        self.achievementsManager.onGameEnd(gameEndInfo.reason)
         self.terminate(gameEndReasonToProtoDict[gameEndInfo.reason])
 
     async def _processDay(self) :
@@ -92,7 +97,7 @@ class GameManager :
 
         # start discussion
         if len(self.gameState.players) > len(self.gameState.userPlayers) :
-            self.discussionManager = DiscussionManager(self.gameState, self.trustRecorder, self.llm)
+            self.discussionManager = DiscussionManager(self.gameState, self.trustRecorder, self.llm, self.achievementsManager)
             self.discussionManager.start()
         else :
             self.discussionManager = None
@@ -147,6 +152,7 @@ class GameManager :
             self._addSystemChat(self._('{name} was executed. Their role was {role}.').format(name=_name, role=_role))
             self.gameState.removePlayerByInfo(voteData.targetPlayer, RemoveReason.VOTE)
             self.trustRecorder.playerRemoved(voteData.targetPlayer, RemoveReason.VOTE)
+            self.achievementsManager.onExecuted(voteData.targetPlayer, voteData)
 
     async def _processPlayerVote(self, voteData: VoteData, player: Player) :
         eveningPeriod: int = self.gameState.eveningSeconds
@@ -212,6 +218,7 @@ class GameManager :
 
         ### execute kill
         doctor.addHealSuccess(None)
+        doctor.addHealTarget(nightTargetData.healTarget)
         killTargetPlayer: Player = nightTargetData.killVoteData.evaluate()
 
         if killTargetPlayer == None :
@@ -220,6 +227,7 @@ class GameManager :
             if killTargetPlayer == nightTargetData.healTarget :
                 doctor.addHealSuccess(nightTargetData.healTarget)
                 self.trustRecorder.healSucceeded(nightTargetData.healTarget.info)
+                self.achievementsManager.onHealSucceeded()
                 self._addSystemChat(self._('The Mafia attempted to assassinate someone but failed.'))
             else :
                 cancelAssassination: bool = False
@@ -236,6 +244,7 @@ class GameManager :
                 if not cancelAssassination :
                     self.gameState.removePlayerByInfo(killTargetPlayer.info, RemoveReason.KILL)
                     self.trustRecorder.playerRemoved(killTargetPlayer.info, RemoveReason.KILL)
+                    self.achievementsManager.onKilled(killTargetPlayer)
                     _name = killTargetPlayer.info.name
                     _role = self.gameState.translateRole[killTargetPlayer.info.role]
                     self._addSystemChat(self._('{name} was assassinated by the Mafia. Their role was {role}.').format(name=_name, role=_role))
@@ -243,6 +252,7 @@ class GameManager :
         ### execute test
         if nightTargetData.testTarget != None :
             police.addTestResult(nightTargetData.testTarget, nightTargetData.testTarget.info.role)
+            self.achievementsManager.onTested(nightTargetData.testTarget)
             _name = nightTargetData.testTarget.info.name
 
             visibleOnlyText = self._('This message visible only to you')

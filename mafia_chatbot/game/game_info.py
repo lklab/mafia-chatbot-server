@@ -1,4 +1,4 @@
-from mafia_chatbot.game.player_info import Role, protoToRoleDict
+from mafia_chatbot.game.player_info import Role
 
 from mafia_chatbot.network.client_user import ClientUser
 from mafia_chatbot.network.messages import *
@@ -22,9 +22,6 @@ def varifyGameInfo(info: game_data_pb2.GameInfo) -> bool :
 
 class DebugInfo :
     def __init__(self, data: game_data_pb2.DebugInfo) :
-        self.fixedRole: Role = protoToRoleDict[data.fixedRole]
-        self.fixedRoleClientId: str = data.fixedRoleClientId
-
         self.daySeconds: int = data.daySeconds
         self.eveningSeconds: int = data.eveningSeconds
         self.nightSeconds: int = data.nightSeconds
@@ -43,6 +40,7 @@ class GameInfo :
         users: list[ClientUser],
         localPlayerName: str,
         language: str = 'english',
+        fixedRole: Role = None,
         debugInfo: DebugInfo = None) :
 
         self.gameId = gameId
@@ -55,6 +53,7 @@ class GameInfo :
         self.localPlayerName = localPlayerName
 
         self.language = language.lower()
+        self.fixedRole = fixedRole if len(users) == 1 else None
 
         self.useLLM = True
         self.isCUI = localPlayerName != None

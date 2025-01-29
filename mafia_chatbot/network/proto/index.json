@@ -92,7 +92,8 @@
                 "ReportChatResponse",
                 "CanCancelKillWithAds",
                 "CancelKillWithAds",
-                "CancelKillWithAdsResponse"
+                "CancelKillWithAdsResponse",
+                "UnlockAchievement"
             ]
         },
         {

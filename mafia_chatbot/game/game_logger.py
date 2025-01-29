@@ -13,6 +13,7 @@ class TAG(Enum) :
     TRUST = 5
     LLM = 6
     NETWORK = 7
+    ACHIEVEMENTS = 8
     ERROR = 99
 
 class GameLogger :
