@@ -27,11 +27,7 @@ from mafia_chatbot.db.test_account_db import testAccountDB
 
 from mafia_chatbot.utils.wands_logger import WandsLogger
 import mafia_chatbot.utils.name_bank as NameBank
-
-GAME_PROCESS_COUNT = 8
-MAIN_PORT = 10015
-GAME_PORT_FRIST = 10016
-GAME_PROCESS_PORT = 30000
+import mafia_chatbot.utils.server_config as server_config
 
 class GameHandler(UserHolder) :
     def __init__(self, id: str, users: list[ClientUser], port: int) :
@@ -123,7 +119,7 @@ class MainProcess :
         self.roomManager: RoomManager = RoomManager(self.logger)
 
     async def run(self) :
-        gameProcessServer = TcpServer(port=GAME_PROCESS_PORT, host='127.0.0.1', useSSL=False, trust=True)
+        gameProcessServer = TcpServer(port=server_config.getIpcPort(), host='127.0.0.1', useSSL=False, trust=True)
         await gameProcessServer.start(onConnected=self._onGameProcessConnected)
         self._startGameProcesses()
 
@@ -136,21 +132,21 @@ class MainProcess :
         await gameProcessServer.serve()
 
     def _startGameProcesses(self) :
-        port: int = GAME_PORT_FRIST
-        for _ in range(GAME_PROCESS_COUNT) :
+        port: int = server_config.getFirstGamePort()
+        for _ in range(server_config.getGameProcessCount()) :
             process = Process(target=startGameProcess, args=(port,))
             process.daemon = True
             process.start()
             port += 1
 
     def _startMainServer(self) :
-        if len(self.gameProcessHandlers) == GAME_PROCESS_COUNT and self.mainServerTask == None :
+        if len(self.gameProcessHandlers) == server_config.getGameProcessCount() and self.mainServerTask == None :
             self.mainServerTask = asyncio.create_task(self._runMainServer())
 
     async def _runMainServer(self) :
         self.logger.debug('_runMainServer()')
         self.mainServer = ClientServer(
-            port=MAIN_PORT,
+            port=server_config.getMainPort(),
             onAuth=self._onClientAuth,
             onMessage=self._onClientMessage,
             onDisconnected=self._onClientDisconnected,
