@@ -79,7 +79,7 @@ class TcpServer :
                 print(f'@@@ cert: {os.path.getmtime(server_config.getCertfile())}, key: {os.path.getmtime(server_config.getKeyfile())}, mTime: {mTime}')
                 try :
                     await self._reloadSslContext()
-                    lastTime = mTime
+                    lastTime = max(os.path.getmtime(server_config.getCertfile()), os.path.getmtime(server_config.getKeyfile()))
                 except Exception as e :
                     print(f'@@@ fail to _reloadSslContext: {e}')
                 except :
