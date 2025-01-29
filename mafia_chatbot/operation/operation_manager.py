@@ -26,7 +26,7 @@ class OperationManager :
             self._readOpInfo()
 
     def _readOpInfo(self) :
-        with open('operation_info.json', encoding='utf-8') as f :
+        with open('config/operation_info.json', encoding='utf-8') as f :
             info = json.load(f)
 
         self.requiredVersion: str = info['requiredVersion']

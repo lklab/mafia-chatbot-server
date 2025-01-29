@@ -9,7 +9,7 @@ def initialize() :
     if firebaseInitialized :
         return
 
-    cred = credentials.Certificate("firebase-adminsdk.json")
+    cred = credentials.Certificate("config/firebase-adminsdk.json")
     firebase_admin.initialize_app(cred)
     firebaseInitialized = True
 

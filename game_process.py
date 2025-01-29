@@ -22,8 +22,7 @@ import mafia_chatbot.firebase.firebase as firebase
 
 from mafia_chatbot.utils.wands_logger import WandsLogger
 import mafia_chatbot.utils.name_bank as NameBank
-
-MAIN_PROCESS_PORT = 30000
+import mafia_chatbot.utils.server_config as server_config
 
 class GameInstance :
     pass
@@ -182,7 +181,7 @@ class GameProcess :
     ### Handle main process ###
     async def _connectToMainProcess(self) :
         # connect to main process
-        reader, writer = await asyncio.open_connection('127.0.0.1', MAIN_PROCESS_PORT)
+        reader, writer = await asyncio.open_connection('127.0.0.1', server_config.getIpcPort())
         mainProcessTcpHandler = TcpHandler(reader, writer, trust=True)
         self.mainProcessMessageHandler = MessageHandler(
             tcpHandler=mainProcessTcpHandler,

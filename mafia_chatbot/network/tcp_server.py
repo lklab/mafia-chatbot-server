@@ -3,6 +3,7 @@ import ssl
 from typing import Callable
 
 from mafia_chatbot.network.tcp_handler import TcpHandler
+import mafia_chatbot.utils.server_config as server_config
 
 class TcpServer :
     def __init__(self, port: int, host: str = '0.0.0.0', useSSL: bool = True, trust: bool = False) :
@@ -19,8 +20,8 @@ class TcpServer :
             # openssl req -x509 -nodes -newkey rsa:2048 -keyout server.key -out server.crt -days 365 -subj "/CN=211.47.119.124" -addext "subjectAltName=IP:211.47.119.124"
             ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             ssl_context.load_cert_chain(
-                certfile='server.crt',
-                keyfile='server.key',
+                certfile=server_config.getCertfile(),
+                keyfile=server_config.getKeyfile(),
             )
 
             self.server = await asyncio.start_server(

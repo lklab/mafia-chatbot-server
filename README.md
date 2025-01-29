@@ -25,7 +25,8 @@ pip install -U langchain langchain-openai langchain-google-genai langchain-anthr
 pip install protobuf firebase-admin
 ```
 
-3. In the root directory of the repository, create a file called `apikeys.json` and configure your API keys:
+3. In the root directory of the repository, create a file called `config/apikeys.json` and configure your API keys:
+    * If the `config` directory does not exist in the project root, create it.
     * To get an OpenAI API key, visit [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys). Please note that payment is required to use the key.
     * To get an Google API key, visit [https://aistudio.google.com/apikey](https://aistudio.google.com/apikey). Please note that payment is required to use the key.
     * To get an Anthropic API key, visit [https://console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys). Please note that payment is required to use the key.
@@ -40,11 +41,13 @@ pip install protobuf firebase-admin
 }
 ```
 
-4. Compile l10n files
+4. Place your Firebase admin file at `config/firebase-adminsdk.json`.
+
+5. Compile l10n files
     * run /mafia_chatbot/locales/tools/msgfmt.py file
     * gettext required
 
-5. Create `operation_info.json` file
+6. Create a `config/operation_info.json` file with the following content:
 
 ``` json
 {
@@ -55,6 +58,20 @@ pip install protobuf firebase-admin
         "korean": "",
         "trailingComma": ""
     }
+}
+```
+
+7. Create a `config/server_config.json` file with the following content:
+    * Replace "path-to-your-tls-certfile" and "path-to-your-tls-keyfile" with the actual paths to your TLS certificate and key files.
+
+``` json
+{
+    "main_port": 10015,
+    "first_game_port": 10016,
+    "ipc_port": 30000,
+    "game_process_count": 8,
+    "certfile": "path-to-your-tls-certfile",
+    "keyfile": "path-to-your-tls-keyfile"
 }
 ```
 

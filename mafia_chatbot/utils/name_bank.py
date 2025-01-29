@@ -135,7 +135,7 @@ def _setupChain() :
         return
 
     # load API key
-    with open('apikeys.json') as f:
+    with open('config/apikeys.json') as f:
         keys = json.load(f)
 
     os.environ["OPENAI_API_KEY"] = keys['OPENAI_API_KEY']

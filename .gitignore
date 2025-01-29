@@ -162,14 +162,12 @@ cython_debug/
 #.idea/
 
 # Custom
-apikeys.json
-reports/
-firebase-adminsdk.json
 *.db
 *.db-shm
 *.db-wal
+reports/
+config/
 server_log/
-operation_info.json
 
 # Custom - tls
 server.crt
