@@ -23,7 +23,7 @@ class TcpServer :
         self.onConnected = onConnected
         await self._startServer()
         addr = self.server.sockets[0].getsockname()
-        print(f'[TcpServer] Server started on {addr}')
+        # print(f'[TcpServer] Server started on {addr}')
 
     async def serve(self) :
         if self.server :
@@ -75,10 +75,8 @@ class TcpServer :
 
         self.server.close()
 
-        print(f'@@@ disconnect {len(self.clients)} clients')
         for client in self.clients :
             asyncio.create_task(client.close())
-        print(f'@@@ disconnected {len(self.clients)} clients')
 
         self.restartFuture = asyncio.Future()
         await self.restartFuture
@@ -97,7 +95,7 @@ class TcpServer :
         tcpHandler = TcpHandler(reader, writer, trust=self.trust)
         self.clients.add(tcpHandler)
         tcpHandler.addOnDisconnected(lambda: self._onClientDisconnected(tcpHandler))
-        print(f"[TcpServer] {tcpHandler.addr} Client connected")
+        # print(f"[TcpServer] {tcpHandler.addr} Client connected")
         self.onConnected(tcpHandler)
 
     def _getSslContext(self) :
@@ -109,5 +107,4 @@ class TcpServer :
         return sslContext
 
     def _onClientDisconnected(self, tcpHandler: TcpHandler) :
-        print(f'@@@ test _onClientDisconnected')
         self.clients.discard(tcpHandler)

@@ -151,37 +151,6 @@ class MainProcess :
         asyncio.create_task(self._certCheckTask())
         await gameProcessServer.serve()
 
-    async def _certCheckTask(self) :
-        lastTime = min(os.path.getmtime(server_config.getCertfile()), os.path.getmtime(server_config.getKeyfile()))
-
-        while True :
-            await asyncio.sleep(5)
-            mTime = min(os.path.getmtime(server_config.getCertfile()), os.path.getmtime(server_config.getKeyfile()))
-            if mTime > lastTime :
-                print('@@@ cert change detected')
-                lastTime = max(os.path.getmtime(server_config.getCertfile()), os.path.getmtime(server_config.getKeyfile()))
-
-                print('@@@ mainServer restart')
-                await self.mainServer.restart()
-                print('@@@ mainServer restarted')
-
-                for process in self.gameProcessHandlers.values() :
-                    if not process.isConnected() :
-                        continue
-
-                    print('@@@ process.pause()')
-                    await process.pause()
-                    print('@@@ process.pause() completed')
-                    try :
-                        message = ipc_pb2.RestartServer()
-                        print('@@@ call RestartServer')
-                        await self._sendAwaitResponseToGameProcess(process.messageHandler, message, timeout=6000)
-                        print('@@@ RestartServer completed')
-                    except Exception as e :
-                        print(f'@@@ RestartServer error: {e}')
-                        self.logger.error(f'restart server failed for {process.port}: {e}')
-                    process.resume()
-
     def _startGameProcesses(self) :
         port: int = server_config.getFirstGamePort()
         for _ in range(server_config.getGameProcessCount()) :
@@ -541,6 +510,35 @@ class MainProcess :
         else :
             self.logger.debug(f'_sendToUser id={user.clientId}, name={user.clientName}, type={type(message)}, message=<{message}>')
         user.send(message)
+
+    async def _certCheckTask(self) :
+        lastTime = min(os.path.getmtime(server_config.getCertfile()), os.path.getmtime(server_config.getKeyfile()))
+
+        while True :
+            await asyncio.sleep(5)
+            mTime = min(os.path.getmtime(server_config.getCertfile()), os.path.getmtime(server_config.getKeyfile()))
+            if mTime > lastTime :
+                self.logger.debug('_certCheckTask cert change detected')
+                lastTime = max(os.path.getmtime(server_config.getCertfile()), os.path.getmtime(server_config.getKeyfile()))
+
+                await self.mainServer.restart()
+                self.logger.debug('_certCheckTask mainServer restarted')
+
+                for process in self.gameProcessHandlers.values() :
+                    if not process.isConnected() :
+                        continue
+
+                    self.logger.debug(f'_certCheckTask pause process {process.port}')
+                    await process.pause()
+                    self.logger.debug(f'_certCheckTask process {process.port} paused')
+
+                    try :
+                        message = ipc_pb2.RestartServer()
+                        await self._sendAwaitResponseToGameProcess(process.messageHandler, message, timeout=6000)
+                        self.logger.debug(f'_certCheckTask process {process.port} RestartServer completed')
+                    except Exception as e :
+                        self.logger.error(f'_certCheckTask process {process.port} RestartServer error: {e}')
+                    process.resume()
 
 if __name__ == "__main__" :
     mainProcess = MainProcess()

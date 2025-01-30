@@ -240,7 +240,7 @@ class GameProcess :
 
     def _switchMainProcessMessageRestartServer(self, message) :
         async def restart() :
-            await asyncio.sleep(1) # TODO
+            await asyncio.sleep(60)
             await self.gameServer.restart()
 
             response = ipc_pb2.ServerRestarted()
