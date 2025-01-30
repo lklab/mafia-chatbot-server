@@ -537,10 +537,12 @@ class GameState :
     def getRecentConversationLogs(self, count: int) -> list[str] :
         logs: list[str] = []
         systemText = self._('System')
+        omitted: bool = False
 
         for chat in reversed(self.chatList) :
             if count <= 0 :
                 logs.append('(The previous conversation is omitted.)')
+                omitted = True
                 break
 
             if chat.type == ChatType.DISCUSSION :
@@ -548,6 +550,9 @@ class GameState :
                 count -= 1
             elif chat.receiver == None :
                 logs.append(f'{systemText}: {chat.content}')
+
+        if not omitted :
+            logs.append('(This is the beginning of the conversation.)')
 
         return logs[::-1]
 
