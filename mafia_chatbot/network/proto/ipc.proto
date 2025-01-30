@@ -47,3 +47,11 @@ message GameEnded {
 message GameEndedResponse {
   string rqid = 1;
 }
+
+message RestartServer {
+  string rqid = 1;
+}
+
+message ServerRestarted {
+  string rqid = 1;
+}

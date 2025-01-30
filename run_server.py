@@ -2,6 +2,7 @@ import asyncio
 from multiprocessing import Process
 import uuid
 from typing import Any
+import os
 
 from game_process import startGameProcess
 
@@ -71,6 +72,9 @@ class GameProcessHandler :
 
         self.games: dict[str, GameHandler] = {}
 
+        self.paused: bool = False
+        self.noGameFuture: asyncio.Future = None
+
     def addGame(self, game: GameHandler) :
         if game.id not in self.games :
             self.games[game.id] = game
@@ -80,6 +84,10 @@ class GameProcessHandler :
             game: GameHandler = self.games[gameId]
             game.terminate()
             del self.games[gameId]
+
+            if self.getGameCount() == 0 and self.paused and self.noGameFuture != None :
+                self.noGameFuture.set_result(0)
+                self.noGameFuture = None
 
     def getGameCount(self) :
         return len(self.games)
@@ -106,6 +114,17 @@ class GameProcessHandler :
 
         return removeGames
 
+    async def pause(self) :
+        self.paused = True
+        if self.getGameCount() == 0 :
+            return
+
+        self.noGameFuture = asyncio.Future()
+        await self.noGameFuture
+
+    def resume(self) :
+        self.paused = False
+
 class MainProcess :
     def __init__(self) :
         self.logger = WandsLogger('network', 'main')
@@ -129,7 +148,39 @@ class MainProcess :
         userDB.enable_wal()
         testAccountDB.enable_wal()
 
+        asyncio.create_task(self._certCheckTask())
         await gameProcessServer.serve()
+
+    async def _certCheckTask(self) :
+        lastTime = min(os.path.getmtime(server_config.getCertfile()), os.path.getmtime(server_config.getKeyfile()))
+
+        while True :
+            await asyncio.sleep(5)
+            mTime = min(os.path.getmtime(server_config.getCertfile()), os.path.getmtime(server_config.getKeyfile()))
+            if mTime > lastTime :
+                print('@@@ cert change detected')
+                lastTime = max(os.path.getmtime(server_config.getCertfile()), os.path.getmtime(server_config.getKeyfile()))
+
+                print('@@@ mainServer restart')
+                await self.mainServer.restart()
+                print('@@@ mainServer restarted')
+
+                for process in self.gameProcessHandlers.values() :
+                    if not process.isConnected() :
+                        continue
+
+                    print('@@@ process.pause()')
+                    await process.pause()
+                    print('@@@ process.pause() completed')
+                    try :
+                        message = ipc_pb2.RestartServer()
+                        print('@@@ call RestartServer')
+                        await self._sendAwaitResponseToGameProcess(process.messageHandler, message, timeout=6000)
+                        print('@@@ RestartServer completed')
+                    except Exception as e :
+                        print(f'@@@ RestartServer error: {e}')
+                        self.logger.error(f'restart server failed for {process.port}: {e}')
+                    process.resume()
 
     def _startGameProcesses(self) :
         port: int = server_config.getFirstGamePort()
@@ -335,7 +386,7 @@ class MainProcess :
             gameCount: int = 0
 
             for process in self.gameProcessHandlers.values() :
-                if not process.isConnected() :
+                if not process.isConnected() or process.paused :
                     continue
 
                 count = process.getGameCount()
@@ -471,9 +522,9 @@ class MainProcess :
         self.logger.debug(f'_sendToGameProcess() addr={messageHandler.addr}, desc={messageHandler.desc}, type={type(message)}, message=<{message}>')
         messageHandler.send(message)
 
-    async def _sendAwaitResponseToGameProcess(self, messageHandler: MessageHandler, message) :
+    async def _sendAwaitResponseToGameProcess(self, messageHandler: MessageHandler, message, timeout: float = 10) :
         self.logger.debug(f'_sendAwaitResponseToGameProcess() send addr={messageHandler.addr}, desc={messageHandler.desc}, type={type(message)}, message=<{message}>')
-        response = await messageHandler.sendAwaitResponse(message)
+        response = await messageHandler.sendAwaitResponse(message, timeout=timeout)
         self.logger.debug(f'_sendAwaitResponseToGameProcess() response addr={messageHandler.addr}, desc={messageHandler.desc}, type={type(response)}, message=<{response}>')
         return response
 

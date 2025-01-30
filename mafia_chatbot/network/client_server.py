@@ -36,6 +36,9 @@ class ClientServer :
     async def serve(self) :
         await self.tcpServer.serve()
 
+    async def restart(self) :
+        await self.tcpServer.restart()
+
     def getUser(self, clientId: str, onlyExists: bool = False) :
         if clientId in self.users :
             return self.users[clientId]

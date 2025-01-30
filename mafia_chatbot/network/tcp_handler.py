@@ -21,6 +21,7 @@ class TcpHandler :
         self.writer = writer
         self.trust = trust
         self.listenTask: asyncio.Task = None
+        self.onDisconnected: list[Callable[[], None]] = []
 
         self.addr = self.writer.get_extra_info('peername')
         self.ip: str = self.writer.get_extra_info('peername')[0]
@@ -35,9 +36,15 @@ class TcpHandler :
 
         self.listenTask = asyncio.create_task(self._listen(onData, onDisconnected))
 
+    def addOnDisconnected(self, onDisconnected: Callable[[], None]) :
+        self.onDisconnected.append(onDisconnected)
+
+    def removeOnDisconnected(self, onDisconnected: Callable[[], None]) :
+        self.onDisconnected.remove(onDisconnected)
+
     async def _listen(self, onData: Callable[[int, bytes], None], onDisconnected: Callable[[], None]) :
         buffer = b''
-        self.onDisconnected = onDisconnected
+        self.addOnDisconnected(onDisconnected)
 
         try:
             while True:
@@ -155,6 +162,7 @@ class TcpHandler :
             pass
 
         try :
-            self.onDisconnected()
+            for callback in self.onDisconnected :
+                callback()
         except :
             pass

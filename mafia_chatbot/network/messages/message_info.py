@@ -12,6 +12,8 @@ messageTypeDict: dict[Type, int] = {
     ipc_pb2.ClientExitedResponse : 1004,
     ipc_pb2.GameEnded : 1005,
     ipc_pb2.GameEndedResponse : 1006,
+    ipc_pb2.RestartServer : 1007,
+    ipc_pb2.ServerRestarted : 1008,
     auth_pb2.Auth : 2000,
     auth_pb2.AuthResponse : 2001,
     auth_pb2.UpdateUserInfo : 2002,
@@ -104,6 +106,16 @@ def _GameEndedMessageFactory(data: bytes) -> ipc_pb2.GameEnded :
 
 def _GameEndedResponseMessageFactory(data: bytes) -> ipc_pb2.GameEndedResponse :
     message = ipc_pb2.GameEndedResponse()
+    message.ParseFromString(data)
+    return message
+
+def _RestartServerMessageFactory(data: bytes) -> ipc_pb2.RestartServer :
+    message = ipc_pb2.RestartServer()
+    message.ParseFromString(data)
+    return message
+
+def _ServerRestartedMessageFactory(data: bytes) -> ipc_pb2.ServerRestarted :
+    message = ipc_pb2.ServerRestarted()
     message.ParseFromString(data)
     return message
 
@@ -382,6 +394,8 @@ messageFactoryDict: dict[int, Callable[[bytes], Any]] = {
     1004 : _ClientExitedResponseMessageFactory,
     1005 : _GameEndedMessageFactory,
     1006 : _GameEndedResponseMessageFactory,
+    1007 : _RestartServerMessageFactory,
+    1008 : _ServerRestartedMessageFactory,
     2000 : _AuthMessageFactory,
     2001 : _AuthResponseMessageFactory,
     2002 : _UpdateUserInfoMessageFactory,

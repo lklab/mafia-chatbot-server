@@ -238,8 +238,20 @@ class GameProcess :
         response.rqid = message.rqid
         self._sendToMainProcess(response)
 
+    def _switchMainProcessMessageRestartServer(self, message) :
+        async def restart() :
+            await asyncio.sleep(1) # TODO
+            await self.gameServer.restart()
+
+            response = ipc_pb2.ServerRestarted()
+            response.rqid = message.rqid
+            self._sendToMainProcess(response)
+
+        asyncio.create_task(restart())
+
     _switchMainProcessMessage = {
         ipc_pb2.StartNewGame : _switchMainProcessMessageStartNewGame,
+        ipc_pb2.RestartServer : _switchMainProcessMessageRestartServer,
     }
 
     ### Handle client ###

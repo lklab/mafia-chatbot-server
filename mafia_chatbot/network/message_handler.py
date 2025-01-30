@@ -65,7 +65,7 @@ class MessageHandler :
             return
         self._send(message)
 
-    async def sendAwaitResponse(self, message) :
+    async def sendAwaitResponse(self, message, timeout: float = 10) :
         if self.state != MessageState.CONNECTED :
             return
 
@@ -78,7 +78,7 @@ class MessageHandler :
         self._send(message)
 
         try:
-            return await asyncio.wait_for(future, 10)
+            return await asyncio.wait_for(future, timeout)
         except asyncio.TimeoutError as e :
             del self.responseAwaiters[rqid]
             print(f'[MessageHandler] {self.tcpHandler.addr} No response for request {rqid} within timeout: {e}\nmessage=<{message}>')

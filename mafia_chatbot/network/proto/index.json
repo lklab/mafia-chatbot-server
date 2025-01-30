@@ -18,7 +18,9 @@
                 "ClientExited",
                 "ClientExitedResponse",
                 "GameEnded",
-                "GameEndedResponse"
+                "GameEndedResponse",
+                "RestartServer",
+                "ServerRestarted"
             ]
         },
         {

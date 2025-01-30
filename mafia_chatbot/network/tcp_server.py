@@ -1,7 +1,6 @@
 import asyncio
 import ssl
 from typing import Callable
-import os
 
 from mafia_chatbot.network.tcp_handler import TcpHandler
 import mafia_chatbot.utils.server_config as server_config
@@ -14,101 +13,101 @@ class TcpServer :
         self.useSSL: bool = useSSL
         self.trust: bool = trust
 
-        self.sslContext = None
-        self.certCheckTask: asyncio.Task = None
+        self.clients: set[TcpHandler] = set()
 
-        if self.useSSL :
-            self.certCheckTask = asyncio.create_task(self._certCheckTask())
+        self.isServing: bool = False
+        self.isRestart: bool = False
+        self.restartFuture: asyncio.Future = None
 
     async def start(self, onConnected: Callable[[TcpHandler], None]) :
         self.onConnected = onConnected
-
-        if self.useSSL :
-            self._createSslContext()
-
-            self.server = await asyncio.start_server(
-                self._handle_client, self.host, self.port, ssl=self.sslContext
-            )
-        else :
-            self.server = await asyncio.start_server(
-                self._handle_client, self.host, self.port
-            )
-
+        await self._startServer()
         addr = self.server.sockets[0].getsockname()
         print(f'[TcpServer] Server started on {addr}')
 
     async def serve(self) :
         if self.server :
-            try :
-                await self.server.serve_forever()
-            except asyncio.CancelledError :
-                print("[TcpServer] Server cancelled")
+            while True :
+                try :
+                    if self.restartFuture != None :
+                        self.restartFuture.set_result(0)
+                        self.restartFuture = None
+                    self.isServing = True
+
+                    await self.server.serve_forever()
+
+                except asyncio.CancelledError :
+                    print("[TcpServer] Server cancelled")
+
+                if self.isRestart :
+                    self.isRestart = False
+                    try :
+                        await self.server.wait_closed()
+                        await self._startServer()
+                    except Exception as e :
+                        print(f"[TcpServer] fail to restart server: {e}")
+                        break
+                    except :
+                        print(f"[TcpServer] fail to restart server")
+                        break
+                else :
+                    break
         else :
             print("[TcpServer] Server has not been started yet. Please call start() first.")
-
-        if self.certCheckTask != None :
-            self.certCheckTask.cancel()
-            try :
-                await self.certCheckTask
-            except :
-                pass
-            print('@@@ certCheckTask terminated')
 
     async def close(self) :
         if self.server :
             print("[TcpServer] Shutting down server...")
+            self.isRestart = False
+            self.isServing = False
             self.server.close()
             await self.server.wait_closed()
             print("[TcpServer] Server shut down complete.")
         else :
             print("[TcpServer] Server is not running.")
 
+    async def restart(self) :
+        if not self.isServing :
+            return
+
+        self.isRestart = True
+        self.isServing = False
+
+        self.server.close()
+
+        print(f'@@@ disconnect {len(self.clients)} clients')
+        for client in self.clients :
+            asyncio.create_task(client.close())
+        print(f'@@@ disconnected {len(self.clients)} clients')
+
+        self.restartFuture = asyncio.Future()
+        await self.restartFuture
+
+    async def _startServer(self) :
+        if self.useSSL :
+            self.server = await asyncio.start_server(
+                self._handle_client, self.host, self.port, ssl=self._getSslContext()
+            )
+        else :
+            self.server = await asyncio.start_server(
+                self._handle_client, self.host, self.port
+            )
+
     async def _handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) :
         tcpHandler = TcpHandler(reader, writer, trust=self.trust)
+        self.clients.add(tcpHandler)
+        tcpHandler.addOnDisconnected(lambda: self._onClientDisconnected(tcpHandler))
         print(f"[TcpServer] {tcpHandler.addr} Client connected")
         self.onConnected(tcpHandler)
 
-    async def _certCheckTask(self) :
-        lastTime = min(os.path.getmtime(server_config.getCertfile()), os.path.getmtime(server_config.getKeyfile()))
-        print(f'@@@ lastTime={lastTime}')
-
-        while True :
-            await asyncio.sleep(5)
-            mTime = min(os.path.getmtime(server_config.getCertfile()), os.path.getmtime(server_config.getKeyfile()))
-            if mTime > lastTime :
-                print(f'@@@ cert: {os.path.getmtime(server_config.getCertfile())}, key: {os.path.getmtime(server_config.getKeyfile())}, mTime: {mTime}')
-                try :
-                    await self._reloadSslContext()
-                    lastTime = max(os.path.getmtime(server_config.getCertfile()), os.path.getmtime(server_config.getKeyfile()))
-                except Exception as e :
-                    print(f'@@@ fail to _reloadSslContext: {e}')
-                except :
-                    print('@@@ fail to _reloadSslContext')
-
-    def _createSslContext(self) :
-        """새로운 SSL 컨텍스트를 생성하여 업데이트하는 내부 함수"""
+    def _getSslContext(self) :
         sslContext = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         sslContext.load_cert_chain(
             certfile=server_config.getCertfile(),
             keyfile=server_config.getKeyfile(),
         )
-        self.sslContext = sslContext
+        return sslContext
 
-    async def _reloadSslContext(self) :
-        """인증서 갱신 후 새로운 SSL 컨텍스트를 로드"""
-        if not self.useSSL or not self.server :
-            print("[TcpServer] SSL 사용 안 함 또는 서버가 실행되지 않음")
-            return
-
-        print("[TcpServer] Reloading SSL context...")
-        self._createSslContext()
-
-        # 이벤트 루프에서 SSL 컨텍스트를 안전하게 업데이트
-        loop = self.server.get_loop()
-        loop.call_soon_threadsafe(self._updateSslContext)
-        print("[TcpServer] SSL context reloaded")
-
-    def _updateSslContext(self) :
-        """현재 실행 중인 서버에 새로운 SSL 컨텍스트 적용"""
-        self.server._ssl_context = self.sslContext
-        print('@@@ _ssl_context 변경 완료')
+    def _onClientDisconnected(self, tcpHandler: TcpHandler) :
+        print(f'@@@ test _onClientDisconnected')
+        self.clients.discard(tcpHandler)
