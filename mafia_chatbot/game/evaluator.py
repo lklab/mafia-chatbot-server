@@ -500,7 +500,7 @@ def _updatePoliceForMafia(gameState: GameState, recorder: TrustRecorder, me: Pla
 
     candidates: list[PlayerInfo] = []
     for player in gameState.players :
-        if player == me or player in me.estimationsAsPolice :
+        if player == me or player.info in me.estimationsAsPolice :
             continue
         candidates.append(player.info)
     _logCandidates(gameState.logger, TAG.STRATEGY, candidates)
