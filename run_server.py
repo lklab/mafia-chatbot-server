@@ -209,7 +209,7 @@ class MainProcess :
             handler = self.gameProcessHandlers[port]
             handler.setMessageHandler(messageHandler)
 
-            participants: dict[str, list[str]] = {} # TODO delete
+            participants: dict[str, list[str]] = {}
             for gameId in handler.games :
                 participants[gameId] = [user.clientId for user in self.gameToProcessDict[gameId].games[gameId].users]
             self.logger.debug(f'_switchGameProcessMessageGameServerConnected port={port} game participants(before) = {participants}')
