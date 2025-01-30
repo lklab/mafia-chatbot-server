@@ -4,6 +4,7 @@ import datetime
 import uuid
 import os
 import json
+import gc
 from typing import Callable, Awaitable, Any
 
 from mafia_chatbot.game.game_manager import GameManager
@@ -130,6 +131,8 @@ class GameInstance(UserHolder) :
 
         if self.gameManager != None :
             self.gameManager.sendGameEndToUsers()
+
+        collected = gc.collect()
 
     async def _timeoutTerminate(self, seconds: float) :
         try:
