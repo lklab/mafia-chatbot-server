@@ -98,7 +98,7 @@ class TcpHandler :
         except Exception as e:
             print(f"[TcpHandler] {self.addr} comm error: {e}")
 
-        print(f"[TcpHandler] {self.addr} Closing connection")
+        # print(f"[TcpHandler] {self.addr} Closing connection")
         self.listenTask = None
         await self.close()
 
