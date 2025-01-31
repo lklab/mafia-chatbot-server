@@ -2,7 +2,7 @@ from enum import Enum
 
 from mafia_chatbot.game.player_info import *
 
-defaultReason = 'Due to a lack of information, you will suspect someone as the mafia, but it is only a guess. You might come up with a funny reason, or perhaps base your suspicion on something completely random like their tone of voice or the way they blinked.'
+defaultReason = 'Due to a lack of information, you will suspect someone as the mafia, but it is only a guess. You might come up with a funny reason, or perhaps base your suspicion on something completely random like their tone of voice or the way they blinked. However, you must not mention statements or speech styles of other people that are not included in ##Conversation Logs##.'
 
 class Estimation :
     def __init__(self,

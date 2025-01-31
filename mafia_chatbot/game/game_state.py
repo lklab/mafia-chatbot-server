@@ -552,7 +552,7 @@ class GameState :
                 logs.append(f'{systemText}: {chat.content}')
 
         if not omitted :
-            logs.append('(This is the beginning of the conversation.)')
+            logs.append('(This is the beginning of the conversation. There is no dialogue before this.)')
 
         return logs[::-1]
 
