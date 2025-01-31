@@ -40,8 +40,6 @@ def initialize() :
         for prohibited in langData['prohibiteds'] :
             PROHIBITED_WORDS.append(prohibited)
 
-    print(PROHIBITED_WORDS)
-
 def isSupportedLanguage(language: str) -> bool :
     global NAMES
     return language in NAMES
