@@ -25,10 +25,10 @@ gameInfo = GameInfo(
     gameId=str(uuid.uuid4()),
     playerCount=10,
     mafiaCount=2,
-    users=None,
+    users=[],
     localPlayerName='시우',
     # localPlayerName='Sophia',
-    language='korean',
+    language='english',
 )
 gameState = GameState(gameInfo, FakeGameLogger())
 llm = LLM(gameState)
@@ -52,10 +52,11 @@ async def main() :
     # strategy = await llm.analyzeHumanMessage(player, f'{names[0]} 너 마피아잖아')
     # strategy = await llm.analyzeHumanMessage(player, f'니가 마피아잖아.')
     # strategy = await llm.analyzeHumanMessage(player, f'마피아는 너야..')
-    # strategy = await llm.analyzeHumanMessage(player, f'I am police and {names[0]} is a mafia')
+    strategy = await llm.analyzeHumanMessage(player, f'I am police and {names[0]} is a mafia')
     # strategy = await llm.analyzeHumanMessage(player, f'ㅁㄴㅁㄴㅇㅁㄴㅇㅈ')
+    # strategy = await llm.analyzeHumanMessage(player, f'I am a mafia')
 
-    # print(f'{player.info.name}: {strategy}')
+    print(f'{player.info.name}: {strategy}')
 
     # result = await llm._ainvokeChain(
     #     chain=llm.checkClaimsMafiaChain,
@@ -75,6 +76,6 @@ async def main() :
     # )
     # print(result)
 
-    print(await llm.isMessageQuestion('시우가 마피아라는 것에 대해 어떻게 생각해'))
+    # print(await llm.isMessageQuestion('시우가 마피아라는 것에 대해 어떻게 생각해'))
 
 asyncio.run(main())

@@ -405,14 +405,14 @@ class LLM :
 
     def _setupCheckClaimsMafiaChain(self) :
         # setup model
-        model = ChatOpenAI(
-            model="gpt-3.5-turbo",
+        model = ChatAnthropic(
+            model="claude-3-5-haiku-20241022",
             temperature=0.1,
         )
 
         # setup prompt
         template = (
-            "Respond with \"true\" if the following sentence explicitly claims that {name}'s role is Mafia. Otherwise, respond with \"false\". The likelihood of {name} claiming to be a mafia is extremely low, so you must assess conservatively. Respond with \"true\" only if the statement explicitly and clearly asserts that {name} is a mafia."
+            "Respond with \"true\" if the following sentence explicitly claims that {name}'s role is Mafia. Otherwise, respond with \"false\". The likelihood of {name} claiming to be a mafia is extremely low, so you must assess conservatively. Respond with \"true\" if the following sentence explicitly claims that {name}'s role is Mafia, even if there are minor grammatical errors. Otherwise, respond with \"false\"."
             "\n\n"
             "examples"
             "\n"
