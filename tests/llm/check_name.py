@@ -17,7 +17,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
 # load API key
-with open('apikeys.json') as f:
+with open('config/apikeys.json') as f:
     keys = json.load(f)
 
 os.environ["OPENAI_API_KEY"] = keys['OPENAI_API_KEY']

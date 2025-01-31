@@ -13,26 +13,34 @@ from langchain_core.output_parsers import StrOutputParser
 
 NAMES: dict[str, list[str]] = None
 ENGLISH_NAMES: dict[str, dict[str, str]] = None
+PROHIBITED_WORDS: list[str] = None
 
 def initialize() :
     global NAMES
     global ENGLISH_NAMES
+    global PROHIBITED_WORDS
 
     NAMES = {}
     ENGLISH_NAMES = {}
+    PROHIBITED_WORDS = []
 
     with open(os.path.join('data', 'names.json'), encoding='utf-8') as f :
         data = json.load(f)
 
-    for language, nameList in data.items() :
+    for language, langData in data.items() :
         names: list[str] = []
         englishNames: dict[str, str] = {}
         NAMES[language] = names
         ENGLISH_NAMES[language] = englishNames
 
-        for name in nameList :
+        for name in langData['names'] :
             names.append(name['name'])
             englishNames[name['name']] = name['en']
+
+        for prohibited in langData['prohibiteds'] :
+            PROHIBITED_WORDS.append(prohibited)
+
+    print(PROHIBITED_WORDS)
 
 def isSupportedLanguage(language: str) -> bool :
     global NAMES
@@ -71,21 +79,6 @@ class EnglishNameMaker :
             self.enNameIndex += 1
 
         return enName
-
-PROHIBITED_WORDS = [
-    '시민', '마피아', '경찰', '의사',  # 기본 금칙어
-    'citizen', 'mafia', 'police', 'doctor',  # 영어 기본 금칙어
-    '살인자', '탐정', '범인', '피해자',  # 게임 관련 단어
-    'killer', 'detective', 'criminal', 'victim',  # 영어 관련 단어
-    '게임', '승리', '패배', '정답',  # 게임 용어
-    'game', 'win', 'lose', 'answer',  # 영어 게임 용어
-    'admin', '운영자', '호스트', '관리자',  # 관리 관련 용어
-    'admin', 'host', 'moderator',  # 영어 관리 관련 용어
-    '죽음', '생존', '투표', '찬성', '반대',  # 게임 진행과 관련된 단어
-    'death', 'survival', 'vote', 'yes', 'no',  # 영어 진행 관련 단어
-    '123', 'test', '닉네임', '이름', '무작위',  # 일반 금칙어
-    'nickname', 'random', 'name', 'test'  # 영어 일반 금칙어
-]
 
 class Result(Enum) :
     SUCCESS = 0             # 성공
