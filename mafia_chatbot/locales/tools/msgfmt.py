@@ -2,8 +2,19 @@ import os
 import subprocess
 
 locales: list[str] = [
-    'en',
-    'ko',
+    'de-DE',
+    'en-US',
+    'es-ES',
+    'fr-FR',
+    'it-IT',
+    'ja-JP',
+    'ko-KR',
+    'pt-BR',
+    'ru-RU',
+    'th-TH',
+    'vi-VN',
+    'zh-CN',
+    'zh-TW',
 ]
 
 for locale in locales :

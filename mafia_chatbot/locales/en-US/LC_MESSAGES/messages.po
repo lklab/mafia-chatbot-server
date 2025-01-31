@@ -1,82 +1,82 @@
-# SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# Language en-US translations for PACKAGE package.
+# Copyright (C) 2025 THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# <EMAIL@ADDRESS>, 2025.
 #
-#, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: 0.1\n"
+"Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-12-09 23:09+0900\n"
-"PO-Revision-Date: 2024-12-09 23:09+0900\n"
-"Last-Translator: khlee <khlee.avo@gmail.com>\n"
-"Language-Team: khlee <khlee.avo@gmail.com>\n"
-"Language: en\n"
+"POT-Creation-Date: 2025-01-31 18:52+0900\n"
+"PO-Revision-Date: 2025-01-31 18:50+0900\n"
+"Last-Translator: <EMAIL@ADDRESS>\n"
+"Language-Team: Language en-US\n"
+"Language: en-US\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: .\mafia_chatbot\game\game_manager.py:87
+#: mafia_chatbot/game/game_manager.py:96
 msgid "It is now morning. Please begin your discussion."
 msgstr "It is now morning. Please begin your discussion."
 
-#: mafia_chatbot/game/game_manager.py:131
+#: mafia_chatbot/game/game_manager.py:143
 msgid "Voting results"
 msgstr "Voting results"
 
-#: mafia_chatbot/game/game_manager.py:134
+#: mafia_chatbot/game/game_manager.py:148
 msgid "No one was executed due to a tie."
 msgstr "No one was executed due to a tie."
 
-#: mafia_chatbot/game/game_manager.py:138
+#: mafia_chatbot/game/game_manager.py:152
 #, python-brace-format
 msgid "{name} was executed. Their role was {role}."
 msgstr "{name} was executed. Their role was {role}."
 
-#: mafia_chatbot/game/game_manager.py:208
+#: mafia_chatbot/game/game_manager.py:225
+#: mafia_chatbot/game/game_manager.py:241
 msgid "The Mafia did not assassinate anyone."
 msgstr "The Mafia did not assassinate anyone."
 
-#: mafia_chatbot/game/game_manager.py:213
+#: mafia_chatbot/game/game_manager.py:231
 msgid "The Mafia attempted to assassinate someone but failed."
 msgstr "The Mafia attempted to assassinate someone but failed."
 
-#: mafia_chatbot/game/game_manager.py:219
+#: mafia_chatbot/game/game_manager.py:250
 #, python-brace-format
 msgid "{name} was assassinated by the Mafia. Their role was {role}."
 msgstr "{name} was assassinated by the Mafia. Their role was {role}."
 
-#: mafia_chatbot/game/game_manager.py:227
+#: mafia_chatbot/game/game_manager.py:258
 msgid "This message visible only to you"
 msgstr "This message visible only to you"
 
-#: mafia_chatbot/game/game_manager.py:228
+#: mafia_chatbot/game/game_manager.py:262
 #, python-brace-format
 msgid "{name} is a Mafia."
 msgstr "{name} is a Mafia."
 
-#: mafia_chatbot/game/game_manager.py:233
+#: mafia_chatbot/game/game_manager.py:264
 #, python-brace-format
 msgid "{name} is not a Mafia."
 msgstr "{name} is not a Mafia."
 
-#: mafia_chatbot/game/game_state.py:168
+#: mafia_chatbot/game/game_state.py:218
 msgid "Citizen"
 msgstr "Citizen"
 
-#: mafia_chatbot/game/game_state.py:169
+#: mafia_chatbot/game/game_state.py:219
 msgid "Mafia"
 msgstr "Mafia"
 
-#: mafia_chatbot/game/game_state.py:170
+#: mafia_chatbot/game/game_state.py:220
 msgid "Police"
 msgstr "Police"
 
-#: mafia_chatbot/game/game_state.py:171
+#: mafia_chatbot/game/game_state.py:221
 msgid "Doctor"
 msgstr "Doctor"
 
-#: mafia_chatbot/game/game_state.py:455
+#: mafia_chatbot/game/game_state.py:550
 msgid "System"
 msgstr "System"

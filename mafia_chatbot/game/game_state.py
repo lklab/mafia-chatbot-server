@@ -36,9 +36,22 @@ phaseToProtoDict: dict[Phase, game_data_pb2.Phase] = {
     Phase.NIGHT: game_data_pb2.Phase.Phase_NIGHT,
     Phase.END: game_data_pb2.Phase.Phase_END,
 }
+
+# 언어를 추가하려는 경우 여기, xgettext.py, msgfmt.py, names.json에 데이터를 추가해야 합니다.
 languageToCodeDict: dict[str, str] = {
-    'english' : 'en',
-    'korean' : 'ko',
+    'german': 'de-DE',
+    'english' : 'en-US',
+    'spanish' : 'es-ES',
+    'french' : 'fr-FR',
+    'italian' : 'it-IT',
+    'japanese' : 'ja-JP',
+    'korean' : 'ko-KR',
+    'portuguese' : 'pt-BR',
+    'russian' : 'ru-RU',
+    'thai' : 'th-TH',
+    'vietnamese' : 'vi-VN',
+    'simplified chinese' : 'zh-CN',
+    'traditional chinese' : 'zh-TW',
 }
 
 class VoteData :

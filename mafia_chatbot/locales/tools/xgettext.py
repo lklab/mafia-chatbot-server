@@ -7,8 +7,19 @@ srcFiles: list[str] = [
 ]
 potFile: str = 'mafia_chatbot/locales/messages.pot'
 locales: list[str] = [
-    'en',
-    'ko',
+    'de-DE',
+    'en-US',
+    'es-ES',
+    'fr-FR',
+    'it-IT',
+    'ja-JP',
+    'ko-KR',
+    'pt-BR',
+    'ru-RU',
+    'th-TH',
+    'vi-VN',
+    'zh-CN',
+    'zh-TW',
 ]
 
 result = subprocess.run([
@@ -24,12 +35,22 @@ if result.returncode != 0 :
     exit()
 
 for locale in locales :
-    result = subprocess.run([
-        'msgmerge',
-        '-U',
-        os.path.join('mafia_chatbot/locales', locale, 'LC_MESSAGES/messages.po'),
-        potFile,
-    ])
+    poFile = os.path.join('mafia_chatbot/locales', locale, 'LC_MESSAGES/messages.po')
+    if os.path.exists(poFile) :
+        result = subprocess.run([
+            'msgmerge',
+            '-U',
+            poFile,
+            potFile,
+        ])
+    else :
+        os.makedirs(os.path.dirname(poFile), exist_ok=True)
+        result = subprocess.run([
+            'msginit',
+            '--locale', locale,
+            '--input', potFile,
+            '--output-file', poFile
+        ])
 
     if result.returncode != 0 :
         print(f'\033[31mfail to xgettext:\033[0m {result.stderr}')
