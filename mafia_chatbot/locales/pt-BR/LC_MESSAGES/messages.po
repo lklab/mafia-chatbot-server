@@ -18,65 +18,65 @@ msgstr ""
 
 #: mafia_chatbot/game/game_manager.py:96
 msgid "It is now morning. Please begin your discussion."
-msgstr ""
+msgstr "Agora é de manhã. Por favor, comecem a discussão."
 
 #: mafia_chatbot/game/game_manager.py:143
 msgid "Voting results"
-msgstr ""
+msgstr "Resultados da votação"
 
 #: mafia_chatbot/game/game_manager.py:148
 msgid "No one was executed due to a tie."
-msgstr ""
+msgstr "Ninguém foi executado devido a um empate."
 
 #: mafia_chatbot/game/game_manager.py:152
 #, python-brace-format
 msgid "{name} was executed. Their role was {role}."
-msgstr ""
+msgstr "{name} foi executado(a). Seu papel era {role}."
 
 #: mafia_chatbot/game/game_manager.py:225
 #: mafia_chatbot/game/game_manager.py:241
 msgid "The Mafia did not assassinate anyone."
-msgstr ""
+msgstr "A Máfia não assassinou ninguém."
 
 #: mafia_chatbot/game/game_manager.py:231
 msgid "The Mafia attempted to assassinate someone but failed."
-msgstr ""
+msgstr "A Máfia tentou assassinar alguém, mas falhou."
 
 #: mafia_chatbot/game/game_manager.py:250
 #, python-brace-format
 msgid "{name} was assassinated by the Mafia. Their role was {role}."
-msgstr ""
+msgstr "{name} foi assassinado(a) pela Máfia. Seu papel era {role}."
 
 #: mafia_chatbot/game/game_manager.py:258
 msgid "This message visible only to you"
-msgstr ""
+msgstr "Esta mensagem é visível apenas para você."
 
 #: mafia_chatbot/game/game_manager.py:262
 #, python-brace-format
 msgid "{name} is a Mafia."
-msgstr ""
+msgstr "{name} é da Máfia."
 
 #: mafia_chatbot/game/game_manager.py:264
 #, python-brace-format
 msgid "{name} is not a Mafia."
-msgstr ""
+msgstr "{name} não é da Máfia."
 
 #: mafia_chatbot/game/game_state.py:218
 msgid "Citizen"
-msgstr ""
+msgstr "Cidadão"
 
 #: mafia_chatbot/game/game_state.py:219
 msgid "Mafia"
-msgstr ""
+msgstr "Máfia"
 
 #: mafia_chatbot/game/game_state.py:220
 msgid "Police"
-msgstr ""
+msgstr "Policial"
 
 #: mafia_chatbot/game/game_state.py:221
 msgid "Doctor"
-msgstr ""
+msgstr "Doutor"
 
 #: mafia_chatbot/game/game_state.py:550
 msgid "System"
-msgstr ""
+msgstr "Sistema"

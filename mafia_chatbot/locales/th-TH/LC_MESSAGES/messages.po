@@ -18,65 +18,65 @@ msgstr ""
 
 #: mafia_chatbot/game/game_manager.py:96
 msgid "It is now morning. Please begin your discussion."
-msgstr ""
+msgstr "ตอนนี้เป็นเวลาเช้า กรุณาเริ่มการสนทนา"
 
 #: mafia_chatbot/game/game_manager.py:143
 msgid "Voting results"
-msgstr ""
+msgstr "ผลการโหวต"
 
 #: mafia_chatbot/game/game_manager.py:148
 msgid "No one was executed due to a tie."
-msgstr ""
+msgstr "ไม่มีใครถูกประหารเนื่องจากคะแนนเสมอ"
 
 #: mafia_chatbot/game/game_manager.py:152
 #, python-brace-format
 msgid "{name} was executed. Their role was {role}."
-msgstr ""
+msgstr "{name} ถูกประหาร บทบาทของพวกเขาคือ {role}"
 
 #: mafia_chatbot/game/game_manager.py:225
 #: mafia_chatbot/game/game_manager.py:241
 msgid "The Mafia did not assassinate anyone."
-msgstr ""
+msgstr "มาเฟียไม่ได้สังหารใคร"
 
 #: mafia_chatbot/game/game_manager.py:231
 msgid "The Mafia attempted to assassinate someone but failed."
-msgstr ""
+msgstr "มาเฟียพยายามสังหารเป้าหมาย แต่ล้มเหลว"
 
 #: mafia_chatbot/game/game_manager.py:250
 #, python-brace-format
 msgid "{name} was assassinated by the Mafia. Their role was {role}."
-msgstr ""
+msgstr "{name} ถูกสังหารโดยมาเฟีย บทบาทของพวกเขาคือ {role}"
 
 #: mafia_chatbot/game/game_manager.py:258
 msgid "This message visible only to you"
-msgstr ""
+msgstr "ข้อความนี้มองเห็นได้เฉพาะคุณ"
 
 #: mafia_chatbot/game/game_manager.py:262
 #, python-brace-format
 msgid "{name} is a Mafia."
-msgstr ""
+msgstr "{name} เป็นมาเฟีย"
 
 #: mafia_chatbot/game/game_manager.py:264
 #, python-brace-format
 msgid "{name} is not a Mafia."
-msgstr ""
+msgstr "{name} ไม่ใช่มาเฟีย"
 
 #: mafia_chatbot/game/game_state.py:218
 msgid "Citizen"
-msgstr ""
+msgstr "พลเมือง"
 
 #: mafia_chatbot/game/game_state.py:219
 msgid "Mafia"
-msgstr ""
+msgstr "มาเฟีย"
 
 #: mafia_chatbot/game/game_state.py:220
 msgid "Police"
-msgstr ""
+msgstr "ตำรวจ"
 
 #: mafia_chatbot/game/game_state.py:221
 msgid "Doctor"
-msgstr ""
+msgstr "หมอ"
 
 #: mafia_chatbot/game/game_state.py:550
 msgid "System"
-msgstr ""
+msgstr "ระบบ"

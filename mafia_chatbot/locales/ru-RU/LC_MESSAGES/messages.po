@@ -18,65 +18,65 @@ msgstr ""
 
 #: mafia_chatbot/game/game_manager.py:96
 msgid "It is now morning. Please begin your discussion."
-msgstr ""
+msgstr "Сейчас утро. Пожалуйста, начните обсуждение."
 
 #: mafia_chatbot/game/game_manager.py:143
 msgid "Voting results"
-msgstr ""
+msgstr "Результаты голосования"
 
 #: mafia_chatbot/game/game_manager.py:148
 msgid "No one was executed due to a tie."
-msgstr ""
+msgstr "Никто не был казнен из-за ничьи."
 
 #: mafia_chatbot/game/game_manager.py:152
 #, python-brace-format
 msgid "{name} was executed. Their role was {role}."
-msgstr ""
+msgstr "{name} был(а) казнен(а). Его(её) роль — {role}."
 
 #: mafia_chatbot/game/game_manager.py:225
 #: mafia_chatbot/game/game_manager.py:241
 msgid "The Mafia did not assassinate anyone."
-msgstr ""
+msgstr "Мафия никого не убила."
 
 #: mafia_chatbot/game/game_manager.py:231
 msgid "The Mafia attempted to assassinate someone but failed."
-msgstr ""
+msgstr "Мафия попыталась убить кого-то, но потерпела неудачу."
 
 #: mafia_chatbot/game/game_manager.py:250
 #, python-brace-format
 msgid "{name} was assassinated by the Mafia. Their role was {role}."
-msgstr ""
+msgstr "{name} был(а) убит(а) мафией. Его(её) роль — {role}."
 
 #: mafia_chatbot/game/game_manager.py:258
 msgid "This message visible only to you"
-msgstr ""
+msgstr "Это сообщение видно только вам."
 
 #: mafia_chatbot/game/game_manager.py:262
 #, python-brace-format
 msgid "{name} is a Mafia."
-msgstr ""
+msgstr "{name} — мафия."
 
 #: mafia_chatbot/game/game_manager.py:264
 #, python-brace-format
 msgid "{name} is not a Mafia."
-msgstr ""
+msgstr "{name} не является мафией."
 
 #: mafia_chatbot/game/game_state.py:218
 msgid "Citizen"
-msgstr ""
+msgstr "Мирный житель"
 
 #: mafia_chatbot/game/game_state.py:219
 msgid "Mafia"
-msgstr ""
+msgstr "Мафия"
 
 #: mafia_chatbot/game/game_state.py:220
 msgid "Police"
-msgstr ""
+msgstr "Полицейский"
 
 #: mafia_chatbot/game/game_state.py:221
 msgid "Doctor"
-msgstr ""
+msgstr "Доктор"
 
 #: mafia_chatbot/game/game_state.py:550
 msgid "System"
-msgstr ""
+msgstr "Система"

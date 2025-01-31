@@ -18,65 +18,65 @@ msgstr ""
 
 #: mafia_chatbot/game/game_manager.py:96
 msgid "It is now morning. Please begin your discussion."
-msgstr ""
+msgstr "Es ist jetzt Morgen. Bitte beginnt eure Diskussion."
 
 #: mafia_chatbot/game/game_manager.py:143
 msgid "Voting results"
-msgstr ""
+msgstr "Wahlergebnisse"
 
 #: mafia_chatbot/game/game_manager.py:148
 msgid "No one was executed due to a tie."
-msgstr ""
+msgstr "Niemand wurde hingerichtet aufgrund eines Gleichstands."
 
 #: mafia_chatbot/game/game_manager.py:152
 #, python-brace-format
 msgid "{name} was executed. Their role was {role}."
-msgstr ""
+msgstr "{name} wurde hingerichtet. Ihre Rolle war {role}."
 
 #: mafia_chatbot/game/game_manager.py:225
 #: mafia_chatbot/game/game_manager.py:241
 msgid "The Mafia did not assassinate anyone."
-msgstr ""
+msgstr "Die Mafia hat niemanden ermordet."
 
 #: mafia_chatbot/game/game_manager.py:231
 msgid "The Mafia attempted to assassinate someone but failed."
-msgstr ""
+msgstr "Die Mafia hat versucht, jemanden zu ermorden, aber ist gescheitert."
 
 #: mafia_chatbot/game/game_manager.py:250
 #, python-brace-format
 msgid "{name} was assassinated by the Mafia. Their role was {role}."
-msgstr ""
+msgstr "{name} wurde von der Mafia ermordet. Ihre Rolle war {role}."
 
 #: mafia_chatbot/game/game_manager.py:258
 msgid "This message visible only to you"
-msgstr ""
+msgstr "Diese Nachricht ist nur für dich sichtbar."
 
 #: mafia_chatbot/game/game_manager.py:262
 #, python-brace-format
 msgid "{name} is a Mafia."
-msgstr ""
+msgstr "{name} ist ein Mafia-Mitglied."
 
 #: mafia_chatbot/game/game_manager.py:264
 #, python-brace-format
 msgid "{name} is not a Mafia."
-msgstr ""
+msgstr "{name} ist kein Mafia-Mitglied."
 
 #: mafia_chatbot/game/game_state.py:218
 msgid "Citizen"
-msgstr ""
+msgstr "Bürger"
 
 #: mafia_chatbot/game/game_state.py:219
 msgid "Mafia"
-msgstr ""
+msgstr "Mafia"
 
 #: mafia_chatbot/game/game_state.py:220
 msgid "Police"
-msgstr ""
+msgstr "Polizist"
 
 #: mafia_chatbot/game/game_state.py:221
 msgid "Doctor"
-msgstr ""
+msgstr "Arzt"
 
 #: mafia_chatbot/game/game_state.py:550
 msgid "System"
-msgstr ""
+msgstr "System"
