@@ -272,7 +272,7 @@ class GameManager :
 
     def _addSystemChat(self, content, receiver: PlayerInfo = None) :
         self.gameState.appendSystemChat(content, receiver=receiver)
-        self._printCUI(content)
+        # self._printCUI(content)
 
     def _printCUI(self, text) :
         if self.gameState.gameInfo.isCUI :
