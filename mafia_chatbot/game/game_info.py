@@ -53,7 +53,7 @@ class GameInfo :
         self.localPlayerName = localPlayerName
 
         self.language = language.lower()
-        self.fixedRole = fixedRole if len(users) == 1 else None
+        self.fixedRole = fixedRole if len(self.users) == 1 else None
 
         self.useLLM = True
         self.isCUI = localPlayerName != None
