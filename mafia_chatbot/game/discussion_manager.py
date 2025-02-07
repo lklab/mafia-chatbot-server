@@ -1,6 +1,6 @@
 import random
 import asyncio
-from typing import Callable
+from typing import Callable, Awaitable
 import time
 
 from mafia_chatbot.game.game_state import GameState
@@ -42,10 +42,15 @@ class DiscussionContext :
     def __init__(self) :
         self.history: list[tuple[Player, ChatData, Strategy]] = []
         self.lastDiscussuinTime: float = time.monotonic()
+        self.mustResponse = False
 
     def addDiscussion(self, player: Player, chat: ChatData, strategy: Strategy = None) :
         self.history.append((player, chat, strategy))
         self.lastDiscussuinTime: float = time.monotonic()
+        self.mustResponse = False
+
+    def setMustResponse(self) :
+        self.mustResponse = True
 
     def getLength(self) -> int :
         return len(self.history)
@@ -61,6 +66,9 @@ class DiscussionContext :
 
     def getChatList(self) -> list[str] :
         return list(map(lambda h : f'{h[1].sender.name}: {h[1].content}', self.history))
+
+    def isMustResponse(self) -> bool :
+        return self.mustResponse
 
 class DiscussionManager :
     def __init__(self, gameState: GameState, trustRecorder: TrustRecorder, llm: LLM, achievementsManager: AchievementsManager) :
@@ -167,8 +175,10 @@ class DiscussionManager :
                     break
 
             # generate discussion
+            mustResponse: bool = False
+
             if self.gameState.gameInfo.useLLM :
-                discussion: str = await self.llm.getDiscussion(dPlayer.player, strategy)
+                discussion, mustResponse = await self._getDiscussionFromStrategy(dPlayer.player, strategy)
                 if not self._isRunning :
                     return
                 discussion = discussion.removeprefix(f'{dPlayer.player.info.name}: ')
@@ -182,11 +192,56 @@ class DiscussionManager :
             chat: ChatData = self.gameState.appendDiscussionChat(dPlayer.player.info, discussion)
 
             # response
-            self._startResponseThread(dPlayer.player, chat, strategy)
+            self._startResponseThread(dPlayer.player, chat, strategy=strategy, mustResponse=mustResponse)
 
-    def _startResponseThread(self, speaker: Player, chat: ChatData, strategy: Strategy = None) :
+    async def _getDiscussionFromStrategy(self, player: Player, strategy: Strategy) -> tuple[str, bool] :
+        if not strategy.isDefaultReasonIncluded() :
+            discussion: str = await self.llm.getDiscussion(player, strategy)
+            return discussion, False
+
+        # 최근 n개 대화 내역에 대상의 발언이 있는지 확인
+        chatList = self.gameState.chatList
+        chatCount: int = 5
+        targetChat: ChatData = None
+        for i in range(len(chatList) - 1, max(-1, len(chatList) - 1 - chatCount), -1) :
+            if chatList[i].sender == strategy.mainTarget :
+                targetChat = chatList[i]
+                break
+
+        # 랜덤으로 선택
+        methods: list[int] = list(range(4))
+        weights: list[float] = [2, 1, 1, 1]
+        if targetChat == None :
+            weights[3] = 0
+        method: int = random.choices(methods, weights=weights, k=1)[0]
+
+        mustResponse: bool = False
+
+        # strategy 그대로 사용
+        if method == 0 :
+            discussion: str = await self.llm.getDiscussion(player, strategy, conversationLogsCount=chatCount)
+
+        # 대상에게 질문하기
+        elif method == 1 :
+            discussion: str = await self.llm.generateQuestion(player, self.gameState.getPlayerByInfo(strategy.mainTarget), self.gameState.getRecentConversationLogs(chatCount))
+            mustResponse = True
+
+        # 아무 말 하기
+        elif method == 2 :
+            discussion: str = await self.llm.generateNormalDiscussion(player, self.gameState.getRecentConversationLogs(chatCount))
+
+        # 대상의 최근 토론을 의심하기
+        else : # elif method == 3 :
+            strategy.changeDefaultReason(f"Make a plausible argument to suspect {targetChat.sender.name} as the mafia based on their statement: \"{targetChat.content}\".")
+            discussion: str = await self.llm.getDiscussion(player, strategy, conversationLogsCount=chatCount)
+
+        return discussion, mustResponse
+
+    def _startResponseThread(self, speaker: Player, chat: ChatData, strategy: Strategy = None, mustResponse: bool = False) :
         context: DiscussionContext = DiscussionContext()
         context.addDiscussion(speaker, chat, strategy)
+        if mustResponse :
+            context.setMustResponse()
 
         self._processNextResponse(context)
 
@@ -207,8 +262,8 @@ class DiscussionManager :
                     return
 
         historyTerm: float = 1.0 / context.getLength()
-        willResponse: bool = strategy == None and historyTerm > random.random()
-        if strategy != None :
+        willResponse: bool = context.isMustResponse() or (strategy == None and historyTerm > random.random())
+        if not willResponse :
             willResponse = 0.2 * historyTerm > random.random()
 
         if willResponse :
@@ -306,7 +361,7 @@ class DiscussionManager :
                 self.achievementsManager.onStrategyUpdated(speaker, strategy)
 
                 # response
-                self._startResponseThread(speaker, chat, strategy)
+                self._startResponseThread(speaker, chat, strategy=strategy)
 
             # 유효하지 않은 전략일 경우
             else :
@@ -318,7 +373,7 @@ class DiscussionManager :
                 return None
             strategy: Strategy = evaluator.getOneTargetStrategy(speaker.publicRole, target.info, '')
             self.logger.log(TAG.DISCUSSION, f'{speaker.info.name}: strategy is {strategy}')
-            self._startResponseThread(speaker, chat, strategy)
+            self._startResponseThread(speaker, chat, strategy=strategy)
 
     def _addDiscussionCount(self, dPlayer: DiscussionPlayer) :
         self._allDiscussionCount += 1

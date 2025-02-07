@@ -113,6 +113,11 @@ class Strategy :
                 return True
         return False
 
+    def changeDefaultReason(self, reason) :
+        for assumption in self.assumptions :
+            if assumption.isDefaultReason :
+                assumption.reason = reason
+
     def __eq__(self, other) :
         if not isinstance(other, Strategy) :
             return False

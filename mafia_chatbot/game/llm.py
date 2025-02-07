@@ -59,8 +59,10 @@ class LLM :
         self._setupCheckClaimsMafiaChain()
         self._setupCheckQuestionChain()
         self._setupGenerateResponseChain(gameState.gameInfo)
+        self._setupGenerateQuestionChain(gameState.gameInfo)
+        self._setupGenerateNormalDiscussionChain(gameState.gameInfo)
 
-    async def getDiscussion(self, player: Player, strategy: Strategy) -> str :
+    async def getDiscussion(self, player: Player, strategy: Strategy, conversationLogsCount: int = 5) -> str :
         self.logger.log(TAG.LLM, f'{player.info.name}: getDiscussion input: {strategy}')
 
         publicRole, _ = player.getChangeRole(strategy.publicRole)
@@ -78,7 +80,7 @@ class LLM :
             'public_role_strategy' : publicRoleStrategy,
             'estimations' : ', '.join(map(lambda e: f"{e.playerInfo.name}'s role is {roleToStrDict[e.role]}", strategy.assumptions[0].estimations)),
             'tone': player.info.tone,
-            'conversation_logs' : '\n'.join(self.gameState.getRecentConversationLogs(5)),
+            'conversation_logs' : '\n'.join(self.gameState.getRecentConversationLogs(conversationLogsCount)),
             'evidence' : strategy.assumptions[0].reason,
         }
 
@@ -239,6 +241,40 @@ class LLM :
             return (None, None)
 
         return (respondent, message)
+
+    async def generateQuestion(self, speaker: Player, target: Player, conversation: list[str]) -> str :
+        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateQuestion, target: {target.info.name}')
+
+        messages = []
+        for message in conversation :
+            messages.append(HumanMessage(content=message))
+
+        return await self._ainvokeChain(
+            chain=self.generateQuestionChain,
+            input={
+                'my_name' : speaker.info.name,
+                'name' : target.info.name,
+                'tone' : speaker.info.tone,
+                'messages' : messages,
+            }
+        )
+
+    async def generateNormalDiscussion(self, speaker: Player, conversation: list[str]) -> str :
+        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateNormalDiscussion')
+
+        messages = []
+        for message in conversation :
+            messages.append(HumanMessage(content=message))
+
+        return await self._ainvokeChain(
+            chain=self.generateNormalDiscussionChain,
+            input={
+                'my_name' : speaker.info.name,
+                'tone' : speaker.info.tone,
+                'otherParticipants' : ', '.join(map(lambda p : p.info.name, filter(lambda p : p != speaker, self.gameState.players))),
+                'messages' : messages,
+            }
+        )
 
     def _setupDiscussionChain(self, gameInfo: GameInfo) :
         # setup model
@@ -491,6 +527,66 @@ class LLM :
 
         # setup chain
         self.generateResponseChain = prompt | model | parser
+
+    def _setupGenerateQuestionChain(self, gameInfo: GameInfo) :
+        # setup model
+        model = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash",
+            temperature=0.9,
+        )
+
+        # setup prompt
+        systemMessageTemplate = (
+            "You are a player participating in a Mafia game. Your name is {my_name}. You suspect that {name} is the mafia, so you are about to ask them a question. Please write a question to ask them. The content of the question is free and creative, but it should be plausible within the context of the mafia game. Keep your statement concise, limited to two sentences, and written in a {tone} tone, written in %(language)s and resembling natural dialogue. %(dont_tranlate)s"
+        )
+        systemMessageTemplate = systemMessageTemplate % {
+            'language' : gameInfo.language,
+            'dont_tranlate' : ' Do not translate into english.' if gameInfo.language != 'english' else '',
+        }
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                ('system', systemMessageTemplate),
+                MessagesPlaceholder(variable_name="messages"),
+            ]
+        )
+
+        # setup parser
+        parser = StrOutputParser()
+
+        # setup chain
+        self.generateQuestionChain = prompt | model | parser
+
+    def _setupGenerateNormalDiscussionChain(self, gameInfo: GameInfo) :
+        # setup model
+        model = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash",
+            temperature=0.9,
+        )
+
+        # setup prompt
+        systemMessageTemplate = (
+            "You are a participant in a mafia game. Your name is {my_name}. Instead of suspecting someone, you want to speak freely. Please write what you would say. If you want to mention another participant, refer to ##List of Other Participants##. However, you must not state that someone is the mafia, regardless of intent, nor reveal that your role is anything other than a citizen or imply that you are not a citizen. Keep your statement concise, limited to two sentences, and written in a {tone} tone, written in %(language)s and resembling natural dialogue. %(dont_tranlate)s"
+            "\n\n"
+            "##List of Other Participants##"
+            "\n"
+            "{otherParticipants}"
+        )
+        systemMessageTemplate = systemMessageTemplate % {
+            'language' : gameInfo.language,
+            'dont_tranlate' : ' Do not translate into english.' if gameInfo.language != 'english' else '',
+        }
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                ('system', systemMessageTemplate),
+                MessagesPlaceholder(variable_name="messages"),
+            ]
+        )
+
+        # setup parser
+        parser = StrOutputParser()
+
+        # setup chain
+        self.generateNormalDiscussionChain = prompt | model | parser
 
     async def _ainvokeChain(self, chain: RunnableSerializable[dict, BaseMessage], input: dict[str, str]) -> BaseMessage :
         try :
