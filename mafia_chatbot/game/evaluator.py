@@ -37,6 +37,9 @@ def evaluateDiscussionStrategy(gameState: GameState, recorder: TrustRecorder, me
             gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: discussion strategy result (normal): {strategy}')
             return strategy
 
+    gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: discussion strategy is None')
+    return None
+
 # 투표 전략 생성
 def evaluateVoteStrategy(gameState: GameState, recorder: TrustRecorder, me: Player) -> VoteStrategy :
     gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: start evaluate vote strategy')
@@ -45,6 +48,9 @@ def evaluateVoteStrategy(gameState: GameState, recorder: TrustRecorder, me: Play
         if target :
             gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: vote strategy result: {target.info.name}')
             return VoteStrategy(target.info)
+
+    gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: vote strategy is None')
+    return None
 
 # 암살 전략
 def evaluateKillTarget(gameState: GameState, recorder: TrustRecorder) -> Player :
@@ -236,18 +242,22 @@ def _getTargetFormTwoDoctor(gameState: GameState, recorder: TrustRecorder, me: P
 
 def _getTargetByTrustConformityRandom(gameState: GameState, recorder: TrustRecorder, me: Player) -> tuple[Player, str] :
     gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getTargetByTrustConformityRandom')
+    return None, None
 
-    candidates: list[PlayerInfo] = []
-    for player in gameState.players :
-        profile: TrustProfile = recorder.getTrustProfile(player.info)
-        if player == me or not profile.isTargetable() :
-            continue
-        candidates.append(player.info)
-    _logCandidates(gameState.logger, TAG.STRATEGY, candidates)
+    # candidates: list[PlayerInfo] = []
+    # for player in gameState.players :
+    #     profile: TrustProfile = recorder.getTrustProfile(player.info)
+    #     if player == me or not profile.isTargetable() :
+    #         continue
+    #     candidates.append(player.info)
+    # _logCandidates(gameState.logger, TAG.STRATEGY, candidates)
 
-    targetInfo: PlayerInfo = _choiceFromCandidates(gameState, recorder, me, candidates)
-    targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
-    return targetPlayer, recorder.getNegativeTrustReason(targetInfo)
+    # if len(candidates) == 0 :
+    #     return None, None
+
+    # targetInfo: PlayerInfo = _choiceFromCandidates(gameState, recorder, me, candidates)
+    # targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
+    # return targetPlayer, recorder.getNegativeTrustReason(targetInfo)
 
 _targetSelecters: list[Callable[[GameState, TrustRecorder, Player], tuple[Player, str]]] = [
     _getPolicePoiningMe,

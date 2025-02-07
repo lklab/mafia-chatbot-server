@@ -163,8 +163,9 @@ class GameManager :
 
         while self.gameState.currentPhase == Phase.EVENING :
             strategy: VoteStrategy = evaluator.evaluateVoteStrategy(self.gameState, self.trustRecorder, player)
-            voteData.setVoteStrategy(player, strategy)
-            self.trustRecorder.voteStrategyUpdated(player.info, strategy)
+            if strategy != None :
+                voteData.setVoteStrategy(player, strategy)
+                self.trustRecorder.voteStrategyUpdated(player.info, strategy)
 
             await asyncio.sleep(random.uniform(0.1, 0.3) * eveningPeriod * 2.0 / 3.0)
 

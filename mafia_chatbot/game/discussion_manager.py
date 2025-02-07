@@ -162,6 +162,8 @@ class DiscussionManager :
 
                 # evaluate strategy
                 strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, self.trustRecorder, dPlayer.player)
+                if strategy == None :
+                    break
 
                 # check strategy is changed
                 if (
@@ -173,6 +175,9 @@ class DiscussionManager :
                     self.logger.log(TAG.DISCUSSION, f'{dPlayer.player.info.name}\'s strategy is same, skip(limit={limit}). before={pastStrategy}, after={strategy}')
                 else :
                     break
+
+            if strategy == None :
+                continue
 
             # generate discussion
             mustResponse: bool = False
@@ -460,8 +465,9 @@ class DiscussionManager :
             ratio: float = pointerCount / (self.gameState.getPlayerCount() - 1)
             if ratio > random.random() :
                 strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, self.trustRecorder, player)
-                self.logger.log(TAG.DISCUSSION, f'{player.info.name}: iampointed {strategy}')
-                return RespondentStrategy(self.dPlayersByPlayer[player], strategy)
+                if strategy != None :
+                    self.logger.log(TAG.DISCUSSION, f'{player.info.name}: iampointed {strategy}')
+                    return RespondentStrategy(self.dPlayersByPlayer[player], strategy)
 
         return None
 
