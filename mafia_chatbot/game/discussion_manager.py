@@ -1,6 +1,7 @@
 import random
 import asyncio
 from typing import Callable
+import time
 
 from mafia_chatbot.game.game_state import GameState
 from mafia_chatbot.game.trust_recorder import TrustRecorder
@@ -36,6 +37,30 @@ class RespondentStrategy :
         self.respondent = dPlayer.player
         self.dPlayer = dPlayer
         self.strategy = strategy
+
+class DiscussionContext :
+    def __init__(self) :
+        self.history: list[tuple[Player, ChatData, Strategy]] = []
+        self.lastDiscussuinTime: float = time.monotonic()
+
+    def addDiscussion(self, player: Player, chat: ChatData, strategy: Strategy = None) :
+        self.history.append((player, chat, strategy))
+        self.lastDiscussuinTime: float = time.monotonic()
+
+    def getLength(self) -> int :
+        return len(self.history)
+
+    def getLastSpeaker(self) -> Player :
+        return self.history[-1][0]
+
+    def getLastChat(self) -> ChatData :
+        return self.history[-1][1]
+
+    def getLastStrategy(self) -> Strategy :
+        return self.history[-1][2]
+
+    def getChatList(self) -> list[str] :
+        return list(map(lambda h : f'{h[1].sender.name}: {h[1].content}', self.history))
 
 class DiscussionManager :
     def __init__(self, gameState: GameState, trustRecorder: TrustRecorder, llm: LLM, achievementsManager: AchievementsManager) :
@@ -157,31 +182,41 @@ class DiscussionManager :
             chat: ChatData = self.gameState.appendDiscussionChat(dPlayer.player.info, discussion)
 
             # response
-            self._checkResponse(dPlayer.player, strategy, chat)
+            self._startResponseThread(dPlayer.player, chat, strategy)
 
-    def _checkResponse(self, speaker: Player, strategy: Strategy, chat: ChatData) :
+    def _startResponseThread(self, speaker: Player, chat: ChatData, strategy: Strategy = None) :
+        context: DiscussionContext = DiscussionContext()
+        context.addDiscussion(speaker, chat, strategy)
+
+        self._processNextResponse(context)
+
+    def _processNextResponse(self, context: DiscussionContext) :
         if not self._isRunning :
             return
+
+        speaker: Player = context.getLastSpeaker()
+        strategy: Strategy = context.getLastStrategy()
 
         if strategy != None :
             speakerStrategy: SpeakerStrategy = SpeakerStrategy(speaker, strategy)
             for getter in DiscussionManager._respondentStrategyGetters :
                 respondentStrategy = getter(self, speakerStrategy)
                 if respondentStrategy != None :
-                    task: asyncio.Task = asyncio.create_task(self._responseStrategyLogic(respondentStrategy))
+                    task: asyncio.Task = asyncio.create_task(self._responseStrategyLogic(context, respondentStrategy))
                     self._responseLogicTasks.append(task)
                     return
 
-        willResponse: bool = strategy == None
+        historyTerm: float = 1.0 / context.getLength()
+        willResponse: bool = strategy == None and historyTerm > random.random()
         if strategy != None :
-            willResponse = 0.2 > random.random()
+            willResponse = 0.2 * historyTerm > random.random()
 
         if willResponse :
-            task: asyncio.Task = asyncio.create_task(self._responseNormalLogic(speaker, chat))
+            task: asyncio.Task = asyncio.create_task(self._responseNormalLogic(context))
             self._responseLogicTasks.append(task)
             return
 
-    async def _responseStrategyLogic(self, respondentStrategy: RespondentStrategy) :
+    async def _responseStrategyLogic(self, context: DiscussionContext, respondentStrategy: RespondentStrategy) :
         respondent: Player = respondentStrategy.respondent
         strategy: Strategy = respondentStrategy.strategy
         self._addDiscussionCount(respondentStrategy.dPlayer)
@@ -195,27 +230,52 @@ class DiscussionManager :
         else :
             discussion: str = str(strategy)
 
+        # wait
+        speakTime: float = context.lastDiscussuinTime + random.uniform(5.0, 10.0)
+        if speakTime > time.monotonic() :
+            await asyncio.sleep(speakTime - time.monotonic())
+            if not self._isRunning :
+                return
+
         # save data
         respondent.setDiscussionStrategy(self.gameState.round, strategy)
         self.trustRecorder.discussionStrategyUpdated(respondent.info, strategy)
         self.achievementsManager.onStrategyUpdated(respondent, strategy)
-        self.gameState.appendDiscussionChat(respondent.info, discussion)
+        chat: ChatData = self.gameState.appendDiscussionChat(respondent.info, discussion)
+        context.addDiscussion(respondent, chat, strategy)
 
-    async def _responseNormalLogic(self, speaker: Player, chat: ChatData) :
+        # process next response
+        self._processNextResponse(context)
+
+    async def _responseNormalLogic(self, context: DiscussionContext) :
         if not self.gameState.gameInfo.useLLM :
             return
 
-        # chat을 마지막으로 하는 대화 내역 가져오기
-        conversation: list[str] = self.gameState.getDiscussionChatLogs(5, lastChat=chat)
+        if context.getLength() == 1 :
+            # chat을 마지막으로 하는 대화 내역 가져오기
+            conversation: list[str] = self.gameState.getDiscussionChatLogs(5, lastChat=context.getLastChat())
+        else :
+            conversation: list[str] = context.getChatList()
 
         # 응답 생성하기
-        respondent, response = await self.llm.generateResponse(speaker, conversation)
+        respondent, response = await self.llm.generateResponse(context.getLastSpeaker(), conversation)
         if respondent == None or not self._isRunning :
             return
 
+        # wait
+        speakTime: float = context.lastDiscussuinTime + random.uniform(5.0, 10.0)
+        if speakTime > time.monotonic() :
+            await asyncio.sleep(speakTime - time.monotonic())
+            if not self._isRunning :
+                return
+
         # save data
         self._addDiscussionCount(self.dPlayersByPlayer[respondent])
-        self.gameState.appendDiscussionChat(respondent.info, response)
+        chat: ChatData = self.gameState.appendDiscussionChat(respondent.info, response)
+        context.addDiscussion(respondent, chat)
+
+        # process next response
+        self._processNextResponse(context)
 
     def _onHumanChat(self, chat: ChatData) :
         # check state
@@ -231,7 +291,7 @@ class DiscussionManager :
             # 질문인 경우 바로 응답 메시지 생성
             isQuestion: bool = await self.llm.isMessageQuestion(chat.content)
             if isQuestion :
-                self._checkResponse(speaker, None, chat)
+                self._startResponseThread(speaker, chat)
                 return
 
             # 사용자의 메시지 분석
@@ -246,11 +306,11 @@ class DiscussionManager :
                 self.achievementsManager.onStrategyUpdated(speaker, strategy)
 
                 # response
-                self._checkResponse(speaker, strategy, chat)
+                self._startResponseThread(speaker, chat, strategy)
 
             # 유효하지 않은 전략일 경우
             else :
-                self._checkResponse(speaker, None, chat)
+                self._startResponseThread(speaker, chat)
 
         else :
             target: Player = self.gameState.getPlayerByName(chat.content)
@@ -258,7 +318,7 @@ class DiscussionManager :
                 return None
             strategy: Strategy = evaluator.getOneTargetStrategy(speaker.publicRole, target.info, '')
             self.logger.log(TAG.DISCUSSION, f'{speaker.info.name}: strategy is {strategy}')
-            self._checkResponse(speaker, strategy, chat)
+            self._startResponseThread(speaker, chat, strategy)
 
     def _addDiscussionCount(self, dPlayer: DiscussionPlayer) :
         self._allDiscussionCount += 1

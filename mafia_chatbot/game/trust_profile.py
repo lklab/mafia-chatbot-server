@@ -12,7 +12,6 @@ from enum import Enum
 
 from mafia_chatbot.game.player_info import PlayerInfo
 from mafia_chatbot.game.game_logger import GameLogger, TAG
-from mafia_chatbot.game.strategy import defaultReason
 
 class TrustState(Enum) :
     NORMAL = 0
@@ -34,8 +33,8 @@ class TrustRecord :
             point = 100.0
 
         self.point: float = point
-        self.reason: str = reason if reason != None else defaultReason
-        self.negativeReason: str = self.reason if self.point < 0 else defaultReason
+        self.reason: str = reason
+        self.negativeReason: str = self.reason if self.point < 0 else None
 
     def __str__(self) :
         return f'(point={self.point}, reason={self.reason})'
@@ -48,7 +47,7 @@ class TrustRecord :
             return self.point == other.point and self.reason == other.reason
         return False
 
-    def __hash__(self):
+    def __hash__(self) :
         return hash((self.point, self.reason))
 
 recordsByTrustStateDict: dict[TrustState, TrustRecord] = {
@@ -86,7 +85,7 @@ class TrustProfile :
         self.logger = logger
 
         self.state: TrustState = TrustState.NORMAL
-        self._mainRecord: TrustRecord = TrustRecord(0.0, defaultReason)
+        self._mainRecord: TrustRecord = TrustRecord(0.0)
         self.mainRecord: TrustRecord = self._mainRecord
 
     def addRecord(self, record: TrustRecord) :
@@ -124,8 +123,8 @@ class TrustProfile :
 
 if __name__ == "__main__" :
     reason = 'asd'
-    r1 = TrustRecord(10.0, reason)
-    r2 = TrustRecord(10.0, 'asd')
+    r1 = TrustRecord(10.0)
+    r2 = TrustRecord(10.0)
     print(r1 == r2)
 
     rset = set()

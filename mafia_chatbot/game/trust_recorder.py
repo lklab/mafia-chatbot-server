@@ -2,7 +2,7 @@ from mafia_chatbot.game.game_state import GameState, VoteData, RemoveReason
 from mafia_chatbot.game.trust_profile import TrustProfile, TrustRecord, TrustState, normalizePoint
 from mafia_chatbot.game.player import Player
 from mafia_chatbot.game.player_info import PlayerInfo, Role
-from mafia_chatbot.game.strategy import Strategy, VoteStrategy, defaultReason
+from mafia_chatbot.game.strategy import Strategy, VoteStrategy
 
 class TrustRecorder :
     def __init__(self, gameState: GameState) :
@@ -174,10 +174,8 @@ class TrustRecorder :
         record: TrustRecord = self.profileByPlayerInfo[playerInfo].mainRecord
         if record.point < 0.0 :
             return record.reason
-        elif negativeReason != None :
-            return negativeReason
         else :
-            return defaultReason
+            return negativeReason
 
     def getPositiveTrustReason(self, playerInfo: PlayerInfo, positiveReason: str) -> str :
         record: TrustRecord = self.profileByPlayerInfo[playerInfo].mainRecord

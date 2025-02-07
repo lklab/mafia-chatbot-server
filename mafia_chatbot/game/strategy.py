@@ -35,9 +35,16 @@ class AssumptionType(Enum) :
     HEAL_SUCCESS = 2
 
 class Assumption :
-    def __init__(self, estimations: list[Estimation], reason: str, assumptionType: AssumptionType = AssumptionType.NORMAL) :
+    def __init__(self, estimations: list[Estimation], reason: str = None, assumptionType: AssumptionType = AssumptionType.NORMAL) :
         self.estimations = estimations
-        self.reason = reason
+
+        if reason != None :
+            self.reason = reason
+            self.isDefaultReason: bool = False
+        else :
+            self.reason = defaultReason # TODO
+            self.isDefaultReason: bool = True
+
         self.assumptionType = assumptionType
 
     def __str__(self) :
@@ -102,7 +109,7 @@ class Strategy :
 
     def isDefaultReasonIncluded(self) -> bool :
         for assumption in self.assumptions :
-            if assumption.reason == defaultReason :
+            if assumption.isDefaultReason :
                 return True
         return False
 
