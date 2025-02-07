@@ -215,7 +215,7 @@ class DiscussionManager :
 
         # 랜덤으로 선택
         methods: list[int] = list(range(4))
-        weights: list[float] = [2, 1, 1, 1]
+        weights: list[float] = [2, 1, 1, 5]
         if targetChat == None :
             weights[3] = 0
         method: int = random.choices(methods, weights=weights, k=1)[0]

@@ -1,143 +1,4 @@
-from enum import Enum
-import random
-
-from mafia_chatbot.game.player_info import *
-
-class Estimation :
-    def __init__(self,
-            playerInfo: PlayerInfo,
-            role: Role) :
-
-        self.playerInfo = playerInfo
-        self.role = role
-
-    def __str__(self) :
-        return f'{self.playerInfo.name}={self.role.name.lower()}'
-
-    def __repr__(self) :
-        return self.__str__()
-
-    def __eq__(self, other) :
-        if isinstance(other, Estimation) :
-            return self.playerInfo.id == other.playerInfo.id and self.role == other.role
-        return False
-
-    def __hash__(self):
-        return hash((self.playerInfo.id, self.role))
- 
-    def getPrompt(self) :
-        return f'{self.playerInfo.name}\'s role is {self.role.name.lower()}'
-
-class AssumptionType(Enum) :
-    NORMAL = 0
-    TEST_RESULT = 1
-    HEAL_SUCCESS = 2
-
-class Assumption :
-    def __init__(self, estimations: list[Estimation], reason: str = None, assumptionType: AssumptionType = AssumptionType.NORMAL) :
-        self.estimations = estimations
-
-        if reason != None :
-            self.reason = reason
-            self.isDefaultReason: bool = False
-        else :
-            self.reason = random.choice(defaultReasons)
-            self.isDefaultReason: bool = True
-
-        self.assumptionType = assumptionType
-
-    def __str__(self) :
-        estimations = ','.join(map(lambda estimation: str(estimation), self.estimations))
-        return f'{estimations}[{self.assumptionType.name}] ({self.reason})'
-
-    def __repr__(self) :
-        return self.__str__()
-
-    def getPrompt(self) :
-        estimations = ', '.join(map(lambda estimation: estimation.getPrompt(), self.estimations)) 
-        return f'{estimations} because {self.reason}.'
-
-    def __eq__(self, other) :
-        if not isinstance(other, Assumption) :
-            return False
-
-        return (
-            self.reason == other.reason and
-            self.assumptionType == other.assumptionType and
-            set(self.estimations) == set(other.estimations)
-        )
-
-    def __hash__(self):
-        return hash((self.reason, self.assumptionType, frozenset(self.estimations)))
-
-class Strategy :
-    def __init__(self, publicRole: Role, assumptions: list[Assumption]) :
-        self.publicRole = publicRole
-        self.assumptions = assumptions
-
-        self.mainMafiaAssumption : Assumption = None
-        self.mainTarget: PlayerInfo = None
-
-        for assumption in assumptions :
-            for estimation in assumption.estimations :
-                if estimation.role == Role.MAFIA :
-                    self.mainMafiaAssumption = assumption
-                    self.mainTarget = estimation.playerInfo
-                    break
-
-            if self.mainMafiaAssumption != None :
-                break
-
-        self.estimations: list[Estimation] = [estimation for assumption in assumptions for estimation in assumption.estimations]
-        self.mafiaEstimations: list[Estimation] = [estimation for estimation in self.estimations if estimation.role == Role.MAFIA]
-
-    def isEffective(self) :
-        return self.publicRole != Role.CITIZEN or len(self.estimations) > 0
-
-    def __str__(self) :
-        return f'publicRole={self.publicRole.name.lower()}, assumptions={self.assumptions}'
-
-    def __repr__(self) :
-        return self.__str__()
-
-    def assumptionsToStr(self) :
-        return str(self.assumptions)
-
-    def assumptionsToPrompt(self) :
-        return '\n'.join(map(lambda assumption: 'You must argue that ' + assumption.getPrompt(), self.assumptions))
-
-    def isDefaultReasonIncluded(self) -> bool :
-        for assumption in self.assumptions :
-            if assumption.isDefaultReason :
-                return True
-        return False
-
-    def changeDefaultReason(self, reason) :
-        for assumption in self.assumptions :
-            if assumption.isDefaultReason :
-                assumption.reason = reason
-
-    def __eq__(self, other) :
-        if not isinstance(other, Strategy) :
-            return False
-
-        return (
-            self.publicRole == other.publicRole and
-            set(self.assumptions) == set(other.assumptions)
-        )
-
-    def __hash__(self):
-        return hash((self.publicRole, frozenset(self.assumptions)))
-
-class VoteStrategy(Strategy) :
-    def __init__(self, playerInfo: PlayerInfo) :
-        assumption = Assumption([Estimation(playerInfo, Role.MAFIA)], '')
-        super().__init__(
-            publicRole=Role.CITIZEN, # not used
-            assumptions=[assumption],
-        )
-
-defaultReasons = [
+reasons = [
     "They are the only person here who is not wearing socks.",
     "I saw them looking at their phone suspiciously, as if receiving secret instructions.",
     "They walked in with an aura of mystery that cannot be ignored.",
@@ -181,6 +42,7 @@ defaultReasons = [
     "They brought their own pen. What were they planning to write?",
     "They were seen whispering to themselves before the game started.",
     "They cracked their knuckles at a suspiciously appropriate time.",
+    "They always vote third. Why not first or last? Clearly overthinking their actions.",
     "They smell like oranges. Nothing wrong with that, but I don't trust it.",
     "They made eye contact with me and then immediately looked away.",
     "They stretched too dramatically, as if trying to relieve stress.",
@@ -238,3 +100,5 @@ defaultReasons = [
     "They wore mismatched socks. A distracted mind is a guilty mind.",
     "They blinked exactly when the lights flickered. Coincidence? I think not.",
 ]
+
+print(len(reasons))
