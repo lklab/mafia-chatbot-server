@@ -242,22 +242,21 @@ def _getTargetFormTwoDoctor(gameState: GameState, recorder: TrustRecorder, me: P
 
 def _getTargetByTrustConformityRandom(gameState: GameState, recorder: TrustRecorder, me: Player) -> tuple[Player, str] :
     gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getTargetByTrustConformityRandom')
-    return None, None
 
-    # candidates: list[PlayerInfo] = []
-    # for player in gameState.players :
-    #     profile: TrustProfile = recorder.getTrustProfile(player.info)
-    #     if player == me or not profile.isTargetable() :
-    #         continue
-    #     candidates.append(player.info)
-    # _logCandidates(gameState.logger, TAG.STRATEGY, candidates)
+    candidates: list[PlayerInfo] = []
+    for player in gameState.players :
+        profile: TrustProfile = recorder.getTrustProfile(player.info)
+        if player == me or not profile.isTargetable() :
+            continue
+        candidates.append(player.info)
+    _logCandidates(gameState.logger, TAG.STRATEGY, candidates)
 
-    # if len(candidates) == 0 :
-    #     return None, None
+    if len(candidates) == 0 :
+        return None, None
 
-    # targetInfo: PlayerInfo = _choiceFromCandidates(gameState, recorder, me, candidates)
-    # targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
-    # return targetPlayer, recorder.getNegativeTrustReason(targetInfo)
+    targetInfo: PlayerInfo = _choiceFromCandidates(gameState, recorder, me, candidates)
+    targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
+    return targetPlayer, recorder.getNegativeTrustReason(targetInfo)
 
 _targetSelecters: list[Callable[[GameState, TrustRecorder, Player], tuple[Player, str]]] = [
     _getPolicePoiningMe,
