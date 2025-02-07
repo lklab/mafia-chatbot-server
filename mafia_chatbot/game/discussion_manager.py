@@ -224,7 +224,7 @@ class DiscussionManager :
         # 대상에게 질문하기
         elif method == 1 :
             discussion: str = await self.llm.generateQuestion(player, self.gameState.getPlayerByInfo(strategy.mainTarget), self.gameState.getRecentConversationLogs(chatCount))
-            mustResponse = True
+            mustResponse = not strategy.mainTarget.isHuman
 
         # 아무 말 하기
         elif method == 2 :
