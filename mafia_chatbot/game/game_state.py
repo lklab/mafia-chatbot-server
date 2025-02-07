@@ -561,7 +561,7 @@ class GameState :
             if chat.type == ChatType.DISCUSSION :
                 logs.append(f'{chat.sender.name}: {chat.content}')
                 count -= 1
-            elif chat.receiver == None :
+            elif chat.receiver == None and chat.index != 0 :
                 logs.append(f'{systemText}: {chat.content}')
 
         if not omitted :
