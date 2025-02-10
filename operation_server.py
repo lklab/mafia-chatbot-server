@@ -18,7 +18,7 @@ OPERATION_PORT = 10011
 
 class OperationServer :
     def __init__(self) :
-        self.logger = WandsLogger('network', 'operation')
+        self.logger = WandsLogger('network_log', 'operation')
 
     async def run(self) :
         operationManager.initialize()

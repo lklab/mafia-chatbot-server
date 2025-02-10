@@ -127,7 +127,7 @@ class GameProcessHandler :
 
 class MainProcess :
     def __init__(self) :
-        self.logger = WandsLogger('network', 'main')
+        self.logger = WandsLogger('network_log', 'main')
 
         self.gameProcessHandlers: dict[int, GameProcessHandler] = {}
         self.gameProcessPortDict: dict[MessageHandler, int] = {}

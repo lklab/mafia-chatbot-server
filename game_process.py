@@ -149,7 +149,7 @@ class GameProcess :
         self.games: dict[str, GameInstance] = {}
 
         # setup logger
-        self.logger = WandsLogger('network', f'game-{self.port}')
+        self.logger = WandsLogger('network_log', f'game-{self.port}')
 
     async def run(self) :
         # initialize name bank
