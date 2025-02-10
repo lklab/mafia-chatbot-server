@@ -31,7 +31,7 @@ msgstr "동률로 인해 아무도 처형하지 않았습니다."
 #: mafia_chatbot/game/game_manager.py:152
 #, python-brace-format
 msgid "{name} was executed. Their role was {role}."
-msgstr "{name}이(가) 처형됐습니다. 그의 직업은 {role}(이)었습니다."
+msgstr "{name}이(가) 처형됐습니다. 그의 역할은 {role}(이)었습니다."
 
 #: mafia_chatbot/game/game_manager.py:225
 #: mafia_chatbot/game/game_manager.py:241
@@ -45,7 +45,7 @@ msgstr "마피아는 누군가를 암살하려 했으나, 실패했습니다."
 #: mafia_chatbot/game/game_manager.py:250
 #, python-brace-format
 msgid "{name} was assassinated by the Mafia. Their role was {role}."
-msgstr "{name}이(가) 마피아에 의해 암살됐습니다. 그의 직업은 {role}(이)었습니다."
+msgstr "{name}이(가) 마피아에 의해 암살됐습니다. 그의 역할은 {role}(이)었습니다."
 
 #: mafia_chatbot/game/game_manager.py:258
 msgid "This message visible only to you"

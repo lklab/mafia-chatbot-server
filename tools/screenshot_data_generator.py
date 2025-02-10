@@ -10,6 +10,7 @@ if __name__ == "__main__" :
 
 import asyncio
 import uuid
+import json
 
 from mafia_chatbot.game.game_state import GameState, languageToCodeDict, Phase
 from mafia_chatbot.game.game_info import GameInfo
@@ -20,8 +21,9 @@ import mafia_chatbot.utils.name_bank as NameBank
 
 async def main() :
     NameBank.initialize()
+    result = {}
 
-    for lang in ['korean'] : # languageToCodeDict.keys() :
+    for lang in languageToCodeDict.keys() :
         gameInfo: GameInfo = GameInfo(
             gameId=str(uuid.uuid4()),
             playerCount=10,
@@ -33,6 +35,11 @@ async def main() :
 
         gameManager: GameManager = GameManager(gameInfo)
         gameState: GameState = gameManager.gameState
+
+        data = {}
+        result[lang] = data
+        data['players'] = list(map(lambda p : p.info.name, gameState.players))
+
         asyncio.create_task(gameManager.start())
 
         chatCount: int = 0
@@ -53,5 +60,26 @@ async def main() :
                 break
 
         gameManager.terminate()
+
+        chatListData = []
+        data['chatList'] = chatListData
+
+        for chat in gameState.chatList :
+            if chat.type == ChatType.SYSTEM :
+                chatListData.append({
+                    'type': 'system',
+                    'content': chat.content,
+                })
+            else :
+                chatListData.append({
+                    'type': 'discussion',
+                    'sender': chat.sender.name,
+                    'content': chat.content,
+                })
+
+        data['me'] = gameState.chatList[5].sender.name
+
+    with open("screenshot_data.json", "w", encoding="utf-8") as f :
+        json.dump(result, f, ensure_ascii=False, indent=4)
 
 asyncio.run(main())

@@ -215,7 +215,7 @@ class TrustRecorder :
             for playerInfo in self.everPointerInfosByTargetInfo[removedPlayerInfo] :
                 self.profileByPlayerInfo[playerInfo].addRecord(TrustRecord(
                     point=point,
-                    reason='He pointed out the citizen.',
+                    reason=f'They pointed to the citizen, {removedPlayerInfo.name}, as the mafia.',
                 ))
                 point *= 0.5
 
@@ -228,7 +228,7 @@ class TrustRecorder :
                     for player in voteData.notVoteTargetPlayers :
                         self.profileByPlayerInfo[player.info].addRecord(TrustRecord(
                             point=point,
-                            reason='He didn\'t vote for the citizen.',
+                            reason=f'They did not vote for the citizen, {removedPlayerInfo.name}.',
                         ))
 
         else :
@@ -238,7 +238,7 @@ class TrustRecorder :
             for playerInfo in self.everPointerInfosByTargetInfo[removedPlayerInfo] :
                 self.profileByPlayerInfo[playerInfo].addRecord(TrustRecord(
                     point=point,
-                    reason='He pointed out the mafia.',
+                    reason=f'They pointed to {removedPlayerInfo.name} as the mafia.',
                 ))
                 point *= 0.5
 
@@ -251,7 +251,7 @@ class TrustRecorder :
                     for player in voteData.notVoteTargetPlayers :
                         self.profileByPlayerInfo[player.info].addRecord(TrustRecord(
                             point=point,
-                            reason='He didn\'t vote for the mafia.',
+                            reason=f'They did not vote for the mafia, {removedPlayerInfo.name}.',
                         ))
 
             # He was pointed at by the mafia
@@ -259,7 +259,7 @@ class TrustRecorder :
                 for playerInfo, point in self.mafiaPointingData[removedPlayerInfo].items() :
                     self.profileByPlayerInfo[playerInfo].addRecord(TrustRecord(
                         point=point,
-                        reason='He was pointed at by the mafia.',
+                        reason=f'They have been pointed to by the mafia, {removedPlayerInfo.name}.',
                     ))
 
     def _checkAndUpdateTrustStateStep1(self, player: Player, profile: TrustProfile) :

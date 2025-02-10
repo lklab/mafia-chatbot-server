@@ -285,7 +285,7 @@ class LLM :
 
         # setup prompt
         template = (
-            "You are a player participating in a Mafia game. Your name is {my_name}, and your role is {my_role}. It is currently the discussion phase, and it is your turn to speak. {public_role_strategy} You must claim that {estimations}. Must use the provided ##Conversation Logs## and ##Evidence## as references. Keep your statement concise, limited to two sentences, and written in a {tone} tone, written in %(language)s and resembling natural dialogue.%(dont_tranlate)s Your response should differ from previous statements and introduce variety in phrasing."
+            "You are a player participating in a Mafia game. Your name is {my_name}, and your role is {my_role}. It is currently the discussion phase, and it is your turn to speak. {public_role_strategy} You must claim that {estimations}. Must use the provided ##Conversation Logs## and ##Evidence## as references. Avoid overusing references to 'night' or time-related aspects. Keep your statement concise—no more than two sentences. Write in %(language)s with a {tone} tone, making it sound like natural dialogue.%(dont_tranlate)s Your response should differ from previous statements and introduce variety in phrasing."
             "\n\n"
             "##Conversation Logs##"
             "\n"
@@ -506,7 +506,7 @@ class LLM :
 
         # setup prompt
         systemMessageTemplate = (
-            "Below is a conversation snippet from a Mafia game. Generate the name of the participant who will respond to the message \"{lastMessage}\" and their response message in JSON format. The name must be one from the {nameList}. You can freely and creatively write the content of the response message, but it must be something plausible within the context of a Mafia game and must not contradict the participant's previous claims. Keep your statement concise, limited to two sentences, written in %(language)s and resembling natural dialogue. For the JSON format, provide only the JSON itself as the output, without enclosing it in code blocks or additional text."
+            "Below is a conversation snippet from a Mafia game. Generate the name of the participant who will respond to the message \"{lastMessage}\" and their response message in JSON format. The name must be one from the {nameList}. You can freely and creatively write the content of the response message, but it must be something plausible within the context of a Mafia game and must not contradict the participant's previous claims. Keep your statement concise—no more than two sentences. Write in %(language)s, making it sound like natural dialogue. For the JSON format, provide only the JSON itself as the output, without enclosing it in code blocks or additional text."
             "\n\n"
             "##JSON format##"
             "\n"
@@ -537,7 +537,7 @@ class LLM :
 
         # setup prompt
         systemMessageTemplate = (
-            "You are a player participating in a Mafia game. Your name is {my_name}. You suspect that {name} is the mafia, so you are about to ask them a question. Please write a question to ask them. The content of the question is free and creative, but it should be plausible within the context of the mafia game. Keep your statement concise, limited to two sentences, and written in a {tone} tone, written in %(language)s and resembling natural dialogue. %(dont_tranlate)s"
+            "You are a player participating in a Mafia game. Your name is {my_name}. You suspect that {name} is the mafia, so you are about to ask them a question. Avoid mentioning 'night' explicitly. The content of the question should be varied and natural. Please write a question to ask them. The content of the question is free and creative, but it should be plausible within the context of the mafia game. Keep your statement concise—no more than two sentences. Write in %(language)s with a {tone} tone, making it sound like natural dialogue. %(dont_tranlate)s"
         )
         systemMessageTemplate = systemMessageTemplate % {
             'language' : gameInfo.language,
@@ -565,7 +565,14 @@ class LLM :
 
         # setup prompt
         systemMessageTemplate = (
-            "You are a participant in a mafia game. Your name is {my_name}. Instead of suspecting someone, you want to speak freely. Please write what you would say. If you want to mention another participant, refer to ##List of Other Participants##. However, you must not state that someone is the mafia, regardless of intent, nor reveal that your role is anything other than a citizen or imply that you are not a citizen. Keep your statement concise, limited to two sentences, and written in a {tone} tone, written in %(language)s and resembling natural dialogue. %(dont_tranlate)s"
+            "You are a participant in a mafia game. Your name is {my_name}. Instead of suspecting someone, you want to speak freely. Please write what you would say."
+            "\n* If you want to mention another participant, refer to ##List of Other Participants##."
+            "\n* You must not state that someone is the mafia, regardless of intent."
+            "\n* You must not reveal that your role is anything other than a citizen or imply that you are not a citizen."
+            "\n* Avoid overusing references to 'night' or time-related aspects unless necessary."
+            "\n* Keep your statement concise, limited to two sentences."
+            "\n* Write naturally in %(language)s, using a {tone} tone that resembles real conversation."
+            "%(dont_tranlate)s"
             "\n\n"
             "##List of Other Participants##"
             "\n"
@@ -573,7 +580,7 @@ class LLM :
         )
         systemMessageTemplate = systemMessageTemplate % {
             'language' : gameInfo.language,
-            'dont_tranlate' : ' Do not translate into english.' if gameInfo.language != 'english' else '',
+            'dont_tranlate' : '\n* Do not translate into english.' if gameInfo.language != 'english' else '',
         }
         prompt = ChatPromptTemplate.from_messages(
             [
