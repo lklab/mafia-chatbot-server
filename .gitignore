@@ -169,6 +169,7 @@ reports/
 config/
 server_log/
 network_log/
+op_log/
 
 # Custom - tls
 server.crt

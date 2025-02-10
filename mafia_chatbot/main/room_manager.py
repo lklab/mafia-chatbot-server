@@ -95,6 +95,9 @@ class RoomManager :
         room.destroy()
         self._onRoomDestroyed(room)
 
+    def getRoomCount(self) -> int :
+        return len(self.roomByCode)
+
     def _onRoomDestroyed(self, room: Room) :
         self.codeGenerator.returnCode(room.code)
         if room.code in self.roomByCode :

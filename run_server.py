@@ -21,6 +21,7 @@ from mafia_chatbot.network.client_handler import ClientHandler
 from mafia_chatbot.network.utils import makeErrorResponse, ErrorCode
 
 from mafia_chatbot.operation.operation_manager import operationManager
+from mafia_chatbot.operation.server_state_writer import ServerStateWriter
 
 import mafia_chatbot.firebase.firebase as firebase
 from mafia_chatbot.db.user_db import userDB
@@ -143,6 +144,10 @@ class MainProcess :
         self._startGameProcesses()
 
         operationManager.initialize()
+        self.serverStateWriter: ServerStateWriter = ServerStateWriter(
+            gameCountGetter=self._getGameCount,
+            roomCountGetter=self.roomManager.getRoomCount,
+        )
         NameBank.initialize()
         firebase.initialize()
         userDB.enable_wal()
@@ -150,6 +155,12 @@ class MainProcess :
 
         asyncio.create_task(self._certCheckTask())
         await gameProcessServer.serve()
+
+    def _getGameCount(self) -> int :
+        count: int = 0
+        for handler in self.gameProcessHandlers.values() :
+            count += handler.getGameCount()
+        return count
 
     def _startGameProcesses(self) :
         port: int = server_config.getFirstGamePort()
