@@ -148,11 +148,11 @@ class TcpHandler :
             task = self.listenTask
             self.listenTask = None
 
-        try :
-            task.cancel()
-            await task
-        except :
-            pass
+            try :
+                task.cancel()
+                await task
+            except :
+                pass
 
         # close writer
         try :
