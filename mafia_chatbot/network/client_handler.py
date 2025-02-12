@@ -38,7 +38,7 @@ class ClientHandler :
 
         self.messageHandler = MessageHandler(
             tcpHandler=tcpHandler,
-            onAuth=self._onAuth,
+            onAuth=self._onAuth if self.onAuth != None else None,
             onMessage=self._onMessage,
             onDisconnected=self._onDisconnected,
         )

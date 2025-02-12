@@ -72,7 +72,7 @@ class ClientServer :
 
         ClientHandler(
             tcpHandler=tcpHandler,
-            onAuth=self._onAuth,
+            onAuth=self._onAuth if self.onAuth != None else None,
             onMessage=self.onMessage,
             onDisconnected=self._onDisconnected,
             logger=self.logger,
