@@ -51,13 +51,25 @@ pip install protobuf firebase-admin
 
 ``` json
 {
-    "requiredVersion": "0.2.1",
-    "operating": true,
+    "requiredVersion": "0.3.7",
+    "operating": false,
     "stateMessage": {
-        "english": "",
-        "korean": "",
+        "german": "Derzeit wird der Server gewartet.",
+        "english": "The server is currently under maintenance.",
+        "spanish": "El servidor está actualmente en mantenimiento.",
+        "french": "Le serveur est actuellement en maintenance.",
+        "italian": "Il server è attualmente in manutenzione.",
+        "japanese": "現在、サーバーはメンテナンス中です。",
+        "korean": "현재 서버 점검 중입니다.",
+        "portuguese": "O servidor está atualmente em manutenção.",
+        "russian": "В настоящее время сервер находится на обслуживании.",
+        "thai": "ขณะนี้เซิร์ฟเวอร์อยู่ระหว่างการบำรุงรักษา",
+        "vietnamese": "Máy chủ hiện đang được bảo trì.",
+        "simplified chinese": "服务器目前正在维护。",
+        "traditional chinese": "伺服器目前正在維護中。",
         "trailingComma": ""
-    }
+    },
+    "maintainEndTime": "2025-02-12T10:30:00Z"
 }
 ```
 

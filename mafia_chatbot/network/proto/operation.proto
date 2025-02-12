@@ -9,4 +9,5 @@ message ServerState {
   string rqid = 1;
   bool operating = 2;
   string stateMessage = 3;
+  string maintainEndTime = 4;
 }

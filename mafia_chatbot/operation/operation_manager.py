@@ -32,5 +32,6 @@ class OperationManager :
         self.requiredVersion: str = info['requiredVersion']
         self.operating: bool = info['operating']
         self.stateMessage: dict[str, str] = info['stateMessage']
+        self.maintainEndTime: str = info['maintainEndTime']
 
 operationManager: OperationManager = OperationManager()

@@ -55,6 +55,7 @@ class OperationServer :
         response.rqid = message.rqid
         response.operating = operationManager.operating
         response.stateMessage = operationManager.getStateMessage(message.language)
+        response.maintainEndTime = operationManager.maintainEndTime
         self._respondToClient(client, response)
 
     _switchClientMessage = {
