@@ -312,7 +312,11 @@ class MainProcess :
     def _switchClientMessageCreateRoom(self, client: ClientHandler, message) :
         # check operating
         if not operationManager.operating :
-            errorResponse = makeErrorResponse(message, ErrorCode.NOT_OPERATING, 'The server is currently undergoing maintenance.')
+            errorResponse = makeErrorResponse(
+                message,
+                ErrorCode.NOT_OPERATING,
+                operationManager.getStateMessage(message.gameInfo.language)
+            )
             self._respondToClient(client, errorResponse, isError=True)
             return
 
@@ -439,7 +443,11 @@ class MainProcess :
 
         # check operating
         if not operationManager.operating :
-            errorResponse = makeErrorResponse(message, ErrorCode.NOT_OPERATING, 'The server is currently undergoing maintenance.')
+            errorResponse = makeErrorResponse(
+                message,
+                ErrorCode.NOT_OPERATING,
+                operationManager.getStateMessage(message.gameInfo.language)
+            )
             self._respondToClient(client, errorResponse, isError=True)
             return
 
