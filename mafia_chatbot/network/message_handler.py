@@ -80,10 +80,9 @@ class MessageHandler :
         try:
             return await asyncio.wait_for(future, timeout)
         except asyncio.TimeoutError as e :
+            del self.responseAwaiters[rqid]
             print(f'[MessageHandler] {self.tcpHandler.addr} No response for request {rqid} within timeout: {e}\nmessage=<{message}>')
             raise TimeoutError(f"No response for request {rqid} within timeout: {e}\nmessage=<{message}>")
-        finally :
-            del self.responseAwaiters[rqid]
 
     def setDesc(self, desc: str) :
         self.desc = desc
