@@ -28,7 +28,7 @@ gameInfo = GameInfo(
     users=[],
     localPlayerName='시우',
     # localPlayerName='Sophia',
-    language='english',
+    language='korean',
 )
 gameState = GameState(gameInfo, FakeGameLogger())
 llm = LLM(gameState)
@@ -42,7 +42,7 @@ async def main() :
 
     # result = await llm.checkContainsEstimation('태윤이 더 마피아같아')
     # print(result)
-    # strategy = await llm.analyzeHumanMessage(player, f'나는 {names[0]}의 의견에 동의해서 {names[1]}가 마피아라고 생각해')
+    strategy = await llm.analyzeHumanMessage(player, f'나는 {names[0]}의 의견에 동의해서 {names[1]}가 마피아라고 생각해')
     # strategy = await llm.analyzeHumanMessage(player, f'나는 {names[0]}이 시민라고 생각해. 왜냐면 내가 그를 암살로부터 구했어.')
     # strategy = await llm.analyzeHumanMessage(player, f'나는 마피아야.')
     # strategy = await llm.analyzeHumanMessage(player, f'나는 마피아가 아니야.')
@@ -52,7 +52,7 @@ async def main() :
     # strategy = await llm.analyzeHumanMessage(player, f'{names[0]} 너 마피아잖아')
     # strategy = await llm.analyzeHumanMessage(player, f'니가 마피아잖아.')
     # strategy = await llm.analyzeHumanMessage(player, f'마피아는 너야..')
-    strategy = await llm.analyzeHumanMessage(player, f'I am police and {names[0]} is a mafia')
+    # strategy = await llm.analyzeHumanMessage(player, f'I am police and {names[0]} is a mafia')
     # strategy = await llm.analyzeHumanMessage(player, f'ㅁㄴㅁㄴㅇㅁㄴㅇㅈ')
     # strategy = await llm.analyzeHumanMessage(player, f'I am a mafia')
 

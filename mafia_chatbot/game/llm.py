@@ -306,14 +306,22 @@ class LLM :
 
     def _setupTranslateChain(self) :
         # setup model
-        model = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
+        # model = ChatGoogleGenerativeAI(
+        #     model="gemini-1.5-flash",
+        #     temperature=0.1,
+        # )
+        # model = ChatOpenAI(
+        #     model="gpt-3.5-turbo",
+        #     temperature=0.1,
+        # )
+        model = ChatAnthropic(
+            model="claude-3-5-haiku-20241022",
             temperature=0.1,
         )
 
         names = '\n'.join(map(lambda p: f'"{p.info.name}": "{p.info.englishName}"', self.gameState.players))
         template = (
-            f"Translate the following ##sentence## into English without altering its original meaning. Use the specified words from ##names## for proper nouns and the terms from ##terms## to ensure consistent vocabulary for similar or identical meanings. If ##sentence## does not contain meaningful content (e.g., numbers, empty strings, or non-sentential fragments), return an empty string instead."
+            f"Translate the following ##sentence## into English without altering its original meaning. Use the specified words from ##names## for proper nouns and the terms from ##terms## to ensure consistent vocabulary for similar or identical meanings.  Output only the translated sentence. If ##sentence## does not contain meaningful content (e.g., numbers, empty strings, or non-sentential fragments), return an empty string instead."
             "\n\n"
             "##sentence##"
             "\n"
