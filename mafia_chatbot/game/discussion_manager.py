@@ -141,7 +141,7 @@ class DiscussionManager :
     async def _mainLogic(self) :
         while self._isRunning :
             # wait for discussion time
-            waitTime: float = random.uniform(5.0, 10.0)
+            waitTime: float = random.uniform(7.0, 10.0)
             await asyncio.sleep(waitTime)
             if not self._isRunning :
                 return
@@ -291,7 +291,7 @@ class DiscussionManager :
             discussion: str = str(strategy)
 
         # wait
-        speakTime: float = context.lastDiscussuinTime + random.uniform(5.0, 10.0)
+        speakTime: float = context.lastDiscussuinTime + random.uniform(7.0, 10.0)
         if speakTime > time.monotonic() :
             await asyncio.sleep(speakTime - time.monotonic())
             if not self._isRunning :
@@ -323,7 +323,7 @@ class DiscussionManager :
             return
 
         # wait
-        speakTime: float = context.lastDiscussuinTime + random.uniform(5.0, 10.0)
+        speakTime: float = context.lastDiscussuinTime + random.uniform(7.0, 10.0)
         if speakTime > time.monotonic() :
             await asyncio.sleep(speakTime - time.monotonic())
             if not self._isRunning :
