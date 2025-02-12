@@ -52,7 +52,7 @@ pip install protobuf firebase-admin
 ``` json
 {
     "requiredVersion": "0.3.7",
-    "operating": false,
+    "operating": true,
     "stateMessage": {
         "german": "Derzeit wird der Server gewartet.",
         "english": "The server is currently under maintenance.",
