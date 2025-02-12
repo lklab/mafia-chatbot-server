@@ -26,13 +26,17 @@ class OperationServer :
 
         self.server = ClientServer(
             port=OPERATION_PORT,
-            onAuth=None,
+            onAuth=self._onClientAuth,
             onMessage=self._onClientMessage,
             onDisconnected=self._onClientDisconnected,
             logger=self.logger,
         )
         await self.server.start()
         await self.server.serve()
+
+    def _onClientAuth(self, user: ClientUser, messageHandler: MessageHandler, message) -> tuple[Any, bool] :
+        self.logger.debug(f'_onClientAuth clientId={user.clientId}')
+        return None, True
 
     def _onClientMessage(self, client: ClientHandler, message) :
         self.logger.debug(f'_onClientMessage clientId={client.user.clientId} name={client.user.clientName}, type={type(message)}, message=<{message}>')
