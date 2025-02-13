@@ -310,14 +310,14 @@ class LLM :
         #     model="gemini-1.5-flash",
         #     temperature=0.1,
         # )
-        # model = ChatOpenAI(
-        #     model="gpt-3.5-turbo",
-        #     temperature=0.1,
-        # )
-        model = ChatAnthropic(
-            model="claude-3-5-haiku-20241022",
+        model = ChatOpenAI(
+            model="gpt-4o-mini",
             temperature=0.1,
         )
+        # model = ChatAnthropic(
+        #     model="claude-3-5-haiku-20241022",
+        #     temperature=0.1,
+        # )
 
         names = '\n'.join(map(lambda p: f'"{p.info.name}": "{p.info.englishName}"', self.gameState.players))
         template = (
@@ -345,8 +345,12 @@ class LLM :
 
     def _setupRemoveFirstPersonChain(self) :
         # setup model
-        model = ChatAnthropic(
-            model="claude-3-5-haiku-20241022",
+        # model = ChatAnthropic(
+        #     model="claude-3-5-haiku-20241022",
+        #     temperature=0.1,
+        # )
+        model = ChatOpenAI(
+            model="gpt-4o-mini",
             temperature=0.1,
         )
 
@@ -381,9 +385,13 @@ class LLM :
     def _setupHumanMessageAgent(self) :
         # setup model
         model = ChatOpenAI(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             temperature=0.1,
         )
+        # model = ChatAnthropic(
+        #     model="claude-3-5-haiku-20241022",
+        #     temperature=0.1,
+        # )
 
         # setup tools
         nameList = ', '.join(self.gameState.englishNameList)
@@ -396,7 +404,7 @@ class LLM :
         )
 
         class EstimationInput(BaseModel) :
-            name: str = Field(description="The name of the person whose role the human is claiming.")
+            name: str = Field(description="The name of the person whose role the human is claiming. If the statement does not explicitly mention a name, set this value to \"&none\".")
             role: str = Field(description="The role of the individual with the specified name that the human is claiming.")
 
         class EstimationInputList(BaseModel):
@@ -484,8 +492,12 @@ class LLM :
 
     def _setupCheckQuestionChain(self) :
         # setup model
-        model = ChatAnthropic(
-            model="claude-3-5-haiku-20241022",
+        # model = ChatAnthropic(
+        #     model="claude-3-5-haiku-20241022",
+        #     temperature=0.1,
+        # )
+        model = ChatOpenAI(
+            model="gpt-4o-mini",
             temperature=0.1,
         )
 
