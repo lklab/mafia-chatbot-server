@@ -1,5 +1,6 @@
 import sqlite3
 import time
+import os
 
 class TestAccountDB :
     def __init__(self) :
@@ -7,7 +8,8 @@ class TestAccountDB :
 
     def _get_connection(self) :
         """Helper function to create a connection to the SQLite database."""
-        return sqlite3.connect('test_account.db')
+        os.makedirs('sqlite3', exist_ok=True)
+        return sqlite3.connect('sqlite3/test_account.db')
 
     def _create_table(self) :
         """Create the table if it doesn't already exist."""
