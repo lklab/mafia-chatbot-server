@@ -59,7 +59,7 @@ names = [
 ]
 names2 = [
     '경찰', '마피아', '아님', '바보', '몰라', '모름', 'killer', 'mafia',
-    '사바사',
+    '사바사', 'ass', 'shit', '깜둥이'
 ]
 
 # for name in names2 :

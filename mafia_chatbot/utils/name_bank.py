@@ -3,6 +3,7 @@ import re
 import json
 import os
 import random
+import sqlite3
 
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -14,15 +15,18 @@ from langchain_core.output_parsers import StrOutputParser
 NAMES: dict[str, list[str]] = None
 ENGLISH_NAMES: dict[str, dict[str, str]] = None
 PROHIBITED_WORDS: list[str] = None
+prohibitedWordsDB: 'ProhibitedWordsDB' = None
 
 def initialize() :
     global NAMES
     global ENGLISH_NAMES
     global PROHIBITED_WORDS
+    global prohibitedWordsDB
 
     NAMES = {}
     ENGLISH_NAMES = {}
     PROHIBITED_WORDS = []
+    prohibitedWordsDB = ProhibitedWordsDB()
 
     with open(os.path.join('data', 'names.json'), encoding='utf-8') as f :
         data = json.load(f)
@@ -108,6 +112,9 @@ async def checkName(name: str) -> Result :
         if word in lowerName :
             return Result.INVALID_NAME
 
+    if prohibitedWordsDB.is_prohibited(lowerName) :
+        return Result.INVALID_NAME
+
     _setupChain()
 
     global _chain
@@ -118,6 +125,7 @@ async def checkName(name: str) -> Result :
     if "false" in response.lower() :
         return Result.SUCCESS
     else :
+        prohibitedWordsDB.add_word(lowerName)
         return Result.INVALID_NAME
 
 def _setupChain() :
@@ -147,11 +155,13 @@ def _setupChain() :
     template = (
         "You are tasked with evaluating names submitted by users for use in a Mafia game to determine if they are suitable. If the ##name## is any of the following:"
         "\n"
+        "A word that is generally not recognized as a name (e.g., \"unknown,\" \"no\")."
+        "\n"
         "A term commonly used in Mafia games (e.g., \"citizen,\" \"mafia,\" \"police,\" \"doctor,\" \"vote,\" \"execution\")."
         "\n"
         "A personal pronoun (e.g., \"I,\" \"you,\" \"we\")."
         "\n"
-        "A word that is generally not recognized as a name (e.g., \"unknown,\" \"no\")."
+        "A word that is offensive, profane, or discriminatory."
         "\n"
         "Return \"true\". Otherwise, return \"false\". Return only \"true\" or \"false\". Do not include any explanations or additional text."
         "\n\n"
@@ -164,3 +174,39 @@ def _setupChain() :
     # setup chain
     parser = StrOutputParser()
     _chain = prompt | model | parser
+
+class ProhibitedWordsDB:
+    def __init__(self):
+        os.makedirs('sqlite3', exist_ok=True)
+        self.db_name = 'sqlite3/prohibited_words.db'
+        self._initialize_db()
+
+    def _initialize_db(self):
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS prohibited_words (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    word TEXT UNIQUE NOT NULL
+                )
+                """
+            )
+            conn.commit()
+
+    def add_word(self, word: str):
+        """금칙어 추가 (중복 금지)"""
+        try:
+            with sqlite3.connect(self.db_name) as conn:
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO prohibited_words (word) VALUES (?)", (word,))
+                conn.commit()
+        except sqlite3.IntegrityError:
+            pass  # 이미 존재하는 경우 무시
+
+    def is_prohibited(self, word: str) -> bool:
+        """특정 단어가 금칙어인지 확인"""
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1 FROM prohibited_words WHERE word = ?", (word,))
+            return cursor.fetchone() is not None
