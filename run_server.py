@@ -306,6 +306,12 @@ class MainProcess :
 
         client.user.disconnect()
 
+    def _switchClientMessageGetAdsInfo(self, client: ClientHandler, message) :
+        response = auth_pb2.AdsInfo()
+        response.rqid = message.rqid
+        response.enabled = operationManager.enableAds
+        self._respondToClient(client, response)
+
     def _switchClientMessageRequestMyRoomInfo(self, client: ClientHandler, message) :
         self.roomManager.processMessageRequestMyRoomInfo(client, message)
 
@@ -498,6 +504,7 @@ class MainProcess :
     _switchClientMessage = {
         auth_pb2.UpdateUserInfo : _switchClientMessageUpdateUserInfo,
         auth_pb2.DeleteUser : _switchClientMessageDeleteUser,
+        auth_pb2.GetAdsInfo : _switchClientMessageGetAdsInfo,
         room_pb2.RequestMyRoomInfo : _switchClientMessageRequestMyRoomInfo,
         room_pb2.CreateRoom : _switchClientMessageCreateRoom,
         room_pb2.JoinRoom : _switchClientMessageJoinRoom,

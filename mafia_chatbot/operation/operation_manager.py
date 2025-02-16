@@ -33,5 +33,6 @@ class OperationManager :
         self.operating: bool = info['operating']
         self.stateMessage: dict[str, str] = info['stateMessage']
         self.maintainEndTime: str = info['maintainEndTime']
+        self.enableAds: bool = info['enableAds']
 
 operationManager: OperationManager = OperationManager()

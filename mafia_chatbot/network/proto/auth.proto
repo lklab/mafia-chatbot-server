@@ -46,3 +46,12 @@ message DeleteUserResponse {
 message DuplicatedSignIn {
   string rqid = 1;
 }
+
+message GetAdsInfo {
+  string rqid = 1;
+}
+
+message AdsInfo {
+  string rqid = 1;
+  bool enabled = 2;
+}

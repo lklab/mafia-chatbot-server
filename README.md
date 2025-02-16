@@ -69,7 +69,8 @@ pip install protobuf firebase-admin
         "traditional chinese": "伺服器目前正在維護中。",
         "trailingComma": ""
     },
-    "maintainEndTime": "2025-02-12T10:30:00Z"
+    "maintainEndTime": "2025-02-12T10:30:00Z",
+    "enableAds": false
 }
 ```
 

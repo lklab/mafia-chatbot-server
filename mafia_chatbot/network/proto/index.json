@@ -33,7 +33,9 @@
                 "UpdateUserInfoResponse",
                 "DeleteUser",
                 "DeleteUserResponse",
-                "DuplicatedSignIn"
+                "DuplicatedSignIn",
+                "GetAdsInfo",
+                "AdsInfo"
             ]
         },
         {
