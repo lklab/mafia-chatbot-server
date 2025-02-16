@@ -70,7 +70,8 @@ pip install protobuf firebase-admin
         "trailingComma": ""
     },
     "maintainEndTime": "2025-02-12T10:30:00Z",
-    "enableAds": false
+    "enableAds": true,
+    "useTestAds": false
 }
 ```
 

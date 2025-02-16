@@ -310,6 +310,7 @@ class MainProcess :
         response = auth_pb2.AdsInfo()
         response.rqid = message.rqid
         response.enabled = operationManager.enableAds
+        response.useTestAds = operationManager.useTestAds
         self._respondToClient(client, response)
 
     def _switchClientMessageRequestMyRoomInfo(self, client: ClientHandler, message) :

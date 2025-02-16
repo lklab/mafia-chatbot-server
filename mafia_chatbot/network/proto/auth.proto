@@ -54,4 +54,5 @@ message GetAdsInfo {
 message AdsInfo {
   string rqid = 1;
   bool enabled = 2;
+  bool useTest = 3;
 }
