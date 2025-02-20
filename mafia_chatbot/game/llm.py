@@ -62,220 +62,6 @@ class LLM :
         self._setupGenerateQuestionChain(gameState.gameInfo)
         self._setupGenerateNormalDiscussionChain(gameState.gameInfo)
 
-    async def getDiscussion(self, player: Player, strategy: Strategy, conversationLogsCount: int = 5) -> str :
-        self.logger.log(TAG.LLM, f'{player.info.name}: getDiscussion input: {strategy}')
-
-        publicRole, _ = player.getChangeRole(strategy.publicRole)
-        isPublicRoleChanged: bool = player.publicRole != publicRole
-
-        publicRoleStrategy: str = ""
-        if isPublicRoleChanged :
-            publicRoleStrategy = f"You must claim that your role is {roleToStrDict[publicRole]}."
-        elif player.info.role != Role.CITIZEN and publicRole == Role.CITIZEN :
-            publicRoleStrategy = "You must not disclose your role."
-
-        input: dict[str, str] = {
-            'my_name' : player.info.name,
-            'my_role' : roleToStrDict[player.info.role],
-            'public_role_strategy' : publicRoleStrategy,
-            'estimations' : ', '.join(map(lambda e: f"{e.playerInfo.name}'s role is {roleToStrDict[e.role]}", strategy.assumptions[0].estimations)),
-            'tone': player.info.tone,
-            'conversation_logs' : '\n'.join(self.gameState.getRecentConversationLogs(conversationLogsCount)),
-            'evidence' : strategy.assumptions[0].reason,
-        }
-
-        response = await self._ainvokeChain(self.discussionChain, input)
-        self.logger.log(TAG.LLM, f'{player.info.name}: getDiscussion response: {response}')
-        return response.content
-
-    async def checkContainsEstimation(self, message: str) -> bool : # not used
-        self.logger.log(TAG.LLM, f'checkContainsEstimation input: {message}')
-
-        response: str = await self._ainvokeChain(
-            chain=self.checkContainsEstimationChain,
-            input={
-                'sentence' : message,
-            }
-        )
-
-        self.logger.log(TAG.LLM, f'checkContainsEstimation response: {response}')
-        return "true" in response.lower()
-
-    async def analyzeHumanMessage(self, player: Player, message: str) -> Strategy :
-        self.logger.log(TAG.LLM, f'{player.info.name}: analyzeHumanMessage input: {message}')
-
-        if self.gameState.gameInfo.language != 'english' :
-            message = await self._ainvokeChain(
-                chain=self.translateChain,
-                input={
-                    'sentence' : message,
-                }
-            )
-
-            if not message or message == '""' :
-                return None
-
-        message = await self._ainvokeChain(
-            chain=self.removeFirstPersonChain,
-            input={
-                'name' : player.info.englishName,
-                'sentence' : message,
-            }
-        )
-
-        response = await self.humanMessageAgent.ainvoke({'messages': [HumanMessage(message)]})
-        self.logger.log(TAG.LLM, f'analyzeHumanMessage response: {response}')
-
-        strategy: Strategy = None
-
-        for llmMessage in reversed(response['messages']) :
-            if isinstance(llmMessage, ToolMessage) :
-                try :
-                    data = json.loads(llmMessage.content)
-
-                    publicRole: Role = Role.CITIZEN
-                    assumptionType: AssumptionType = AssumptionType.NORMAL
-
-                    police: Player = self.gameState.getPlayerByEnglishName(data['police'])
-                    doctor: Player = self.gameState.getPlayerByEnglishName(data['doctor'])
-
-                    if police != None and police == player :
-                        publicRole = Role.POLICE
-                        assumptionType = AssumptionType.TEST_RESULT
-                    elif doctor != None and doctor == player :
-                        publicRole = Role.DOCTOR
-                        assumptionType = AssumptionType.HEAL_SUCCESS
-
-                    estimations: list[Estimation] = []
-                    for estimation in data['estimations'] :
-                        playerInfo: PlayerInfo = self.gameState.getPlayerInfoByEnglishName(estimation['name'])
-                        role: Role = strToRole(estimation['role'])
-                        if role == None :
-                            role = Role.CITIZEN
-
-                        if playerInfo != None :
-                            if playerInfo == player.info and publicRole == Role.CITIZEN :
-                                publicRole = role
-                                if role == Role.POLICE :
-                                    assumptionType = AssumptionType.TEST_RESULT
-                                elif role == Role.DOCTOR :
-                                    assumptionType = AssumptionType.HEAL_SUCCESS
-                            elif playerInfo != player.info :
-                                estimations.append(Estimation(playerInfo, role))
-
-                    assumptions: list[Assumption] = [Assumption(estimations, '', assumptionType=assumptionType)]
-
-                    if publicRole == Role.CITIZEN :
-                        publicRole = player.publicRole
-                    strategy = Strategy(publicRole, assumptions)
-                    break
-
-                except :
-                    continue
-
-        # 플레이어가 자신이 마피아라고 주장한 것이 맞는지 다시 확인
-        if strategy != None and player.publicRole != Role.MAFIA and strategy.publicRole == Role.MAFIA :
-            response = await self._ainvokeChain(
-                chain=self.checkClaimsMafiaChain,
-                input={
-                    'name' : player.info.englishName,
-                    'sentence' : message,
-                }
-            )
-
-            if "false" in response.lower() :
-                strategy.publicRole = player.publicRole
-
-        return strategy
-
-    async def isMessageQuestion(self, message: str) -> bool :
-        self.logger.log(TAG.LLM, f'isMessageQuestion input: {message}')
-
-        response: str = await self._ainvokeChain(
-            chain=self.checkQuestionChain,
-            input={
-                'message' : message,
-            }
-        )
-
-        self.logger.log(TAG.LLM, f'isMessageQuestion response: {response}')
-        return "true" in response.lower()
-
-    async def generateResponse(self, speaker: Player, conversation: list[str]) -> tuple[Player, str] :
-        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateResponse')
-
-        # setup input
-        nameList: str = ', '.join(map(lambda p: p.info.name, filter(lambda p: p != speaker, self.gameState.players)))
-        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateResponse name list: {nameList}')
-
-        messages = []
-        for message in conversation :
-            messages.append(HumanMessage(content=message))
-
-        # call chain
-        jsonData: str = await self._ainvokeChain(
-            chain=self.generateResponseChain,
-            input={
-                'nameList' : nameList,
-                'lastMessage': conversation[-1],
-                'messages' : messages,
-            }
-        )
-        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateResponse response: {jsonData}')
-
-        # parse response
-        try :
-            data = json.loads(jsonData)
-            name: str = data['name']
-            message: str = data['message']
-        except json.JSONDecodeError as e :
-            self.logger.log(TAG.ERROR, f'[LLM] generateResponse JSONDecodeError: {e}')
-            return (None, None)
-        except Exception as e :
-            self.logger.log(TAG.ERROR, f'[LLM] generateResponse Exception: {e}')
-            return (None, None)
-
-        # get respondent player
-        respondent: Player = self.gameState.getPlayerByName(name)
-        if respondent == None or respondent.info.isHuman or respondent == speaker :
-            return (None, None)
-
-        return (respondent, message)
-
-    async def generateQuestion(self, speaker: Player, target: Player, conversation: list[str]) -> str :
-        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateQuestion, target: {target.info.name}')
-
-        messages = []
-        for message in conversation :
-            messages.append(HumanMessage(content=message))
-
-        return await self._ainvokeChain(
-            chain=self.generateQuestionChain,
-            input={
-                'my_name' : speaker.info.name,
-                'name' : target.info.name,
-                'tone' : speaker.info.tone,
-                'messages' : messages,
-            }
-        )
-
-    async def generateNormalDiscussion(self, speaker: Player, conversation: list[str]) -> str :
-        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateNormalDiscussion')
-
-        messages = []
-        for message in conversation :
-            messages.append(HumanMessage(content=message))
-
-        return await self._ainvokeChain(
-            chain=self.generateNormalDiscussionChain,
-            input={
-                'my_name' : speaker.info.name,
-                'tone' : speaker.info.tone,
-                'otherParticipants' : ', '.join(map(lambda p : p.info.name, filter(lambda p : p != speaker, self.gameState.players))),
-                'messages' : messages,
-            }
-        )
-
     def _setupDiscussionChain(self, gameInfo: GameInfo) :
         # setup model
         model = ChatGoogleGenerativeAI(
@@ -303,6 +89,32 @@ class LLM :
 
         # setup chain
         self.discussionChain = prompt | model
+
+    async def getDiscussion(self, player: Player, strategy: Strategy, conversationLogsCount: int = 5) -> str :
+        self.logger.log(TAG.LLM, f'{player.info.name}: getDiscussion input: {strategy}')
+
+        publicRole, _ = player.getChangeRole(strategy.publicRole)
+        isPublicRoleChanged: bool = player.publicRole != publicRole
+
+        publicRoleStrategy: str = ""
+        if isPublicRoleChanged :
+            publicRoleStrategy = f"You must claim that your role is {roleToStrDict[publicRole]}."
+        elif player.info.role != Role.CITIZEN and publicRole == Role.CITIZEN :
+            publicRoleStrategy = "You must not disclose your role."
+
+        input: dict[str, str] = {
+            'my_name' : player.info.name,
+            'my_role' : roleToStrDict[player.info.role],
+            'public_role_strategy' : publicRoleStrategy,
+            'estimations' : ', '.join(map(lambda e: f"{e.playerInfo.name}'s role is {roleToStrDict[e.role]}", strategy.assumptions[0].estimations)),
+            'tone': player.info.tone,
+            'conversation_logs' : '\n'.join(self.gameState.getRecentConversationLogs(conversationLogsCount)),
+            'evidence' : strategy.assumptions[0].reason,
+        }
+
+        response = await self._ainvokeChain(self.discussionChain, input)
+        self.logger.log(TAG.LLM, f'{player.info.name}: getDiscussion response: {response}')
+        return response.content
 
     def _setupTranslateChain(self) :
         # setup model
@@ -490,6 +302,93 @@ class LLM :
         # setup chain
         self.checkClaimsMafiaChain = prompt | model | parser
 
+    async def analyzeHumanMessage(self, player: Player, message: str) -> Strategy :
+        self.logger.log(TAG.LLM, f'{player.info.name}: analyzeHumanMessage input: {message}')
+
+        if self.gameState.gameInfo.language != 'english' :
+            message = await self._ainvokeChain(
+                chain=self.translateChain,
+                input={
+                    'sentence' : message,
+                }
+            )
+
+            if not message or message == '""' :
+                return None
+
+        message = await self._ainvokeChain(
+            chain=self.removeFirstPersonChain,
+            input={
+                'name' : player.info.englishName,
+                'sentence' : message,
+            }
+        )
+
+        response = await self.humanMessageAgent.ainvoke({'messages': [HumanMessage(message)]})
+        self.logger.log(TAG.LLM, f'analyzeHumanMessage response: {response}')
+
+        strategy: Strategy = None
+
+        for llmMessage in reversed(response['messages']) :
+            if isinstance(llmMessage, ToolMessage) :
+                try :
+                    data = json.loads(llmMessage.content)
+
+                    publicRole: Role = Role.CITIZEN
+                    assumptionType: AssumptionType = AssumptionType.NORMAL
+
+                    police: Player = self.gameState.getPlayerByEnglishName(data['police'])
+                    doctor: Player = self.gameState.getPlayerByEnglishName(data['doctor'])
+
+                    if police != None and police == player :
+                        publicRole = Role.POLICE
+                        assumptionType = AssumptionType.TEST_RESULT
+                    elif doctor != None and doctor == player :
+                        publicRole = Role.DOCTOR
+                        assumptionType = AssumptionType.HEAL_SUCCESS
+
+                    estimations: list[Estimation] = []
+                    for estimation in data['estimations'] :
+                        playerInfo: PlayerInfo = self.gameState.getPlayerInfoByEnglishName(estimation['name'])
+                        role: Role = strToRole(estimation['role'])
+                        if role == None :
+                            role = Role.CITIZEN
+
+                        if playerInfo != None :
+                            if playerInfo == player.info and publicRole == Role.CITIZEN :
+                                publicRole = role
+                                if role == Role.POLICE :
+                                    assumptionType = AssumptionType.TEST_RESULT
+                                elif role == Role.DOCTOR :
+                                    assumptionType = AssumptionType.HEAL_SUCCESS
+                            elif playerInfo != player.info :
+                                estimations.append(Estimation(playerInfo, role))
+
+                    assumptions: list[Assumption] = [Assumption(estimations, '', assumptionType=assumptionType)]
+
+                    if publicRole == Role.CITIZEN :
+                        publicRole = player.publicRole
+                    strategy = Strategy(publicRole, assumptions)
+                    break
+
+                except :
+                    continue
+
+        # 플레이어가 자신이 마피아라고 주장한 것이 맞는지 다시 확인
+        if strategy != None and player.publicRole != Role.MAFIA and strategy.publicRole == Role.MAFIA :
+            response = await self._ainvokeChain(
+                chain=self.checkClaimsMafiaChain,
+                input={
+                    'name' : player.info.englishName,
+                    'sentence' : message,
+                }
+            )
+
+            if "false" in response.lower() :
+                strategy.publicRole = player.publicRole
+
+        return strategy
+
     def _setupCheckQuestionChain(self) :
         # setup model
         # model = ChatAnthropic(
@@ -516,6 +415,19 @@ class LLM :
 
         # setup chain
         self.checkQuestionChain = prompt | model | parser
+
+    async def isMessageQuestion(self, message: str) -> bool :
+        self.logger.log(TAG.LLM, f'isMessageQuestion input: {message}')
+
+        response: str = await self._ainvokeChain(
+            chain=self.checkQuestionChain,
+            input={
+                'message' : message,
+            }
+        )
+
+        self.logger.log(TAG.LLM, f'isMessageQuestion response: {response}')
+        return "true" in response.lower()
 
     def _setupGenerateResponseChain(self, gameInfo: GameInfo) :
         # setup model
@@ -548,6 +460,47 @@ class LLM :
         # setup chain
         self.generateResponseChain = prompt | model | parser
 
+    async def generateResponse(self, speaker: Player, conversation: list[str]) -> tuple[Player, str] :
+        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateResponse')
+
+        # setup input
+        nameList: str = ', '.join(map(lambda p: p.info.name, filter(lambda p: p != speaker, self.gameState.players)))
+        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateResponse name list: {nameList}')
+
+        messages = []
+        for message in conversation :
+            messages.append(HumanMessage(content=message))
+
+        # call chain
+        jsonData: str = await self._ainvokeChain(
+            chain=self.generateResponseChain,
+            input={
+                'nameList' : nameList,
+                'lastMessage': conversation[-1],
+                'messages' : messages,
+            }
+        )
+        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateResponse response: {jsonData}')
+
+        # parse response
+        try :
+            data = json.loads(jsonData)
+            name: str = data['name']
+            message: str = data['message']
+        except json.JSONDecodeError as e :
+            self.logger.log(TAG.ERROR, f'[LLM] generateResponse JSONDecodeError: {e}')
+            return (None, None)
+        except Exception as e :
+            self.logger.log(TAG.ERROR, f'[LLM] generateResponse Exception: {e}')
+            return (None, None)
+
+        # get respondent player
+        respondent: Player = self.gameState.getPlayerByName(name)
+        if respondent == None or respondent.info.isHuman or respondent == speaker :
+            return (None, None)
+
+        return (respondent, message)
+
     def _setupGenerateQuestionChain(self, gameInfo: GameInfo) :
         # setup model
         model = ChatGoogleGenerativeAI(
@@ -575,6 +528,23 @@ class LLM :
 
         # setup chain
         self.generateQuestionChain = prompt | model | parser
+
+    async def generateQuestion(self, speaker: Player, target: Player, conversation: list[str]) -> str :
+        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateQuestion, target: {target.info.name}')
+
+        messages = []
+        for message in conversation :
+            messages.append(HumanMessage(content=message))
+
+        return await self._ainvokeChain(
+            chain=self.generateQuestionChain,
+            input={
+                'my_name' : speaker.info.name,
+                'name' : target.info.name,
+                'tone' : speaker.info.tone,
+                'messages' : messages,
+            }
+        )
 
     def _setupGenerateNormalDiscussionChain(self, gameInfo: GameInfo) :
         # setup model
@@ -615,6 +585,23 @@ class LLM :
         # setup chain
         self.generateNormalDiscussionChain = prompt | model | parser
 
+    async def generateNormalDiscussion(self, speaker: Player, conversation: list[str]) -> str :
+        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateNormalDiscussion')
+
+        messages = []
+        for message in conversation :
+            messages.append(HumanMessage(content=message))
+
+        return await self._ainvokeChain(
+            chain=self.generateNormalDiscussionChain,
+            input={
+                'my_name' : speaker.info.name,
+                'tone' : speaker.info.tone,
+                'otherParticipants' : ', '.join(map(lambda p : p.info.name, filter(lambda p : p != speaker, self.gameState.players))),
+                'messages' : messages,
+            }
+        )
+
     async def _ainvokeChain(self, chain: RunnableSerializable[dict, BaseMessage], input: dict[str, str]) -> BaseMessage :
         try :
             return await chain.ainvoke(input)
@@ -624,24 +611,6 @@ class LLM :
         except KeyError as e:
             self.logger.log(TAG.ERROR, f"[LLM] KeyError: Missing key - {e}")
             raise e
-        # except openai.error.AuthenticationError as e:
-        #     self.logger.log(TAG.ERROR, f"[LLM] AuthenticationError: {e}")
-        #     raise e
-        # except openai.error.RateLimitError as e:
-        #     self.logger.log(TAG.ERROR, f"[LLM] RateLimitError: {e}")
-        #     raise e
-        # except openai.error.APIError as e:
-        #     self.logger.log(TAG.ERROR, f"[LLM] APIError: {e}")
-        #     raise e
-        # except openai.error.Timeout as e:
-        #     self.logger.log(TAG.ERROR, f"[LLM] TimeoutError: {e}")
-        #     raise e
-        # except openai.error.InvalidRequestError as e:
-        #     self.logger.log(TAG.ERROR, f"[LLM] InvalidRequestError: {e}")
-        #     raise e
-        # except LangChainError as e:
-        #     self.logger.log(TAG.ERROR, f"[LLM] LangChainError: {e}")
-        #     raise e
         except TypeError as e:
             self.logger.log(TAG.ERROR, f"[LLM] TypeError: {e}")
             raise e
