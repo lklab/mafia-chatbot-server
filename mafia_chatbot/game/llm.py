@@ -520,11 +520,12 @@ class LLM :
         self.logger.log(TAG.LLM, f'{respondent.info.name}: getResponse')
 
         # setup input
-        strategy: Strategy = respondent.getDiscussionStrategy(self.gameState.round)
         assumptions: dict[PlayerInfo, tuple[Role, str]] = {}
-        for assumption in strategy.assumptions :
-            for estimation in assumption.estimations :
-                assumptions[estimation.playerInfo] = (estimation.role, assumption.reason)
+        strategy: Strategy = respondent.getDiscussionStrategy(self.gameState.round)
+        if strategy != None :
+            for assumption in strategy.assumptions :
+                for estimation in assumption.estimations :
+                    assumptions[estimation.playerInfo] = (estimation.role, assumption.reason)
 
         claims: list[str] = []
         for player in self.gameState.players :
@@ -759,4 +760,4 @@ class LLM :
             'traditional chinese' :  6.8,
         }
 
-        return int(base.get(language, 20.0) * 3.5)
+        return int(base.get(language, 20.0) * 7)
