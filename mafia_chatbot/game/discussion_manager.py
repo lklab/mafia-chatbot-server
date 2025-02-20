@@ -177,7 +177,7 @@ class DiscussionManager :
                 conversation: list[str] = discussion.context.getChatLog(self.gameState, CONVERSATION_WINDOW) # 채팅 로그 가져오기
                 receiver = await self.llm.getRespondent(discussion.player, conversation)
 
-            if receiver == None or receiver.info.isHuman or not self.isRunning :
+            if receiver == None or receiver.info.isHuman or receiver == discussion.player or not self.isRunning :
                 return
 
             # 티켓 발행

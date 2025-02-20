@@ -224,7 +224,7 @@ class DiscussionPlayer :
 
                 # 지난 밤에 관한 대화
                 else : # elif method == 4 :
-                    text = await self.llm.getNightReaction(self.player)
+                    text = await self.llm.getNightReaction(self.player, self.gameState.getRecentConversationLogs(CONVERSATION_WINDOW))
 
             text = text.removeprefix(f'{self.player.info.name}: ')
 
@@ -275,7 +275,7 @@ class DiscussionPlayer :
             conversation: list[str] = ticket.context.getChatLog(self.gameState, CONVERSATION_WINDOW)
 
             # 응답 생성하기
-            text = await self.llm.getResponse(ticket.sender, self.player, conversation)
+            text = await self.llm.getResponse(self.trustRecorder, self.player, conversation)
 
             discussion: Discussion = Discussion(
                 player=self.player,

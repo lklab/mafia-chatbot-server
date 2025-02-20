@@ -392,6 +392,10 @@ class GameState :
         ### kill cancel data
         self.killCancelCheckers: dict[Player, KillCancelChecker] = {}
 
+        ### last event data
+        self.lastVoteEvent: str = None
+        self.lastKillEvent: str = None
+
     def removePlayer(self, player: Player, reason: RemoveReason) :
         if player == None or not player.isLive :
             return
@@ -713,6 +717,12 @@ class GameState :
         if player in self.killCancelCheckers :
             self.killCancelCheckers[player].interrupt()
             del self.killCancelCheckers[player]
+
+    def setLastVoteEvent(self, eventStr: str) :
+        self.lastVoteEvent = eventStr
+
+    def setLastKillEvent(self, eventStr: str) :
+        self.lastKillEvent = eventStr
 
     def expandList(self, l: list, size: int, fillValue = None) :
         for _ in range(len(l), size) :
