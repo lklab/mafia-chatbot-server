@@ -566,6 +566,10 @@ def _choiceFromCandidates(gameState: GameState, recorder: TrustRecorder, me: Pla
     myPointerOrVotersCount: int = len(recorder.getPointerOrVoters(me.info))
     isIFocused: bool = myPointerOrVotersCount >= round(gameState.getPlayerCount() / 2.5)
     myTargetInfo: PlayerInfo = recorder.getTargetInfo(me.info)
+    if myTargetInfo not in candidates :
+        myTargetInfo = None
+
+    isValidTargetExists: bool = False
 
     for candidate in candidates :
         pointerOrVoters: set[PlayerInfo] = recorder.getPointerOrVoters(candidate)
@@ -638,6 +642,12 @@ def _choiceFromCandidates(gameState: GameState, recorder: TrustRecorder, me: Pla
 
         # apply weight
         weights.append(tw * cw)
+        isValidTargetExists = True
+
+    # weights가 모두 0일 때 1로 채우기
+    if not isValidTargetExists :
+        for i in range(len(weights)) :
+            weights[i] = 1.0
 
     # choice
     gameState.logger.log(TAG.STRATEGY, f'{me.info.name} _choiceFromCandidates: ')
