@@ -16,19 +16,26 @@ from mafia_chatbot.game.llm import LLM
 
 class DiscussionContext :
     def __init__(self) :
-        self.history: list[tuple[Player, ChatData, Strategy]] = []
+        self.history: list[ChatData] = []
 
-    def addDiscussion(self, player: Player, chat: ChatData, strategy: Strategy = None) :
-        self.history.append((player, chat, strategy))
+    def addDiscussion(self, chat: ChatData) :
+        self.history.append(chat)
 
     def getLength(self) -> int :
         return len(self.history)
 
     def getLastChat(self) -> ChatData :
-        return self.history[-1][1]
+        return self.history[-1]
 
     def getChatList(self) -> list[str] :
-        return list(map(lambda h : f'{h[1].sender.name}: {h[1].content}', self.history))
+        return list(map(lambda h : f'{h.sender.name}: {h.content}', self.history))
+
+    def getChatLog(self, gameState: GameState, count: int) -> list[str] :
+        if self.getLength() == 1 :
+            # chat을 마지막으로 하는 대화 내역 가져오기
+            return gameState.getDiscussionChatLogs(count, lastChat=self.getLastChat())
+        else :
+            return self.getChatList()
 
 @dataclass
 class Discussion :
@@ -37,11 +44,12 @@ class Discussion :
     context: DiscussionContext
     isQuestion: bool = False
     strategy: Strategy = None
-    receiver: Player = None # TODO receiver가 인간일 수도 있음
+    receiver: Player = None
 
 @dataclass
 class DiscussionTicket :
     sender: Player
+    receiver: Player
     context: DiscussionContext
     strategy: Strategy = None
     chat: ChatData = None
@@ -256,11 +264,8 @@ class DiscussionPlayer :
             if not self.gameState.gameInfo.useLLM :
                 return
 
-            if ticket.context.getLength() == 1 :
-                # chat을 마지막으로 하는 대화 내역 가져오기
-                conversation: list[str] = self.gameState.getDiscussionChatLogs(5, lastChat=ticket.context.getLastChat())
-            else :
-                conversation: list[str] = ticket.context.getChatList()
+            # 채팅 로그 가져오기
+            conversation: list[str] = ticket.context.getChatLog(self.gameState, 5)
 
             # 응답 생성하기
             text = await self.llm.generateResponse(ticket.sender, conversation) # TODO 응답만 생성하도록 하기
@@ -299,3 +304,5 @@ class DiscussionPlayer :
             pass
         except Exception as e :
             self.logger.logError("[DiscussionPlayer] Unhandled exception in task", e)
+        except :
+            pass
