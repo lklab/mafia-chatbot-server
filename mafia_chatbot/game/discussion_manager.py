@@ -12,7 +12,7 @@ from mafia_chatbot.game.llm import LLM
 from mafia_chatbot.game.chat_data import ChatData
 from mafia_chatbot.game.game_logger import GameLogger, TAG
 from mafia_chatbot.game.achievements_manager import AchievementsManager
-from mafia_chatbot.game.discussion_player import DiscussionPlayer, Discussion, DiscussionTicket, DiscussionContext
+from mafia_chatbot.game.discussion_player import DiscussionPlayer, Discussion, DiscussionTicket, DiscussionContext, CONVERSATION_WINDOW
 
 class DiscussionManager :
     def __init__(self, gameState: GameState, trustRecorder: TrustRecorder, llm: LLM, achievementsManager: AchievementsManager) :
@@ -174,8 +174,8 @@ class DiscussionManager :
             if discussion.receiver != None :
                 receiver = discussion.receiver
             else :
-                conversation: list[str] = discussion.context.getChatLog(self.gameState, 5) # 채팅 로그 가져오기
-                receiver = await self.llm.generateResponse(discussion.player, conversation) # TODO 응답자 이름만 가져오는 기능으로 변경
+                conversation: list[str] = discussion.context.getChatLog(self.gameState, CONVERSATION_WINDOW) # 채팅 로그 가져오기
+                receiver = await self.llm.getRespondent(discussion.player, conversation)
 
             if receiver == None or receiver.info.isHuman or not self.isRunning :
                 return

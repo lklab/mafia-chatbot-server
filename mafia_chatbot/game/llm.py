@@ -90,7 +90,7 @@ class LLM :
         # setup chain
         self.discussionChain = prompt | model
 
-    async def getDiscussion(self, player: Player, strategy: Strategy, conversationLogsCount: int = 5) -> str :
+    async def getDiscussion(self, player: Player, strategy: Strategy, conversationWindow: int = 10) -> str :
         self.logger.log(TAG.LLM, f'{player.info.name}: getDiscussion input: {strategy}')
 
         publicRole, _ = player.getChangeRole(strategy.publicRole)
@@ -108,7 +108,7 @@ class LLM :
             'public_role_strategy' : publicRoleStrategy,
             'estimations' : ', '.join(map(lambda e: f"{e.playerInfo.name}'s role is {roleToStrDict[e.role]}", strategy.assumptions[0].estimations)),
             'tone': player.info.tone,
-            'conversation_logs' : '\n'.join(self.gameState.getRecentConversationLogs(conversationLogsCount)),
+            'conversation_logs' : '\n'.join(self.gameState.getRecentConversationLogs(conversationWindow)),
             'evidence' : strategy.assumptions[0].reason,
         }
 
@@ -501,6 +501,12 @@ class LLM :
 
         return (respondent, message)
 
+    async def getRespondent(self, speaker: Player, conversation: list[str]) -> Player :
+        pass
+
+    async def getResponse(self, speaker: Player, respondent: Player, conversation: list[str]) -> str :
+        pass
+
     def _setupGenerateQuestionChain(self, gameInfo: GameInfo) :
         # setup model
         model = ChatGoogleGenerativeAI(
@@ -601,6 +607,9 @@ class LLM :
                 'messages' : messages,
             }
         )
+
+    async def getNightReaction(self, speaker: Player) -> str :
+        pass
 
     async def _ainvokeChain(self, chain: RunnableSerializable[dict, BaseMessage], input: dict[str, str]) -> BaseMessage :
         try :

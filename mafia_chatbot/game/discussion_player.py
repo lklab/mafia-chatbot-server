@@ -14,6 +14,8 @@ import mafia_chatbot.game.evaluator as evaluator
 from mafia_chatbot.game.trust_recorder import TrustRecorder
 from mafia_chatbot.game.llm import LLM
 
+CONVERSATION_WINDOW = 10
+
 class DiscussionContext :
     def __init__(self) :
         self.history: list[ChatData] = []
@@ -123,7 +125,7 @@ class DiscussionPlayer :
         speakTime: float = time.monotonic() + delay
 
         if self.gameState.gameInfo.useLLM :
-            text = await self.llm.getDiscussion(self.player, strategy)
+            text = await self.llm.getDiscussion(self.player, strategy, conversationWindow=CONVERSATION_WINDOW)
             text = text.removeprefix(f'{self.player.info.name}: ')
         else :
             text: str = str(strategy)
@@ -155,8 +157,6 @@ class DiscussionPlayer :
         isQuestion: bool = False
         receiver: Player = None
 
-        chatCount: int = 5
-
         # 이전 전략과 동일한 경우 None 처리
         if (
             strategy != None
@@ -169,7 +169,7 @@ class DiscussionPlayer :
         targetChat: ChatData = None
         if strategy != None :
             chatList = self.gameState.chatList
-            for i in range(len(chatList) - 1, max(-1, len(chatList) - 1 - chatCount), -1) :
+            for i in range(len(chatList) - 1, max(-1, len(chatList) - 1 - CONVERSATION_WINDOW), -1) :
                 if chatList[i].sender == strategy.mainTarget :
                     targetChat = chatList[i]
                     break
@@ -184,7 +184,7 @@ class DiscussionPlayer :
         if self.gameState.gameInfo.useLLM :
             # public role이 바뀌었거나 default reason이 아닌 경우 반드시 전략 발언
             if isMustUseStrategy :
-                text = await self.llm.getDiscussion(self.player, strategy, conversationLogsCount=chatCount)
+                text = await self.llm.getDiscussion(self.player, strategy, conversationWindow=CONVERSATION_WINDOW)
 
             # 랜덤으로 선택
             else :
@@ -206,25 +206,25 @@ class DiscussionPlayer :
                 # 대상의 최근 토론을 의심하기
                 if method == 0 :
                     strategy.changeDefaultReason(f"Make a plausible argument to suspect {targetChat.sender.name} as the mafia based on their statement: \"{targetChat.content}\".")
-                    text = await self.llm.getDiscussion(self.player, strategy, conversationLogsCount=chatCount)
+                    text = await self.llm.getDiscussion(self.player, strategy, conversationWindow=CONVERSATION_WINDOW)
 
                 # strategy 그대로 사용
                 elif method == 1 :
-                    text = await self.llm.getDiscussion(self.player, strategy, conversationLogsCount=chatCount)
+                    text = await self.llm.getDiscussion(self.player, strategy, conversationWindow=CONVERSATION_WINDOW)
 
                 # 대상에게 질문하기
                 elif method == 2 :
                     receiver = self.gameState.getPlayerByInfo(strategy.mainTarget)
-                    text = await self.llm.generateQuestion(self.player, receiver, self.gameState.getRecentConversationLogs(chatCount))
+                    text = await self.llm.generateQuestion(self.player, receiver, self.gameState.getRecentConversationLogs(CONVERSATION_WINDOW))
                     isQuestion = True
 
                 # 아무 말 하기
                 elif method == 3 :
-                    text = await self.llm.generateNormalDiscussion(self.player, self.gameState.getRecentConversationLogs(chatCount))
+                    text = await self.llm.generateNormalDiscussion(self.player, self.gameState.getRecentConversationLogs(CONVERSATION_WINDOW))
 
                 # 지난 밤에 관한 대화
                 else : # elif method == 4 :
-                    text = '' # TODO
+                    text = await self.llm.getNightReaction(self.player)
 
             text = text.removeprefix(f'{self.player.info.name}: ')
 
@@ -255,7 +255,7 @@ class DiscussionPlayer :
 
         if ticket.strategy != None :
             if self.gameState.gameInfo.useLLM :
-                text: str = await self.llm.getDiscussion(self.player, ticket.strategy)
+                text: str = await self.llm.getDiscussion(self.player, ticket.strategy, conversationWindow=CONVERSATION_WINDOW)
                 text = text.removeprefix(f'{self.player.info.name}: ')
             else :
                 text: str = str(ticket.strategy)
@@ -272,10 +272,10 @@ class DiscussionPlayer :
                 return
 
             # 채팅 로그 가져오기
-            conversation: list[str] = ticket.context.getChatLog(self.gameState, 5)
+            conversation: list[str] = ticket.context.getChatLog(self.gameState, CONVERSATION_WINDOW)
 
             # 응답 생성하기
-            text = await self.llm.generateResponse(ticket.sender, conversation) # TODO 응답만 생성하도록 하기
+            text = await self.llm.getResponse(ticket.sender, self.player, conversation)
 
             discussion: Discussion = Discussion(
                 player=self.player,
