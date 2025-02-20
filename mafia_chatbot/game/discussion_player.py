@@ -101,6 +101,7 @@ class DiscussionPlayer :
     async def _mainTask(self) :
         # 자신이 공개된 경찰일 경우 라운드 시작 후 짧은 시간 이내에 직전 조사 결과 발표
         if self.player.publicRole == Role.POLICE :
+            self.trustRecorder.updateTrustRecords()
             strategy: Strategy = evaluator.evaluateDiscussionStrategy(self.gameState, self.trustRecorder, self.player)
             if strategy != None :
                 await self._issueDiscussionFromStrategy(strategy, random.uniform(3.0, 5.0))
@@ -150,6 +151,8 @@ class DiscussionPlayer :
         await asyncio.sleep(delay)
         if not self.isRunning :
             return
+
+        self.trustRecorder.updateTrustRecords()
 
         text: str = 'None'
         pastStrategy: Strategy = self.player.getDiscussionStrategy(self.gameState.round)
