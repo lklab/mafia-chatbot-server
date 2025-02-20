@@ -362,6 +362,7 @@ class GameState :
 
         ### history
         self.chatList: list[ChatData] = []
+        self.chatListByRound: list[list[ChatData]] = []
         self.voteHistory: list[VoteData] = []
         self.nightTargetHistory: list[NightTargetData] = []
         self.removedPlayers: dict[Player, PlayerRemoveInfo] = {}
@@ -513,7 +514,7 @@ class GameState :
             content=content,
             sender=sender,
         )
-        self.chatList.append(chat)
+        self._saveChatData(chat)
         self.logger.log(TAG.CHAT, f'DISCUSSION - {chat.index} - {sender.name}: {content}')
         self.sendAddChatMessageToAllUsers(chat)
 
@@ -526,7 +527,7 @@ class GameState :
             content=content,
             receiver=receiver,
         )
-        self.chatList.append(chat)
+        self._saveChatData(chat)
         self.logger.log(TAG.CHAT, f'SYSTEM - {chat.index} - for {"everyone" if receiver == None else receiver.name}: {content}')
         self.sendAddChatMessageToAllUsers(chat)
 
@@ -538,7 +539,7 @@ class GameState :
             sender=sender,
             id=chat_out.id,
         )
-        self.chatList.append(chat)
+        self._saveChatData(chat)
         self.logger.log(TAG.CHAT, f'DISCUSSION - {chat.index} - {sender.name}: {chat.content}')
 
         chat_out.index = chat.index
@@ -546,6 +547,12 @@ class GameState :
 
         if self.onHumanChat != None :
             self.onHumanChat(chat)
+
+    def _saveChatData(self, chat: ChatData) :
+        self.chatList.append(chat)
+        if len(self.chatListByRound) < self.round + 1 :
+            self.expandList(self.chatListByRound, self.round + 1, fillValue=[])
+        self.chatListByRound[self.round].append(chat)
 
     def getRecentConversationLogs(self, count: int) -> list[str] :
         logs: list[str] = []
@@ -580,6 +587,17 @@ class GameState :
             index -= 1
 
         return logs[::-1]
+
+    def getCurrentRoundDiscussionChatCount(self) -> int :
+        if len(self.chatListByRound) <= self.round :
+            return 0
+
+        count: int = 0
+        for chat in self.chatListByRound[self.round] :
+            if chat.type == ChatType.DISCUSSION :
+                count += 1
+
+        return count
 
     def setOnHumanChatListener(self, listener: Callable[[ChatData], None]) :
         self.onHumanChat = listener
