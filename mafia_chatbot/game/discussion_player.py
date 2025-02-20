@@ -87,7 +87,11 @@ class DiscussionPlayer :
         self._stopTask()
 
     def forwardTicket(self, ticket: DiscussionTicket) :
-        self.ticketQueue.append(ticket)
+        if ticket.strategy != None :
+            self.ticketQueue.appendleft(ticket)
+        else :
+            self.ticketQueue.append(ticket)
+
         if self.waitTask != None :
             self.waitTask.cancel()
             self.waitTask = None
@@ -243,7 +247,10 @@ class DiscussionPlayer :
         self.onDiscussion(discussion)
 
     async def _issueResponse(self, ticket: DiscussionTicket) :
-        speakTime: float = time.monotonic() + random.uniform(7.0, 10.0)
+        if ticket.strategy != None :
+            speakTime: float = time.monotonic() + random.uniform(3.0, 5.0)
+        else :
+            speakTime: float = time.monotonic() + random.uniform(7.0, 10.0)
         discussion: Discussion = None
 
         if ticket.strategy != None :
