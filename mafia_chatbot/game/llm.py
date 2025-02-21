@@ -75,7 +75,7 @@ class LLM :
 
         # setup prompt
         template = (
-            "You are a player participating in a Mafia game. Your name is {my_name}, and your role is {my_role}. It is currently the discussion phase, and it is your turn to speak. {public_role_strategy} You must claim that {estimations}. Must use the provided ##Conversation Logs## and ##Evidence## as references. Avoid overusing references to 'night' or time-related aspects. Keep your statement under %(characterCount)s characters if possible, and keep your statement concise. Write in %(language)s with a {tone} tone, making it sound like natural dialogue.%(dont_tranlate)s Your response should differ from previous statements and introduce variety in phrasing."
+            "You are a player participating in a Mafia game. Your name is {my_name}, and your role is {my_role}. It is currently the discussion phase, and it is your turn to speak. {public_role_strategy} You must claim that {estimations}. You must use ##Evidence## as the basis for your argument, and you may utilize ##Conversation Logs##. Keep your statement under %(characterCount)s characters if possible, and keep your statement concise. Write in %(language)s with a {tone} tone, making it sound like natural dialogue.%(dont_tranlate)s Your response should differ from previous statements and introduce variety in phrasing."
             "\n\n"
             "##Conversation Logs##"
             "\n"
@@ -625,7 +625,7 @@ class LLM :
             "\n* If you want to mention another participant, refer to ##List of Other Participants##."
             "\n* You must not state that someone is the mafia, regardless of intent."
             "\n* You must not reveal that your role is anything other than a citizen or imply that you are not a citizen."
-            "\n* Avoid overusing references to 'night' or time-related aspects unless necessary."
+            "\n* Do not use references to 'night' or time-related aspects."
             "\n* Keep your statement under %(characterCount)s characters if possible, and keep your statement concise."
             "\n* Write naturally in %(language)s, using a {tone} tone that resembles real conversation."
             "%(dont_tranlate)s"
