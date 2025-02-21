@@ -195,7 +195,7 @@ class DiscussionPlayer :
                 methods: list[int] = list(range(5))
                 weights: list[float] = [5, 2, 1, 1, 0]
 
-                if self.gameState.round > 0 and time.monotonic() - self.startTime < 15.0 :
+                if self.gameState.round > 0 and (time.monotonic() - self.startTime) < 15.0 :
                     weights[4] = 5 / (self.gameState.getCurrentRoundDiscussionChatCount() + 1)
 
                 if strategy == None :

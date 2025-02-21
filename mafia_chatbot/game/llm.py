@@ -495,7 +495,7 @@ class LLM :
 
         # setup prompt
         systemMessageTemplate = (
-            "Below is part of a Mafia game conversation. You are to generate \"{name}\"'s response to \"{lastMessage}\". You can freely and creatively write the content of the response, but it must be plausible within the Mafia game context. If someone questions your claim, you may only use the information in ##{name}'s claims## to respond. You may not accuse or confirm anyone as Mafia or Citizen, using any content not listed in ##{name}'s claims##. The response must be written in %(language)s and should feel like natural dialogue. Keep it under %(characterCount)s characters if possible, and keep it concise. Output only the response. Do not include any explanations or additional text."
+            "Below is part of a Mafia game conversation. You are to generate \"{name}\"'s response to \"{lastMessage}\". You can freely and creatively write the content of the response, but it must be plausible within the Mafia game context. The response should feel natural and engaging, reflecting \"{name}\"'s emotions or thoughts about the situation rather than being a simple reply. Use the conversation history to speak in a contextually appropriate manner. If someone questions your claim, you may only use the information in ##{name}'s claims## to respond. You may not accuse or confirm anyone as Mafia or Citizen, using any content not listed in ##{name}'s claims##. The response must be written in %(language)s and should feel like natural dialogue. Keep it under %(characterCount)s characters if possible, and keep it concise. Output only the response. Do not include any explanations or additional text."
             "\n\n"
             "##{name}'s claims##"
             "\n"
@@ -547,7 +547,7 @@ class LLM :
             # 당신의 이전 주장
             elif player.info in assumptions :
                 role, reason = assumptions[player.info]
-                claims.append(f'{respondent.info.name} thinks {player.info.name} is a {role}. Because {reason}.')
+                claims.append(f'{respondent.info.name} thinks {player.info.name} is a {roleToStrDict[role]}. Because {reason}.')
 
             # 주장 없음
             else :
@@ -626,6 +626,7 @@ class LLM :
         # setup prompt
         systemMessageTemplate = (
             "You are a participant in a mafia game. Your name is {my_name}. Instead of suspecting someone, you want to speak freely. Please write what you would say."
+            "\n* Use the conversation history to speak in a contextually appropriate manner."
             "\n* If you want to mention another participant, refer to ##List of Other Participants##."
             "\n* You must not state that someone is the mafia, regardless of intent."
             "\n* You must not reveal that your role is anything other than a citizen or imply that you are not a citizen."
@@ -682,7 +683,7 @@ class LLM :
 
         # setup prompt
         systemMessageTemplate = (
-            "Below is part of a Mafia game conversation. You must generate \"{name}\"'s reaction to the list of events from last night, labeled as ##Last night's events##. You can freely and creatively write the content of the response, but it must be plausible within the Mafia game context. You may not accuse or confirm anyone as Mafia or Citizen, nor reveal \"{name}\"'s role. The response must be written in %(language)s and should feel like natural dialogue. Keep it under %(characterCount)s characters if possible, and keep it concise. Output only the response. Do not include any explanations or additional text."
+            "Below is part of a Mafia game conversation. You must generate \"{name}\"'s reaction to the list of events from last night, labeled as ##Last night's events##. You can freely and creatively write the content of the response, but it must be plausible within the Mafia game context. The response should also include information about which event it is reacting to. You may not accuse or confirm anyone as Mafia or Citizen, nor reveal \"{name}\"'s role. The response must be written in %(language)s and should feel like natural dialogue. Keep it under %(characterCount)s characters if possible, and keep it concise. Output only the response. Do not include any explanations or additional text."
             "\n\n"
             "##Last night's events##"
             "\n"
