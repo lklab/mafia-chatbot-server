@@ -35,5 +35,6 @@ class OperationManager :
         self.maintainEndTime: str = info['maintainEndTime']
         self.enableAds: bool = info['enableAds']
         self.useTestAds: bool = info['useTestAds']
+        self.useLangSmith: bool = info['useLangSmith']
 
 operationManager: OperationManager = OperationManager()

@@ -71,7 +71,8 @@ pip install protobuf firebase-admin
     },
     "maintainEndTime": "2025-02-12T10:30:00Z",
     "enableAds": true,
-    "useTestAds": false
+    "useTestAds": false,
+    "useLangSmith": false
 }
 ```
 

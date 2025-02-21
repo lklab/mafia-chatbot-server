@@ -36,6 +36,8 @@ from mafia_chatbot.game.game_logger import GameLogger, TAG
 from mafia_chatbot.game.trust_recorder import TrustRecorder
 from mafia_chatbot.game.trust_profile import TrustProfile
 
+from mafia_chatbot.operation.operation_manager import operationManager
+
 class LLM :
     def __init__(self, gameState: GameState) :
         self.gameState = gameState
@@ -49,7 +51,7 @@ class LLM :
         os.environ["GOOGLE_API_KEY"] = keys['GOOGLE_API_KEY']
         os.environ["ANTHROPIC_API_KEY"] = keys['ANTHROPIC_API_KEY']
 
-        if 'LANGCHAIN_API_KEY' in keys :
+        if 'LANGCHAIN_API_KEY' in keys and operationManager.useLangSmith :
             os.environ["LANGCHAIN_TRACING_V2"] = "true"
             os.environ["LANGCHAIN_API_KEY"] = keys['LANGCHAIN_API_KEY']
 
