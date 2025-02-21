@@ -14,6 +14,8 @@ from mafia_chatbot.game.game_logger import GameLogger, TAG
 from mafia_chatbot.game.achievements_manager import AchievementsManager
 from mafia_chatbot.game.discussion_player import DiscussionPlayer, Discussion, DiscussionTicket, DiscussionContext, CONVERSATION_WINDOW
 
+MAX_CONTEXTS: int = 2
+
 class DiscussionManager :
     def __init__(self, gameState: GameState, trustRecorder: TrustRecorder, llm: LLM, achievementsManager: AchievementsManager) :
         self.gameState: GameState = gameState
@@ -25,6 +27,7 @@ class DiscussionManager :
         self.isRunning: bool = False
         self.generateResponseTasks: list[asyncio.Task] = []
         self.humanChatLogicTasks: list[asyncio.Task] = []
+        self.activeContexts: set[DiscussionContext] = set()
 
         # setup discussion players
         players: list[Player] = list(filter(lambda p: not p.info.isHuman, self.gameState.players))
@@ -150,6 +153,8 @@ class DiscussionManager :
             await self._generateResponse(discussion)
 
     async def _generateResponse(self, discussion: Discussion) :
+        self.activeContexts.discard(discussion.context)
+
         if not self.isRunning :
             return
 
@@ -164,7 +169,7 @@ class DiscussionManager :
             return
 
         historyTerm: float = 1.0 / discussion.context.getLength()
-        willResponse: bool = discussion.isQuestion or (discussion.strategy == None and historyTerm > random.random())
+        willResponse: bool = discussion.isQuestion or (len(self.activeContexts) < MAX_CONTEXTS and discussion.strategy == None and historyTerm > random.random())
         if not willResponse :
             willResponse = 0.2 * historyTerm > random.random()
 
@@ -192,6 +197,7 @@ class DiscussionManager :
     def _forwardTicket(self, ticket: DiscussionTicket) :
         dPlayer: DiscussionPlayer = self.dPlayerDict.get(ticket.receiver)
         if dPlayer != None :
+            self.activeContexts.add(ticket.context)
             dPlayer.forwardTicket(ticket)
 
     # 마피아 플레이어의 경찰 주장

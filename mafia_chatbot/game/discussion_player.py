@@ -250,10 +250,7 @@ class DiscussionPlayer :
         self.onDiscussion(discussion)
 
     async def _issueResponse(self, ticket: DiscussionTicket) :
-        if ticket.strategy != None :
-            speakTime: float = time.monotonic() + random.uniform(3.0, 5.0)
-        else :
-            speakTime: float = time.monotonic() + random.uniform(7.0, 10.0)
+        speakTime: float = time.monotonic() + random.uniform(3.0, 5.0)
         discussion: Discussion = None
 
         if ticket.strategy != None :
