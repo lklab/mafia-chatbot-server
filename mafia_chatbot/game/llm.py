@@ -33,6 +33,10 @@ from mafia_chatbot.game.player import Player
 from mafia_chatbot.game.player_info import PlayerInfo, Role, strToRole, roleToStrDict
 from mafia_chatbot.game.strategy import Strategy, Assumption, Estimation, AssumptionType
 from mafia_chatbot.game.game_logger import GameLogger, TAG
+from mafia_chatbot.game.trust_recorder import TrustRecorder
+from mafia_chatbot.game.trust_profile import TrustProfile
+
+from mafia_chatbot.operation.operation_manager import operationManager
 
 class LLM :
     def __init__(self, gameState: GameState) :
@@ -47,7 +51,7 @@ class LLM :
         os.environ["GOOGLE_API_KEY"] = keys['GOOGLE_API_KEY']
         os.environ["ANTHROPIC_API_KEY"] = keys['ANTHROPIC_API_KEY']
 
-        if 'LANGCHAIN_API_KEY' in keys :
+        if 'LANGCHAIN_API_KEY' in keys and operationManager.useLangSmith :
             os.environ["LANGCHAIN_TRACING_V2"] = "true"
             os.environ["LANGCHAIN_API_KEY"] = keys['LANGCHAIN_API_KEY']
 
@@ -58,11 +62,42 @@ class LLM :
         self._setupHumanMessageAgent()
         self._setupCheckClaimsMafiaChain()
         self._setupCheckQuestionChain()
-        self._setupGenerateResponseChain(gameState.gameInfo)
+        self._setupGetRespondentChain()
+        self._setupGetResponseChain(gameState.gameInfo)
         self._setupGenerateQuestionChain(gameState.gameInfo)
         self._setupGenerateNormalDiscussionChain(gameState.gameInfo)
+        self._setupGetNightReactionChain(gameState.gameInfo)
 
-    async def getDiscussion(self, player: Player, strategy: Strategy, conversationLogsCount: int = 5) -> str :
+    def _setupDiscussionChain(self, gameInfo: GameInfo) :
+        # setup model
+        model = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash",
+            temperature=0.7,
+        )
+
+        # setup prompt
+        template = (
+            "You are a player participating in a Mafia game. Your name is {my_name}, and your role is {my_role}. It is currently the discussion phase, and it is your turn to speak. {public_role_strategy} You must claim that {estimations}. You must base your argument on the content of ##Evidence##, and you may choose to utilize the conversation logs in ##Conversation Logs## for additional support. Keep your statement under %(characterCount)s characters if possible, and keep your statement concise. Write in %(language)s with a {tone} tone, making it sound like natural dialogue.%(dont_tranlate)s Your response should differ from previous statements and introduce variety in phrasing."
+            "\n\n"
+            "##Conversation Logs##"
+            "\n"
+            "{conversation_logs}"
+            "\n\n"
+            "##Evidence##"
+            "\n"
+            "{evidence}"
+        )
+        template = template % {
+            'language' : gameInfo.language,
+            'characterCount' : self._getCharactorLimit(gameInfo.language),
+            'dont_tranlate' : ' Do not translate into english.' if gameInfo.language != 'english' else '',
+        }
+        prompt = PromptTemplate.from_template(template)
+
+        # setup chain
+        self.discussionChain = prompt | model
+
+    async def getDiscussion(self, player: Player, strategy: Strategy, conversationWindow: int = 10) -> str :
         self.logger.log(TAG.LLM, f'{player.info.name}: getDiscussion input: {strategy}')
 
         publicRole, _ = player.getChangeRole(strategy.publicRole)
@@ -80,229 +115,13 @@ class LLM :
             'public_role_strategy' : publicRoleStrategy,
             'estimations' : ', '.join(map(lambda e: f"{e.playerInfo.name}'s role is {roleToStrDict[e.role]}", strategy.assumptions[0].estimations)),
             'tone': player.info.tone,
-            'conversation_logs' : '\n'.join(self.gameState.getRecentConversationLogs(conversationLogsCount)),
+            'conversation_logs' : '\n'.join(self.gameState.getRecentConversationLogs(conversationWindow)),
             'evidence' : strategy.assumptions[0].reason,
         }
 
         response = await self._ainvokeChain(self.discussionChain, input)
         self.logger.log(TAG.LLM, f'{player.info.name}: getDiscussion response: {response}')
         return response.content
-
-    async def checkContainsEstimation(self, message: str) -> bool : # not used
-        self.logger.log(TAG.LLM, f'checkContainsEstimation input: {message}')
-
-        response: str = await self._ainvokeChain(
-            chain=self.checkContainsEstimationChain,
-            input={
-                'sentence' : message,
-            }
-        )
-
-        self.logger.log(TAG.LLM, f'checkContainsEstimation response: {response}')
-        return "true" in response.lower()
-
-    async def analyzeHumanMessage(self, player: Player, message: str) -> Strategy :
-        self.logger.log(TAG.LLM, f'{player.info.name}: analyzeHumanMessage input: {message}')
-
-        if self.gameState.gameInfo.language != 'english' :
-            message = await self._ainvokeChain(
-                chain=self.translateChain,
-                input={
-                    'sentence' : message,
-                }
-            )
-
-            if not message or message == '""' :
-                return None
-
-        message = await self._ainvokeChain(
-            chain=self.removeFirstPersonChain,
-            input={
-                'name' : player.info.englishName,
-                'sentence' : message,
-            }
-        )
-
-        response = await self.humanMessageAgent.ainvoke({'messages': [HumanMessage(message)]})
-        self.logger.log(TAG.LLM, f'analyzeHumanMessage response: {response}')
-
-        strategy: Strategy = None
-
-        for llmMessage in reversed(response['messages']) :
-            if isinstance(llmMessage, ToolMessage) :
-                try :
-                    data = json.loads(llmMessage.content)
-
-                    publicRole: Role = Role.CITIZEN
-                    assumptionType: AssumptionType = AssumptionType.NORMAL
-
-                    police: Player = self.gameState.getPlayerByEnglishName(data['police'])
-                    doctor: Player = self.gameState.getPlayerByEnglishName(data['doctor'])
-
-                    if police != None and police == player :
-                        publicRole = Role.POLICE
-                        assumptionType = AssumptionType.TEST_RESULT
-                    elif doctor != None and doctor == player :
-                        publicRole = Role.DOCTOR
-                        assumptionType = AssumptionType.HEAL_SUCCESS
-
-                    estimations: list[Estimation] = []
-                    for estimation in data['estimations'] :
-                        playerInfo: PlayerInfo = self.gameState.getPlayerInfoByEnglishName(estimation['name'])
-                        role: Role = strToRole(estimation['role'])
-                        if role == None :
-                            role = Role.CITIZEN
-
-                        if playerInfo != None :
-                            if playerInfo == player.info and publicRole == Role.CITIZEN :
-                                publicRole = role
-                                if role == Role.POLICE :
-                                    assumptionType = AssumptionType.TEST_RESULT
-                                elif role == Role.DOCTOR :
-                                    assumptionType = AssumptionType.HEAL_SUCCESS
-                            elif playerInfo != player.info :
-                                estimations.append(Estimation(playerInfo, role))
-
-                    assumptions: list[Assumption] = [Assumption(estimations, '', assumptionType=assumptionType)]
-
-                    if publicRole == Role.CITIZEN :
-                        publicRole = player.publicRole
-                    strategy = Strategy(publicRole, assumptions)
-                    break
-
-                except :
-                    continue
-
-        # 플레이어가 자신이 마피아라고 주장한 것이 맞는지 다시 확인
-        if strategy != None and player.publicRole != Role.MAFIA and strategy.publicRole == Role.MAFIA :
-            response = await self._ainvokeChain(
-                chain=self.checkClaimsMafiaChain,
-                input={
-                    'name' : player.info.englishName,
-                    'sentence' : message,
-                }
-            )
-
-            if "false" in response.lower() :
-                strategy.publicRole = player.publicRole
-
-        return strategy
-
-    async def isMessageQuestion(self, message: str) -> bool :
-        self.logger.log(TAG.LLM, f'isMessageQuestion input: {message}')
-
-        response: str = await self._ainvokeChain(
-            chain=self.checkQuestionChain,
-            input={
-                'message' : message,
-            }
-        )
-
-        self.logger.log(TAG.LLM, f'isMessageQuestion response: {response}')
-        return "true" in response.lower()
-
-    async def generateResponse(self, speaker: Player, conversation: list[str]) -> tuple[Player, str] :
-        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateResponse')
-
-        # setup input
-        nameList: str = ', '.join(map(lambda p: p.info.name, filter(lambda p: p != speaker, self.gameState.players)))
-        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateResponse name list: {nameList}')
-
-        messages = []
-        for message in conversation :
-            messages.append(HumanMessage(content=message))
-
-        # call chain
-        jsonData: str = await self._ainvokeChain(
-            chain=self.generateResponseChain,
-            input={
-                'nameList' : nameList,
-                'lastMessage': conversation[-1],
-                'messages' : messages,
-            }
-        )
-        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateResponse response: {jsonData}')
-
-        # parse response
-        try :
-            data = json.loads(jsonData)
-            name: str = data['name']
-            message: str = data['message']
-        except json.JSONDecodeError as e :
-            self.logger.log(TAG.ERROR, f'[LLM] generateResponse JSONDecodeError: {e}')
-            return (None, None)
-        except Exception as e :
-            self.logger.log(TAG.ERROR, f'[LLM] generateResponse Exception: {e}')
-            return (None, None)
-
-        # get respondent player
-        respondent: Player = self.gameState.getPlayerByName(name)
-        if respondent == None or respondent.info.isHuman or respondent == speaker :
-            return (None, None)
-
-        return (respondent, message)
-
-    async def generateQuestion(self, speaker: Player, target: Player, conversation: list[str]) -> str :
-        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateQuestion, target: {target.info.name}')
-
-        messages = []
-        for message in conversation :
-            messages.append(HumanMessage(content=message))
-
-        return await self._ainvokeChain(
-            chain=self.generateQuestionChain,
-            input={
-                'my_name' : speaker.info.name,
-                'name' : target.info.name,
-                'tone' : speaker.info.tone,
-                'messages' : messages,
-            }
-        )
-
-    async def generateNormalDiscussion(self, speaker: Player, conversation: list[str]) -> str :
-        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateNormalDiscussion')
-
-        messages = []
-        for message in conversation :
-            messages.append(HumanMessage(content=message))
-
-        return await self._ainvokeChain(
-            chain=self.generateNormalDiscussionChain,
-            input={
-                'my_name' : speaker.info.name,
-                'tone' : speaker.info.tone,
-                'otherParticipants' : ', '.join(map(lambda p : p.info.name, filter(lambda p : p != speaker, self.gameState.players))),
-                'messages' : messages,
-            }
-        )
-
-    def _setupDiscussionChain(self, gameInfo: GameInfo) :
-        # setup model
-        model = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
-            temperature=0.7,
-        )
-
-        # setup prompt
-        template = (
-            "You are a player participating in a Mafia game. Your name is {my_name}, and your role is {my_role}. It is currently the discussion phase, and it is your turn to speak. {public_role_strategy} You must claim that {estimations}. Must use the provided ##Conversation Logs## and ##Evidence## as references. Avoid overusing references to 'night' or time-related aspects. Keep your statement concise—no more than two sentences. Write in %(language)s with a {tone} tone, making it sound like natural dialogue.%(dont_tranlate)s Your response should differ from previous statements and introduce variety in phrasing."
-            "\n\n"
-            "##Conversation Logs##"
-            "\n"
-            "{conversation_logs}"
-            "\n\n"
-            "##Evidence##"
-            "\n"
-            "{evidence}"
-        )
-        template = template % {
-            'language' : gameInfo.language,
-            'dont_tranlate' : ' Do not translate into english.' if gameInfo.language != 'english' else '',
-        }
-        prompt = PromptTemplate.from_template(template)
-
-        # setup chain
-        self.discussionChain = prompt | model
 
     def _setupTranslateChain(self) :
         # setup model
@@ -490,6 +309,93 @@ class LLM :
         # setup chain
         self.checkClaimsMafiaChain = prompt | model | parser
 
+    async def analyzeHumanMessage(self, player: Player, message: str) -> Strategy :
+        self.logger.log(TAG.LLM, f'{player.info.name}: analyzeHumanMessage input: {message}')
+
+        if self.gameState.gameInfo.language != 'english' :
+            message = await self._ainvokeChain(
+                chain=self.translateChain,
+                input={
+                    'sentence' : message,
+                }
+            )
+
+            if not message or message == '""' :
+                return None
+
+        message = await self._ainvokeChain(
+            chain=self.removeFirstPersonChain,
+            input={
+                'name' : player.info.englishName,
+                'sentence' : message,
+            }
+        )
+
+        response = await self.humanMessageAgent.ainvoke({'messages': [HumanMessage(message)]})
+        self.logger.log(TAG.LLM, f'analyzeHumanMessage response: {response}')
+
+        strategy: Strategy = None
+
+        for llmMessage in reversed(response['messages']) :
+            if isinstance(llmMessage, ToolMessage) :
+                try :
+                    data = json.loads(llmMessage.content)
+
+                    publicRole: Role = Role.CITIZEN
+                    assumptionType: AssumptionType = AssumptionType.NORMAL
+
+                    police: Player = self.gameState.getPlayerByEnglishName(data['police'])
+                    doctor: Player = self.gameState.getPlayerByEnglishName(data['doctor'])
+
+                    if police != None and police == player :
+                        publicRole = Role.POLICE
+                        assumptionType = AssumptionType.TEST_RESULT
+                    elif doctor != None and doctor == player :
+                        publicRole = Role.DOCTOR
+                        assumptionType = AssumptionType.HEAL_SUCCESS
+
+                    estimations: list[Estimation] = []
+                    for estimation in data['estimations'] :
+                        playerInfo: PlayerInfo = self.gameState.getPlayerInfoByEnglishName(estimation['name'])
+                        role: Role = strToRole(estimation['role'])
+                        if role == None :
+                            role = Role.CITIZEN
+
+                        if playerInfo != None :
+                            if playerInfo == player.info and publicRole == Role.CITIZEN :
+                                publicRole = role
+                                if role == Role.POLICE :
+                                    assumptionType = AssumptionType.TEST_RESULT
+                                elif role == Role.DOCTOR :
+                                    assumptionType = AssumptionType.HEAL_SUCCESS
+                            elif playerInfo != player.info :
+                                estimations.append(Estimation(playerInfo, role))
+
+                    assumptions: list[Assumption] = [Assumption(estimations, '', assumptionType=assumptionType)]
+
+                    if publicRole == Role.CITIZEN :
+                        publicRole = player.publicRole
+                    strategy = Strategy(publicRole, assumptions)
+                    break
+
+                except :
+                    continue
+
+        # 플레이어가 자신이 마피아라고 주장한 것이 맞는지 다시 확인
+        if strategy != None and player.publicRole != Role.MAFIA and strategy.publicRole == Role.MAFIA :
+            response = await self._ainvokeChain(
+                chain=self.checkClaimsMafiaChain,
+                input={
+                    'name' : player.info.englishName,
+                    'sentence' : message,
+                }
+            )
+
+            if "false" in response.lower() :
+                strategy.publicRole = player.publicRole
+
+        return strategy
+
     def _setupCheckQuestionChain(self) :
         # setup model
         # model = ChatAnthropic(
@@ -517,7 +423,20 @@ class LLM :
         # setup chain
         self.checkQuestionChain = prompt | model | parser
 
-    def _setupGenerateResponseChain(self, gameInfo: GameInfo) :
+    async def isMessageQuestion(self, message: str) -> bool :
+        self.logger.log(TAG.LLM, f'isMessageQuestion input: {message}')
+
+        response: str = await self._ainvokeChain(
+            chain=self.checkQuestionChain,
+            input={
+                'message' : message,
+            }
+        )
+
+        self.logger.log(TAG.LLM, f'isMessageQuestion response: {response}')
+        return "true" in response.lower()
+
+    def _setupGetRespondentChain(self) :
         # setup model
         model = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash",
@@ -526,14 +445,65 @@ class LLM :
 
         # setup prompt
         systemMessageTemplate = (
-            "Below is a conversation snippet from a Mafia game. Generate the name of the participant who will respond to the message \"{lastMessage}\" and their response message in JSON format. The name must be one from the {nameList}. You can freely and creatively write the content of the response message, but it must be something plausible within the context of a Mafia game and must not contradict the participant's previous claims. Keep your statement concise—no more than two sentences. Write in %(language)s, making it sound like natural dialogue. For the JSON format, provide only the JSON itself as the output, without enclosing it in code blocks or additional text."
+            "Below is a conversation snippet from a Mafia game. Response the name of the participant who will respond to the message \"{lastMessage}\". The name must be one from the {nameList}. Output only the name. Do not include any explanations or additional text."
+        )
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                ('system', systemMessageTemplate),
+                MessagesPlaceholder(variable_name="messages"),
+            ]
+        )
+
+        # setup parser
+        parser = StrOutputParser()
+
+        # setup chain
+        self.getRespondentChain = prompt | model | parser
+
+    async def getRespondent(self, speaker: Player, conversation: list[str]) -> Player :
+        self.logger.log(TAG.LLM, f'{speaker.info.name}: getRespondent')
+
+        # setup input
+        nameList: str = ', '.join(map(lambda p: p.info.name, filter(lambda p: p != speaker, self.gameState.players)))
+        self.logger.log(TAG.LLM, f'{speaker.info.name}: getRespondent name list: {nameList}')
+
+        messages = []
+        for message in conversation :
+            messages.append(HumanMessage(content=message))
+
+        # call chain
+        respondentName: str = await self._ainvokeChain(
+            chain=self.getRespondentChain,
+            input={
+                'nameList' : nameList,
+                'lastMessage': conversation[-1],
+                'messages' : messages,
+            }
+        )
+        self.logger.log(TAG.LLM, f'{speaker.info.name}: getRespondent response: {respondentName}')
+
+        # get player from respondentName
+        respondent: Player = self.gameState.getPlayerByName(respondentName)
+        return respondent
+
+    def _setupGetResponseChain(self, gameInfo: GameInfo) :
+        # setup model
+        model = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash",
+            temperature=0.9,
+        )
+
+        # setup prompt
+        systemMessageTemplate = (
+            "Below is part of a Mafia game conversation. You are to generate \"{name}\"'s response to \"{lastMessage}\". You can freely and creatively write the content of the response, but it must be plausible within the Mafia game context. If someone questions your claim, you may only use the information in ##{name}'s claims## to respond. You may not accuse or confirm anyone as Mafia or Citizen, using any content not listed in ##{name}'s claims##. The response must be written in %(language)s and should feel like natural dialogue. Keep it under %(characterCount)s characters if possible, and keep it concise. Output only the response. Do not include any explanations or additional text."
             "\n\n"
-            "##JSON format##"
+            "##{name}'s claims##"
             "\n"
-            '\"{{"name":"", "message":""}}\"'
+            "{claims}"
         )
         systemMessageTemplate = systemMessageTemplate % {
             'language' : gameInfo.language,
+            'characterCount' : self._getCharactorLimit(gameInfo.language),
         }
         prompt = ChatPromptTemplate.from_messages(
             [
@@ -546,7 +516,59 @@ class LLM :
         parser = StrOutputParser()
 
         # setup chain
-        self.generateResponseChain = prompt | model | parser
+        self.getResponseChain = prompt | model | parser
+
+    async def getResponse(self, trustRecorder: TrustRecorder, respondent: Player, conversation: list[str]) -> str :
+        self.logger.log(TAG.LLM, f'{respondent.info.name}: getResponse')
+
+        # setup input
+        assumptions: dict[PlayerInfo, tuple[Role, str]] = {}
+        strategy: Strategy = respondent.getDiscussionStrategy(self.gameState.round)
+        if strategy != None :
+            for assumption in strategy.assumptions :
+                for estimation in assumption.estimations :
+                    assumptions[estimation.playerInfo] = (estimation.role, assumption.reason)
+
+        claims: list[str] = []
+        claims.append(f'{respondent.info.name}\'s role is {roleToStrDict[respondent.publicRole]}.')
+
+        for player in self.gameState.players :
+            if player == respondent :
+                continue
+
+            # 확실하게 마피아이거나 마피아가 아닌 경우
+            profile: TrustProfile = trustRecorder.getTrustProfile(player.info)
+            if not profile.isNormalState() :
+                if profile.getMainRecordPoint() < 0.0 :
+                    claims.append(f'{respondent.info.name} thinks {player.info.name} is a mafia. Because {profile.getMainRecordReason()}.')
+                else :
+                    claims.append(f'{respondent.info.name} thinks {player.info.name} is not a mafia. Because {profile.getMainRecordReason()}.')
+
+            # 당신의 이전 주장
+            elif player.info in assumptions :
+                role, reason = assumptions[player.info]
+                claims.append(f'{respondent.info.name} thinks {player.info.name} is a {role}. Because {reason}.')
+
+            # 주장 없음
+            else :
+                claims.append(f'{respondent.info.name} makes no claim about {player.info.name}.')
+
+        messages = []
+        for message in conversation :
+            messages.append(HumanMessage(content=message))
+
+        # call chain
+        text: str = await self._ainvokeChain(
+            chain=self.getResponseChain,
+            input={
+                'name' : respondent.info.name,
+                'lastMessage': conversation[-1],
+                'claims': '\n'.join(claims),
+                'messages' : messages,
+            }
+        )
+        self.logger.log(TAG.LLM, f'{respondent.info.name}: getResponse response: {text}')
+        return text
 
     def _setupGenerateQuestionChain(self, gameInfo: GameInfo) :
         # setup model
@@ -557,10 +579,11 @@ class LLM :
 
         # setup prompt
         systemMessageTemplate = (
-            "You are a player participating in a Mafia game. Your name is {my_name}. You suspect that {name} is the mafia, so you are about to ask them a question. Avoid mentioning 'night' explicitly. The content of the question should be varied and natural. Please write a question to ask them. The content of the question is free and creative, but it should be plausible within the context of the mafia game. Keep your statement concise—no more than two sentences. Write in %(language)s with a {tone} tone, making it sound like natural dialogue. %(dont_tranlate)s"
+            "You are a player participating in a Mafia game. Your name is {my_name}. You suspect that {name} is the mafia, so you are about to ask them a question. Avoid mentioning 'night' explicitly. The content of the question should be varied and natural. Please write a question to ask them. The content of the question is free and creative, but it should be plausible within the context of the mafia game. Keep your statement under %(characterCount)s characters if possible, and keep your statement concise. Write in %(language)s with a {tone} tone, making it sound like natural dialogue. %(dont_tranlate)s"
         )
         systemMessageTemplate = systemMessageTemplate % {
             'language' : gameInfo.language,
+            'characterCount' : self._getCharactorLimit(gameInfo.language),
             'dont_tranlate' : ' Do not translate into english.' if gameInfo.language != 'english' else '',
         }
         prompt = ChatPromptTemplate.from_messages(
@@ -576,6 +599,23 @@ class LLM :
         # setup chain
         self.generateQuestionChain = prompt | model | parser
 
+    async def generateQuestion(self, speaker: Player, target: Player, conversation: list[str]) -> str :
+        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateQuestion, target: {target.info.name}')
+
+        messages = []
+        for message in conversation :
+            messages.append(HumanMessage(content=message))
+
+        return await self._ainvokeChain(
+            chain=self.generateQuestionChain,
+            input={
+                'my_name' : speaker.info.name,
+                'name' : target.info.name,
+                'tone' : speaker.info.tone,
+                'messages' : messages,
+            }
+        )
+
     def _setupGenerateNormalDiscussionChain(self, gameInfo: GameInfo) :
         # setup model
         model = ChatGoogleGenerativeAI(
@@ -589,8 +629,8 @@ class LLM :
             "\n* If you want to mention another participant, refer to ##List of Other Participants##."
             "\n* You must not state that someone is the mafia, regardless of intent."
             "\n* You must not reveal that your role is anything other than a citizen or imply that you are not a citizen."
-            "\n* Avoid overusing references to 'night' or time-related aspects unless necessary."
-            "\n* Keep your statement concise, limited to two sentences."
+            "\n* Do not use references to 'night' or time-related aspects."
+            "\n* Keep your statement under %(characterCount)s characters if possible, and keep your statement concise."
             "\n* Write naturally in %(language)s, using a {tone} tone that resembles real conversation."
             "%(dont_tranlate)s"
             "\n\n"
@@ -600,6 +640,7 @@ class LLM :
         )
         systemMessageTemplate = systemMessageTemplate % {
             'language' : gameInfo.language,
+            'characterCount' : self._getCharactorLimit(gameInfo.language),
             'dont_tranlate' : '\n* Do not translate into english.' if gameInfo.language != 'english' else '',
         }
         prompt = ChatPromptTemplate.from_messages(
@@ -615,6 +656,81 @@ class LLM :
         # setup chain
         self.generateNormalDiscussionChain = prompt | model | parser
 
+    async def generateNormalDiscussion(self, speaker: Player, conversation: list[str]) -> str :
+        self.logger.log(TAG.LLM, f'{speaker.info.name}: generateNormalDiscussion')
+
+        messages = []
+        for message in conversation :
+            messages.append(HumanMessage(content=message))
+
+        return await self._ainvokeChain(
+            chain=self.generateNormalDiscussionChain,
+            input={
+                'my_name' : speaker.info.name,
+                'tone' : speaker.info.tone,
+                'otherParticipants' : ', '.join(map(lambda p : p.info.name, filter(lambda p : p != speaker, self.gameState.players))),
+                'messages' : messages,
+            }
+        )
+
+    def _setupGetNightReactionChain(self, gameInfo: GameInfo) :
+        # setup model
+        model = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash",
+            temperature=0.9,
+        )
+
+        # setup prompt
+        systemMessageTemplate = (
+            "Below is part of a Mafia game conversation. You must generate \"{name}\"'s reaction to the list of events from last night, labeled as ##Last night's events##. You can freely and creatively write the content of the response, but it must be plausible within the Mafia game context. You may not accuse or confirm anyone as Mafia or Citizen, nor reveal \"{name}\"'s role. The response must be written in %(language)s and should feel like natural dialogue. Keep it under %(characterCount)s characters if possible, and keep it concise. Output only the response. Do not include any explanations or additional text."
+            "\n\n"
+            "##Last night's events##"
+            "\n"
+            "{events}"
+        )
+        systemMessageTemplate = systemMessageTemplate % {
+            'language' : gameInfo.language,
+            'characterCount' : self._getCharactorLimit(gameInfo.language),
+        }
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                ('system', systemMessageTemplate),
+                MessagesPlaceholder(variable_name="messages"),
+            ]
+        )
+
+        # setup parser
+        parser = StrOutputParser()
+
+        # setup chain
+        self.getNightReactionChain = prompt | model | parser
+
+    async def getNightReaction(self, speaker: Player, conversation: list[str]) -> str :
+        self.logger.log(TAG.LLM, f'{speaker.info.name}: getNightReaction')
+
+        # setup input
+        events: list[str] = []
+        if self.gameState.lastVoteEvent != None :
+            events.append(self.gameState.lastVoteEvent)
+        if self.gameState.lastKillEvent != None :
+            events.append(self.gameState.lastKillEvent)
+
+        messages = []
+        for message in conversation :
+            messages.append(HumanMessage(content=message))
+
+        # call chain
+        text: str = await self._ainvokeChain(
+            chain=self.getNightReactionChain,
+            input={
+                'name' : speaker.info.name,
+                'events': '\n'.join(events),
+                'messages' : messages,
+            }
+        )
+        self.logger.log(TAG.LLM, f'{speaker.info.name}: getNightReaction response: {text}')
+        return text
+
     async def _ainvokeChain(self, chain: RunnableSerializable[dict, BaseMessage], input: dict[str, str]) -> BaseMessage :
         try :
             return await chain.ainvoke(input)
@@ -624,27 +740,28 @@ class LLM :
         except KeyError as e:
             self.logger.log(TAG.ERROR, f"[LLM] KeyError: Missing key - {e}")
             raise e
-        # except openai.error.AuthenticationError as e:
-        #     self.logger.log(TAG.ERROR, f"[LLM] AuthenticationError: {e}")
-        #     raise e
-        # except openai.error.RateLimitError as e:
-        #     self.logger.log(TAG.ERROR, f"[LLM] RateLimitError: {e}")
-        #     raise e
-        # except openai.error.APIError as e:
-        #     self.logger.log(TAG.ERROR, f"[LLM] APIError: {e}")
-        #     raise e
-        # except openai.error.Timeout as e:
-        #     self.logger.log(TAG.ERROR, f"[LLM] TimeoutError: {e}")
-        #     raise e
-        # except openai.error.InvalidRequestError as e:
-        #     self.logger.log(TAG.ERROR, f"[LLM] InvalidRequestError: {e}")
-        #     raise e
-        # except LangChainError as e:
-        #     self.logger.log(TAG.ERROR, f"[LLM] LangChainError: {e}")
-        #     raise e
         except TypeError as e:
             self.logger.log(TAG.ERROR, f"[LLM] TypeError: {e}")
             raise e
         except Exception as e:
             self.logger.log(TAG.ERROR, f"[LLM] Unexpected error: {e}")
             raise e
+
+    def _getCharactorLimit(self, language: str) -> int :
+        base: dict[str, float] = {
+            'german'              : 25.8,
+            'english'             : 22.0,
+            'spanish'             : 23.2,
+            'french'              : 24.4,
+            'italian'             : 23.0,
+            'japanese'            : 10.6,
+            'korean'              : 10.8,
+            'portuguese'          : 20.6,
+            'russian'             : 22.4,
+            'thai'                : 18.6,
+            'vietnamese'          : 22.6,
+            'simplified chinese'  :  6.8,
+            'traditional chinese' :  6.8,
+        }
+
+        return int(base.get(language, 20.0) * 7)

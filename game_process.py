@@ -19,6 +19,8 @@ from mafia_chatbot.network.client_user import ClientUser, UserHolder
 from mafia_chatbot.network.client_handler import ClientHandler
 from mafia_chatbot.network.utils import makeErrorResponse, ErrorCode
 
+from mafia_chatbot.operation.operation_manager import operationManager
+
 import mafia_chatbot.firebase.firebase as firebase
 
 from mafia_chatbot.utils.wands_logger import WandsLogger
@@ -152,11 +154,10 @@ class GameProcess :
         self.logger = WandsLogger('network_log', f'game-{self.port}')
 
     async def run(self) :
-        # initialize name bank
+        # initialize
         NameBank.initialize()
-
-        # initialize firebase
         firebase.initialize()
+        operationManager.initialize()
 
         # start game server
         while True :

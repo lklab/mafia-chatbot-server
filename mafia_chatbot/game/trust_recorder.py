@@ -266,7 +266,7 @@ class TrustRecorder :
         if player.publicRole == Role.MAFIA :
             profile.setState(
                 state=TrustState.CONFIRMED_MAFIA,
-                reason='He revealed that he is a mafia.',
+                reason=f'{player.info.name} confessed that he is a mafia member.',
             )
             return
 
@@ -274,7 +274,7 @@ class TrustRecorder :
             roleBefore, roleAfter = player.isContradictoryRole[1]
             profile.setState(
                 state=TrustState.CONFIRMED_MAFIA,
-                reason=f'He initially claimed his role was {roleBefore.name.lower()}, but now he claims to be {roleAfter.name.lower()}.',
+                reason=f'{player.info.name} initially claimed his role was {roleBefore.name.lower()}, but now he claims to be {roleAfter.name.lower()}.',
             )
             return
 
@@ -309,14 +309,14 @@ class TrustRecorder :
                 if p.publicRole == Role.POLICE and estimation.role != Role.MAFIA :
                     profile.setState(
                         state=TrustState.CONFIRMED_MAFIA,
-                        reason=f'He claimed that {p.info.name} is a citizen, but {p.info.name} claims his role is a police.',
+                        reason=f'{player.info.name} claimed that {p.info.name} is a citizen, but {p.info.name} claims his role is a police.',
                     )
                     return
 
                 if not p.isLive and ((p.info.role == Role.MAFIA) != (estimation.role == Role.MAFIA)) :
                     profile.setState(
                         state=TrustState.CONFIRMED_MAFIA,
-                        reason='He incorrectly announced the role of an eliminated player.',
+                        reason=f'{player.info.name} incorrectly announced the role of the eliminated player, {p.info.name}.',
                     )
                     return
 
@@ -365,14 +365,14 @@ class TrustRecorder :
                 if p.publicRole == Role.DOCTOR and estimation.role != Role.MAFIA :
                     profile.setState(
                         state=TrustState.CONFIRMED_MAFIA,
-                        reason=f'He claimed that {p.info.name} is a citizen, but {p.info.name} claims his role is a doctor.',
+                        reason=f'{player.info.name} claimed that {p.info.name} is a citizen, but {p.info.name} claims his role is a doctor.',
                     )
                     return
 
                 if not p.isLive and p.info.role == Role.MAFIA and estimation.role != Role.MAFIA :
                     profile.setState(
                         state=TrustState.CONFIRMED_MAFIA,
-                        reason='He incorrectly announced the role of an eliminated player.',
+                        reason=f'{player.info.name} incorrectly announced the role of the eliminated player, {p.info.name}.',
                     )
                     return
 
@@ -404,6 +404,7 @@ class TrustRecorder :
             policePlayer: Player = self.gameState.getPlayerByInfo(self.onePublicPolicePlayerInfo)
             policeProfile: TrustProfile = self.profileByPlayerInfo[self.onePublicPolicePlayerInfo]
 
+            # _checkAndUpdateTrustStateStep1()에서 마지막에 논리적 문제가 없는 플레이어의 state를 Normal로 설정함
             if policeProfile.state == TrustState.NORMAL :
                 # VERIFIED_POLICE and CLAIMED_POLICE
                 if self.onePublicPolicePlayerInfo in self.verifiedPoliceInfos :
@@ -418,12 +419,12 @@ class TrustRecorder :
                     if estimation.role == Role.MAFIA :
                         estimatedPlayerProfile.setState(
                             state=TrustState.CONFIRMED_MAFIA,
-                            reason='The police identified him as a mafia member.',
+                            reason=f'The police officer, {policePlayer.info.name}, revealed that {estimation.playerInfo.name}\'s role is a mafia member.',
                         )
                     else :
                         estimatedPlayerProfile.setState(
                             state=TrustState.CONFIRMED_CITIZEN,
-                            reason='The police identified him as a citizen member.',
+                            reason=f'The police officer, {policePlayer.info.name}, revealed that {estimation.playerInfo.name} is not a mafia member.',
                         )
 
         # CLAIMED_DOCTOR

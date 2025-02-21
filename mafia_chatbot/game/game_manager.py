@@ -146,10 +146,12 @@ class GameManager :
 
         if voteData.isTie :
             self._addSystemChat(self._('No one was executed due to a tie.'))
+            self.gameState.setLastVoteEvent('No one was executed due to a tie in the voting results.')
         else :
             _name = voteData.targetPlayer.name
             _role = self.gameState.translateRole[voteData.targetPlayer.role]
             self._addSystemChat(self._('{name} was executed. Their role was {role}.').format(name=_name, role=_role))
+            self.gameState.setLastVoteEvent(f'As a result of the vote, {_name} was executed, and their role was revealed to be {_role}.')
             self.gameState.removePlayerByInfo(voteData.targetPlayer, RemoveReason.VOTE)
             self.trustRecorder.playerRemoved(voteData.targetPlayer, RemoveReason.VOTE)
             self.achievementsManager.onExecuted(voteData.targetPlayer, voteData)
@@ -224,12 +226,14 @@ class GameManager :
 
         if killTargetPlayer == None :
             self._addSystemChat(self._('The Mafia did not assassinate anyone.'))
+            self.gameState.setLastKillEvent('For some reason, the mafia did not assassinate anyone during the night.')
         else :
             if killTargetPlayer == nightTargetData.healTarget :
                 doctor.addHealSuccess(nightTargetData.healTarget)
                 self.trustRecorder.healSucceeded(nightTargetData.healTarget.info)
                 self.achievementsManager.onHealSucceeded()
                 self._addSystemChat(self._('The Mafia attempted to assassinate someone but failed.'))
+                self.gameState.setLastKillEvent('During the night, the mafia attempted to assassinate someone, but they failed due to the doctor\'s treatment.')
             else :
                 cancelAssassination: bool = False
 
@@ -240,6 +244,7 @@ class GameManager :
                     self.gameState.clearKillCancelChecker(killTargetPlayer)
                     if cancelAssassination :
                         self._addSystemChat(self._('The Mafia did not assassinate anyone.'))
+                        self.gameState.setLastKillEvent('For some reason, the mafia did not assassinate anyone during the night.')
 
                 # 원래대로 암살 진행
                 if not cancelAssassination :
@@ -249,6 +254,7 @@ class GameManager :
                     _name = killTargetPlayer.info.name
                     _role = self.gameState.translateRole[killTargetPlayer.info.role]
                     self._addSystemChat(self._('{name} was assassinated by the Mafia. Their role was {role}.').format(name=_name, role=_role))
+                    self.gameState.setLastKillEvent(f'During the night, {_name} was assassinated by the mafia. Their role was {_role}.')
 
         ### execute test
         if nightTargetData.testTarget != None :

@@ -181,7 +181,7 @@ def _getPolicePoiningMe(gameState: GameState, recorder: TrustRecorder, me: Playe
         police: Player = gameState.getPlayerByInfo(policeInfo)
         if me.info in police.estimationsAsPolice and police.estimationsAsPolice[me.info].role == Role.MAFIA :
             gameState.logger.log(TAG.STRATEGY, f'{me.info.name}: apply method: _getPolicePoiningMe')
-            return police, 'He pointed me of being the mafia, but I am not.'
+            return police, f'{police.info.name} pointed me of being the mafia, but I am not.'
     return None, None
 
 def _getTargetFormTwoPolice(gameState: GameState, recorder: TrustRecorder, me: Player) -> tuple[Player, str] :
@@ -198,7 +198,7 @@ def _getTargetFormTwoPolice(gameState: GameState, recorder: TrustRecorder, me: P
         targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
         return targetPlayer, recorder.getNegativeTrustReason(
             playerInfo=targetInfo,
-            negativeReason='You claim that among those pretending to be the police, this person seems most like a mafia member.',
+            negativeReason=f'Among those claiming to be the police, {targetInfo.name} is the most suspicious.',
         )
 
     return None, None
@@ -235,7 +235,7 @@ def _getTargetFormTwoDoctor(gameState: GameState, recorder: TrustRecorder, me: P
         targetPlayer: Player = gameState.getPlayerByInfo(targetInfo)
         return targetPlayer, recorder.getNegativeTrustReason(
             playerInfo=targetInfo,
-            negativeReason='You claim that among those pretending to be the doctor, this person seems most like a mafia member.',
+            negativeReason=f'Among those claiming to be the doctor, {targetInfo.name} is the most suspicious.',
         )
 
     return None, None
@@ -302,7 +302,7 @@ def claimePoliceForPoliceResponse(gameState: GameState, recorder: TrustRecorder,
 def _getTestResultsForPolice(gameState: GameState, recorder: TrustRecorder, me: Player) -> Assumption :
     if len(me.testResults) == 0 :
         return Assumption(
-            estimations=[],
+            estimations=[Estimation(me.info, Role.POLICE)],
             reason='You are a real police.',
             assumptionType=AssumptionType.NORMAL,
         )
@@ -319,7 +319,7 @@ def _getTestResultsForPolice(gameState: GameState, recorder: TrustRecorder, me: 
         estimations.sort(key=lambda estimation : estimation.role.value)
         return Assumption(
             estimations=estimations,
-            reason='You investigated them.',
+            reason='As a police officer, you investigated their roles during the night and found out.',
             assumptionType=AssumptionType.TEST_RESULT,
         )
 
@@ -435,7 +435,7 @@ def _getTestResultsForMafia(gameState: GameState, recorder: TrustRecorder, me: P
     estimations.sort(key=lambda estimation : estimation.role.value)
     return Assumption(
         estimations=estimations,
-        reason='You investigated them.',
+        reason='As a police officer, you investigated their roles during the night and found out.',
         assumptionType=AssumptionType.TEST_RESULT,
     )
 
@@ -492,7 +492,7 @@ def _updatePoliceForPolice(gameState: GameState, recorder: TrustRecorder, me: Pl
         role: Role = Role.MAFIA if me.testResults[me.lastTestedTarget] == Role.MAFIA else Role.CITIZEN
         return Assumption(
             estimations=[Estimation(me.lastTestedTarget.info, role)],
-            reason='You investigated them.',
+            reason='As a police officer, you investigated their roles during the night and found out.',
             assumptionType=AssumptionType.TEST_RESULT,
         )
 
@@ -522,7 +522,7 @@ def _updatePoliceForMafia(gameState: GameState, recorder: TrustRecorder, me: Pla
 
     return Assumption(
         estimations=[Estimation(targetInfo, role)],
-        reason='You investigated them.',
+        reason='As a police officer, you investigated their roles during the night and found out.',
         assumptionType=AssumptionType.TEST_RESULT,
     )
 
@@ -566,6 +566,10 @@ def _choiceFromCandidates(gameState: GameState, recorder: TrustRecorder, me: Pla
     myPointerOrVotersCount: int = len(recorder.getPointerOrVoters(me.info))
     isIFocused: bool = myPointerOrVotersCount >= round(gameState.getPlayerCount() / 2.5)
     myTargetInfo: PlayerInfo = recorder.getTargetInfo(me.info)
+    if myTargetInfo not in candidates :
+        myTargetInfo = None
+
+    isValidTargetExists: bool = False
 
     for candidate in candidates :
         pointerOrVoters: set[PlayerInfo] = recorder.getPointerOrVoters(candidate)
@@ -638,6 +642,12 @@ def _choiceFromCandidates(gameState: GameState, recorder: TrustRecorder, me: Pla
 
         # apply weight
         weights.append(tw * cw)
+        isValidTargetExists = True
+
+    # weights가 모두 0일 때 1로 채우기
+    if not isValidTargetExists :
+        for i in range(len(weights)) :
+            weights[i] = 1.0
 
     # choice
     gameState.logger.log(TAG.STRATEGY, f'{me.info.name} _choiceFromCandidates: ')

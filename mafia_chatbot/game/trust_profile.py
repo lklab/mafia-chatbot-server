@@ -121,6 +121,15 @@ class TrustProfile :
     def isMustTargeting(self) -> bool :
         return mustTargetingsByTrustStateDict[self.state]
 
+    def isNormalState(self) -> bool :
+        return self.state == TrustState.NORMAL
+
+    def getMainRecordPoint(self) -> float :
+        return self.mainRecord.point
+
+    def getMainRecordReason(self) -> str :
+        return self.mainRecord.reason
+
 if __name__ == "__main__" :
     reason = 'asd'
     r1 = TrustRecord(10.0)
