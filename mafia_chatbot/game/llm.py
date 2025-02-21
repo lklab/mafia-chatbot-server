@@ -75,7 +75,7 @@ class LLM :
 
         # setup prompt
         template = (
-            "You are a player participating in a Mafia game. Your name is {my_name}, and your role is {my_role}. It is currently the discussion phase, and it is your turn to speak. {public_role_strategy} You must claim that {estimations}. You must use ##Evidence## as the basis for your argument, and you may utilize ##Conversation Logs##. Keep your statement under %(characterCount)s characters if possible, and keep your statement concise. Write in %(language)s with a {tone} tone, making it sound like natural dialogue.%(dont_tranlate)s Your response should differ from previous statements and introduce variety in phrasing."
+            "You are a player participating in a Mafia game. Your name is {my_name}, and your role is {my_role}. It is currently the discussion phase, and it is your turn to speak. {public_role_strategy} You must claim that {estimations}. You must base your argument on the content of ##Evidence##, and you may choose to utilize the conversation logs in ##Conversation Logs## for additional support. Keep your statement under %(characterCount)s characters if possible, and keep your statement concise. Write in %(language)s with a {tone} tone, making it sound like natural dialogue.%(dont_tranlate)s Your response should differ from previous statements and introduce variety in phrasing."
             "\n\n"
             "##Conversation Logs##"
             "\n"
@@ -493,9 +493,9 @@ class LLM :
 
         # setup prompt
         systemMessageTemplate = (
-            "Below is part of a Mafia game conversation. You are to generate \"{name}\"'s response to \"{lastMessage}\". You can freely and creatively write the content of the response, but it must be plausible within the Mafia game context. If someone questions your claim, you may only use the information in ##Your claims## to respond. You may not accuse or confirm anyone as Mafia or Citizen, nor reveal \"{name}\"'s role, using any content not listed in ##Your claims##. The response must be written in %(language)s and should feel like natural dialogue. Keep it under %(characterCount)s characters if possible, and keep it concise. Output only the response. Do not include any explanations or additional text."
+            "Below is part of a Mafia game conversation. You are to generate \"{name}\"'s response to \"{lastMessage}\". You can freely and creatively write the content of the response, but it must be plausible within the Mafia game context. If someone questions your claim, you may only use the information in ##{name}'s claims## to respond. You may not accuse or confirm anyone as Mafia or Citizen, using any content not listed in ##{name}'s claims##. The response must be written in %(language)s and should feel like natural dialogue. Keep it under %(characterCount)s characters if possible, and keep it concise. Output only the response. Do not include any explanations or additional text."
             "\n\n"
-            "##Your claims##"
+            "##{name}'s claims##"
             "\n"
             "{claims}"
         )
@@ -528,6 +528,8 @@ class LLM :
                     assumptions[estimation.playerInfo] = (estimation.role, assumption.reason)
 
         claims: list[str] = []
+        claims.append(f'{respondent.info.name}\'s role is {roleToStrDict[respondent.publicRole]}.')
+
         for player in self.gameState.players :
             if player == respondent :
                 continue
@@ -536,18 +538,18 @@ class LLM :
             profile: TrustProfile = trustRecorder.getTrustProfile(player.info)
             if not profile.isNormalState() :
                 if profile.getMainRecordPoint() < 0.0 :
-                    claims.append(f'You think {player.info.name} is a mafia. Because {profile.getMainRecordReason()}.')
+                    claims.append(f'{respondent.info.name} thinks {player.info.name} is a mafia. Because {profile.getMainRecordReason()}.')
                 else :
-                    claims.append(f'You think {player.info.name} is not a mafia. Because {profile.getMainRecordReason()}.')
+                    claims.append(f'{respondent.info.name} thinks {player.info.name} is not a mafia. Because {profile.getMainRecordReason()}.')
 
             # 당신의 이전 주장
             elif player.info in assumptions :
                 role, reason = assumptions[player.info]
-                claims.append(f'You think {player.info.name} is a {role}. Because {reason}.')
+                claims.append(f'{respondent.info.name} thinks {player.info.name} is a {role}. Because {reason}.')
 
             # 주장 없음
             else :
-                claims.append(f'You have no claim to {player.info.name}.')
+                claims.append(f'{respondent.info.name} makes no claim about {player.info.name}.')
 
         messages = []
         for message in conversation :
