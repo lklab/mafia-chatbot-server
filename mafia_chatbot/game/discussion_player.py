@@ -113,8 +113,9 @@ class DiscussionPlayer :
                 await self._issueResponse(ticket)
                 continue
 
-            waitMax: float = 30.0
-            waitMin: float = 30.0 - 23.0 / (self.myDiscussionCount + 1) # 7.0 ~ 30.0
+            waitMax: float = 5.0 * self.gameState.getPlayerCount() # 플레이어 수 많아질수록 더 긴 주기로 말함
+            waitFirstMin: float = 7.0 # 이번 라운드에 대화를 안 했을 때 최소 발언 대기 시간
+            waitMin: float = waitMax - (waitMax - waitFirstMin) / (self.myDiscussionCount + 1) # waitFirstMin ~ waitMax
             self.waitTask = asyncio.create_task(self._issueDiscussion(random.uniform(waitMin, waitMax)))
             try :
                 await self.waitTask
