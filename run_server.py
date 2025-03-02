@@ -347,7 +347,7 @@ class MainProcess :
             self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
-        self.roomManager.processMessageCreateRoom(client, message)
+        self.roomManager.processMessageCreateRoom(client, rqid, message)
 
     def _switchClientMessageJoinRoom(self, client: ClientHandler, rqid: uuid.UUID, message) :
         # check sign up

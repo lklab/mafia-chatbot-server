@@ -271,7 +271,7 @@ class GameProcess :
             self.logger.debug(f'_onClientMessage clientId={client.user.clientId} name={client.user.clientName}, type={type(message)}, message=<{message}>')
 
         if type(message) in GameProcess._switchClientMessage :
-            GameProcess._switchClientMessage[type(message)](self, rqid, client, message)
+            GameProcess._switchClientMessage[type(message)](self, client, rqid, message)
         else :
             if client.user.forward(client.messageHandler, rqid, message) :
                 pass
