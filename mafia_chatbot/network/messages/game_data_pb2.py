@@ -24,33 +24,33 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0fgame_data.proto\"\xc1\x01\n\tDebugInfo\x12\x0f\n\x07isDebug\x18\x01 \x01(\x08\x12\x12\n\ndaySeconds\x18\x04 \x01(\x05\x12\x16\n\x0e\x65veningSeconds\x18\x05 \x01(\x05\x12\x14\n\x0cnightSeconds\x18\x06 \x01(\x05\x12\x0e\n\x06useLLM\x18\x07 \x01(\x08\x12\x1d\n\x15nonTargetableClientId\x18\x08 \x01(\t\x12\x18\n\x10observerClientId\x18\t \x01(\t\x12\x18\n\x10\x63ontinueOnlyBots\x18\n \x01(\x08\"~\n\x08GameInfo\x12\x13\n\x0bplayerCount\x18\x01 \x01(\x05\x12\x12\n\nmafiaCount\x18\x02 \x01(\x05\x12\x10\n\x08language\x18\x03 \x01(\t\x12\x18\n\tfixedRole\x18\x04 \x01(\x0e\x32\x05.Role\x12\x1d\n\tdebugInfo\x18\x05 \x01(\x0b\x32\n.DebugInfo\"l\n\x06Player\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x13\n\x04role\x18\x03 \x01(\x0e\x32\x05.Role\x12\x0e\n\x06isLive\x18\x04 \x01(\x08\x12#\n\x0cremoveReason\x18\x05 \x01(\x0e\x32\r.RemoveReason\"[\n\x04\x43hat\x12\n\n\x02id\x18\x01 \x01(\t\x12\x17\n\x04type\x18\x02 \x01(\x0e\x32\t.ChatType\x12\r\n\x05index\x18\x03 \x01(\x05\x12\x0e\n\x06sender\x18\x04 \x01(\t\x12\x0f\n\x07\x63ontent\x18\x05 \x01(\t\"\x18\n\x06Voters\x12\x0e\n\x06voters\x18\x01 \x03(\t*\\\n\x04Role\x12\x10\n\x0cRole_UNKNOWN\x10\x00\x12\x10\n\x0cRole_CITIZEN\x10\x01\x12\x0e\n\nRole_MAFIA\x10\x02\x12\x0f\n\x0bRole_POLICE\x10\x03\x12\x0f\n\x0bRole_DOCTOR\x10\x04*v\n\x0cRemoveReason\x12\x12\n\x0eREMOVE_UNKNOWN\x10\x00\x12\x0f\n\x0bREMOVE_LIVE\x10\x01\x12\x13\n\x0fREMOVE_EXECUTED\x10\x02\x12\x17\n\x13REMOVE_ASSASSINATED\x10\x03\x12\x13\n\x0fREMOVE_OBSERVER\x10\x04*o\n\x05Phase\x12\x11\n\rPhase_UNKNOWN\x10\x00\x12\x11\n\rPhase_PREPARE\x10\x01\x12\r\n\tPhase_DAY\x10\x02\x12\x11\n\rPhase_EVENING\x10\x03\x12\x0f\n\x0bPhase_NIGHT\x10\x04\x12\r\n\tPhase_END\x10\x05*B\n\x08\x43hatType\x12\x10\n\x0c\x43HAT_UNKNOWN\x10\x00\x12\x0f\n\x0b\x43HAT_SYSTEM\x10\x01\x12\x13\n\x0f\x43HAT_DISCUSSION\x10\x02*d\n\nTargetType\x12\x12\n\x0eTARGET_UNKNOWN\x10\x00\x12\x0f\n\x0bTARGET_VOTE\x10\x01\x12\x0f\n\x0bTARGET_KILL\x10\x02\x12\x0f\n\x0bTARGET_TEST\x10\x03\x12\x0f\n\x0bTARGET_HEAL\x10\x04*\xa5\x01\n\rGameEndReason\x12\x14\n\x10GAME_END_UNKNOWN\x10\x00\x12\x18\n\x14GAME_END_CITIZEN_WIN\x10\x01\x12\x16\n\x12GAME_END_MAFIA_WIN\x10\x02\x12\x1c\n\x18GAME_END_NO_HUMAN_PLAYER\x10\x03\x12\x14\n\x10GAME_END_TIMEOUT\x10\x04\x12\x18\n\x14GAME_END_INTERRUPTED\x10\x05\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0fgame_data.proto\x12\x0cgame_data_pb\"\xc1\x01\n\tDebugInfo\x12\x0f\n\x07isDebug\x18\x01 \x01(\x08\x12\x12\n\ndaySeconds\x18\x04 \x01(\x05\x12\x16\n\x0e\x65veningSeconds\x18\x05 \x01(\x05\x12\x14\n\x0cnightSeconds\x18\x06 \x01(\x05\x12\x0e\n\x06useLLM\x18\x07 \x01(\x08\x12\x1d\n\x15nonTargetableClientId\x18\x08 \x01(\t\x12\x18\n\x10observerClientId\x18\t \x01(\t\x12\x18\n\x10\x63ontinueOnlyBots\x18\n \x01(\x08\"\x98\x01\n\x08GameInfo\x12\x13\n\x0bplayerCount\x18\x01 \x01(\x05\x12\x12\n\nmafiaCount\x18\x02 \x01(\x05\x12\x10\n\x08language\x18\x03 \x01(\t\x12%\n\tfixedRole\x18\x04 \x01(\x0e\x32\x12.game_data_pb.Role\x12*\n\tdebugInfo\x18\x05 \x01(\x0b\x32\x17.game_data_pb.DebugInfo\"\x86\x01\n\x06Player\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12 \n\x04role\x18\x03 \x01(\x0e\x32\x12.game_data_pb.Role\x12\x0e\n\x06isLive\x18\x04 \x01(\x08\x12\x30\n\x0cremoveReason\x18\x05 \x01(\x0e\x32\x1a.game_data_pb.RemoveReason\"h\n\x04\x43hat\x12\n\n\x02id\x18\x01 \x01(\t\x12$\n\x04type\x18\x02 \x01(\x0e\x32\x16.game_data_pb.ChatType\x12\r\n\x05index\x18\x03 \x01(\x05\x12\x0e\n\x06sender\x18\x04 \x01(\t\x12\x0f\n\x07\x63ontent\x18\x05 \x01(\t\"\x18\n\x06Voters\x12\x0e\n\x06voters\x18\x01 \x03(\t*\\\n\x04Role\x12\x10\n\x0cRole_UNKNOWN\x10\x00\x12\x10\n\x0cRole_CITIZEN\x10\x01\x12\x0e\n\nRole_MAFIA\x10\x02\x12\x0f\n\x0bRole_POLICE\x10\x03\x12\x0f\n\x0bRole_DOCTOR\x10\x04*v\n\x0cRemoveReason\x12\x12\n\x0eREMOVE_UNKNOWN\x10\x00\x12\x0f\n\x0bREMOVE_LIVE\x10\x01\x12\x13\n\x0fREMOVE_EXECUTED\x10\x02\x12\x17\n\x13REMOVE_ASSASSINATED\x10\x03\x12\x13\n\x0fREMOVE_OBSERVER\x10\x04*o\n\x05Phase\x12\x11\n\rPhase_UNKNOWN\x10\x00\x12\x11\n\rPhase_PREPARE\x10\x01\x12\r\n\tPhase_DAY\x10\x02\x12\x11\n\rPhase_EVENING\x10\x03\x12\x0f\n\x0bPhase_NIGHT\x10\x04\x12\r\n\tPhase_END\x10\x05*B\n\x08\x43hatType\x12\x10\n\x0c\x43HAT_UNKNOWN\x10\x00\x12\x0f\n\x0b\x43HAT_SYSTEM\x10\x01\x12\x13\n\x0f\x43HAT_DISCUSSION\x10\x02*d\n\nTargetType\x12\x12\n\x0eTARGET_UNKNOWN\x10\x00\x12\x0f\n\x0bTARGET_VOTE\x10\x01\x12\x0f\n\x0bTARGET_KILL\x10\x02\x12\x0f\n\x0bTARGET_TEST\x10\x03\x12\x0f\n\x0bTARGET_HEAL\x10\x04*\xa5\x01\n\rGameEndReason\x12\x14\n\x10GAME_END_UNKNOWN\x10\x00\x12\x18\n\x14GAME_END_CITIZEN_WIN\x10\x01\x12\x16\n\x12GAME_END_MAFIA_WIN\x10\x02\x12\x1c\n\x18GAME_END_NO_HUMAN_PLAYER\x10\x03\x12\x14\n\x10GAME_END_TIMEOUT\x10\x04\x12\x18\n\x14GAME_END_INTERRUPTED\x10\x05\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'game_data_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_ROLE']._serialized_start=572
-  _globals['_ROLE']._serialized_end=664
-  _globals['_REMOVEREASON']._serialized_start=666
-  _globals['_REMOVEREASON']._serialized_end=784
-  _globals['_PHASE']._serialized_start=786
-  _globals['_PHASE']._serialized_end=897
-  _globals['_CHATTYPE']._serialized_start=899
-  _globals['_CHATTYPE']._serialized_end=965
-  _globals['_TARGETTYPE']._serialized_start=967
-  _globals['_TARGETTYPE']._serialized_end=1067
-  _globals['_GAMEENDREASON']._serialized_start=1070
-  _globals['_GAMEENDREASON']._serialized_end=1235
-  _globals['_DEBUGINFO']._serialized_start=20
-  _globals['_DEBUGINFO']._serialized_end=213
-  _globals['_GAMEINFO']._serialized_start=215
-  _globals['_GAMEINFO']._serialized_end=341
-  _globals['_PLAYER']._serialized_start=343
-  _globals['_PLAYER']._serialized_end=451
-  _globals['_CHAT']._serialized_start=453
-  _globals['_CHAT']._serialized_end=544
-  _globals['_VOTERS']._serialized_start=546
-  _globals['_VOTERS']._serialized_end=570
+  _globals['_ROLE']._serialized_start=653
+  _globals['_ROLE']._serialized_end=745
+  _globals['_REMOVEREASON']._serialized_start=747
+  _globals['_REMOVEREASON']._serialized_end=865
+  _globals['_PHASE']._serialized_start=867
+  _globals['_PHASE']._serialized_end=978
+  _globals['_CHATTYPE']._serialized_start=980
+  _globals['_CHATTYPE']._serialized_end=1046
+  _globals['_TARGETTYPE']._serialized_start=1048
+  _globals['_TARGETTYPE']._serialized_end=1148
+  _globals['_GAMEENDREASON']._serialized_start=1151
+  _globals['_GAMEENDREASON']._serialized_end=1316
+  _globals['_DEBUGINFO']._serialized_start=34
+  _globals['_DEBUGINFO']._serialized_end=227
+  _globals['_GAMEINFO']._serialized_start=230
+  _globals['_GAMEINFO']._serialized_end=382
+  _globals['_PLAYER']._serialized_start=385
+  _globals['_PLAYER']._serialized_end=519
+  _globals['_CHAT']._serialized_start=521
+  _globals['_CHAT']._serialized_end=625
+  _globals['_VOTERS']._serialized_start=627
+  _globals['_VOTERS']._serialized_end=651
 # @@protoc_insertion_point(module_scope)

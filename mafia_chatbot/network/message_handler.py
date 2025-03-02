@@ -20,7 +20,7 @@ class MessageHandler :
             self,
             tcpHandler: TcpHandler,
             onAuth: Callable[[Any], Awaitable[tuple[Any, bool]]],
-            onMessage: Callable[[Any], None],
+            onMessage: Callable[[uuid.UUID, Any], None],
             onDisconnected: Callable[[], None],
         ) :
         if onAuth != None :
@@ -40,8 +40,8 @@ class MessageHandler :
         self.authTask: asyncio.Task = None
 
         self.sendTask: asyncio.Task = None
-        self.sendQueue: Deque[tuple[int, bytes]] = deque()
-        self.responseAwaiters: dict[str, asyncio.Future] = {}
+        self.sendQueue: Deque[tuple[int, uuid.UUID, bytes]] = deque()
+        self.responseAwaiters: dict[uuid.UUID, asyncio.Future] = {}
 
         self._security_authTimeoutTask: asyncio.Task = None
         self._security_noCommCheckTask: asyncio.Task = None
@@ -60,22 +60,23 @@ class MessageHandler :
             onDisconnected=self._onDisconnected,
         )
 
-    def send(self, message) :
+    def send(self, message, rqid: uuid.UUID = None) :
         if self.state != MessageState.CONNECTED :
             return
-        self._send(message)
+        if rqid == None :
+            rqid = uuid.uuid4()
+        self._send(rqid, message)
 
     async def sendAwaitResponse(self, message, timeout: float = 10) :
         if self.state != MessageState.CONNECTED :
             return
 
-        rqid = str(uuid.uuid4())
-        message.rqid = rqid
+        rqid = uuid.uuid4()
 
         future = asyncio.Future()
         self.responseAwaiters[rqid] = future
 
-        self._send(message)
+        self._send(rqid, message)
 
         try:
             return await asyncio.wait_for(future, timeout)
@@ -98,16 +99,16 @@ class MessageHandler :
 
         asyncio.create_task(self._disconnectTask())
 
-    def _send(self, message) :
+    def _send(self, rqid: uuid.UUID, message) :
         if type(message) in messageTypeDict :
             msgType = messageTypeDict[type(message)]
             data = message.SerializeToString()
-            self.sendQueue.append((msgType, data))
+            self.sendQueue.append((msgType, rqid, data))
 
             if self.sendTask == None :
                 self.sendTask = asyncio.create_task(self._sendQueuedMessages())
 
-    def _onData(self, msgType: int, data: bytes) :
+    def _onData(self, msgType: int, rqid: uuid.UUID, data: bytes) :
         if self.state == MessageState.DISCONNECTED :
             return
 
@@ -131,16 +132,15 @@ class MessageHandler :
 
                 async def _auth() :
                     response, success = await self.onAuth(message)
-                    response.rqid = message.rqid
                     if success :
                         self._security_stopAuthTimeout()
                         self.state = MessageState.CONNECTED
                     self.authTask = None
-                    self._send(response)
+                    self._send(rqid, response)
 
                 if self.authTask != None :
                     errorResponse = makeErrorResponse(message, ErrorCode.BUSY, 'It is already being processed.')
-                    self._send(errorResponse)
+                    self._send(rqid, errorResponse)
                     return
 
                 self.authTask = asyncio.create_task(_auth())
@@ -157,12 +157,12 @@ class MessageHandler :
                 self.tcpHandler.resetFailCount()
                 # print(f'[MessageHandler] {self.tcpHandler.addr} onData msgType={msgType}, message=<{message}>')
 
-                if message.rqid in self.responseAwaiters :
-                    future = self.responseAwaiters.pop(message.rqid, None)
+                if rqid in self.responseAwaiters :
+                    future = self.responseAwaiters.pop(rqid, None)
                     if future and not future.done() :
                         future.set_result(message)
                 else :
-                    self.onMessage(message)
+                    self.onMessage(rqid, message)
 
     def _onDisconnected(self) :
         self.state = MessageState.DISCONNECTED
@@ -171,9 +171,9 @@ class MessageHandler :
 
     async def _sendQueuedMessages(self) :
         while len(self.sendQueue) > 0 :
-            msgType, data = self.sendQueue[0]
+            msgType, rqid, data = self.sendQueue[0]
             # 연결이 해제된 경우 tcpHandler.send()에서 False를 반환하므로 따로 검사하지 않아도 괜찮음
-            success = await self.tcpHandler.send(msgType, data)
+            success = await self.tcpHandler.send(msgType, rqid, data)
             if success :
                 self.sendQueue.popleft()
             else :

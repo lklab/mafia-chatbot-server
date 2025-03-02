@@ -24,33 +24,33 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nauth.proto\"*\n\x08UserInfo\x12\x10\n\x08\x63lientId\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"b\n\x04\x41uth\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x06method\x18\x02 \x01(\x0e\x32\x0b.AuthMethod\x12\r\n\x05token\x18\x03 \x01(\t\x12\x10\n\x08password\x18\x04 \x01(\t\x12\x0e\n\x06listen\x18\x05 \x01(\x08\"R\n\x0c\x41uthResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\x12\x17\n\x0frequiredVersion\x18\x03 \x01(\t\";\n\x0eUpdateUserInfo\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\"C\n\x16UpdateUserInfoResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x1b\n\x08userInfo\x18\x02 \x01(\x0b\x32\t.UserInfo\"\x1a\n\nDeleteUser\x12\x0c\n\x04rqid\x18\x01 \x01(\t\"\"\n\x12\x44\x65leteUserResponse\x12\x0c\n\x04rqid\x18\x01 \x01(\t\" \n\x10\x44uplicatedSignIn\x12\x0c\n\x04rqid\x18\x01 \x01(\t\"\x1a\n\nGetAdsInfo\x12\x0c\n\x04rqid\x18\x01 \x01(\t\"9\n\x07\x41\x64sInfo\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0f\n\x07\x65nabled\x18\x02 \x01(\x08\x12\x0f\n\x07useTest\x18\x03 \x01(\x08*U\n\nAuthMethod\x12\x17\n\x13\x41UTH_METHOD_UNKNOWN\x10\x00\x12\x14\n\x10\x41UTH_METHOD_TEST\x10\x01\x12\x18\n\x14\x41UTH_METHOD_FIREBASE\x10\x02\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nauth.proto\x12\x07\x61uth_pb\"*\n\x08UserInfo\x12\x10\n\x08\x63lientId\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"\\\n\x04\x41uth\x12#\n\x06method\x18\x01 \x01(\x0e\x32\x13.auth_pb.AuthMethod\x12\r\n\x05token\x18\x02 \x01(\t\x12\x10\n\x08password\x18\x03 \x01(\t\x12\x0e\n\x06listen\x18\x04 \x01(\x08\"L\n\x0c\x41uthResponse\x12#\n\x08userInfo\x18\x01 \x01(\x0b\x32\x11.auth_pb.UserInfo\x12\x17\n\x0frequiredVersion\x18\x02 \x01(\t\"5\n\x0eUpdateUserInfo\x12#\n\x08userInfo\x18\x01 \x01(\x0b\x32\x11.auth_pb.UserInfo\"=\n\x16UpdateUserInfoResponse\x12#\n\x08userInfo\x18\x01 \x01(\x0b\x32\x11.auth_pb.UserInfo\"\x0c\n\nDeleteUser\"\x14\n\x12\x44\x65leteUserResponse\"\x12\n\x10\x44uplicatedSignIn\"\x0c\n\nGetAdsInfo\"+\n\x07\x41\x64sInfo\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\x12\x0f\n\x07useTest\x18\x02 \x01(\x08*U\n\nAuthMethod\x12\x17\n\x13\x41UTH_METHOD_UNKNOWN\x10\x00\x12\x14\n\x10\x41UTH_METHOD_TEST\x10\x01\x12\x18\n\x14\x41UTH_METHOD_FIREBASE\x10\x02\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'auth_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_AUTHMETHOD']._serialized_start=557
-  _globals['_AUTHMETHOD']._serialized_end=642
-  _globals['_USERINFO']._serialized_start=14
-  _globals['_USERINFO']._serialized_end=56
-  _globals['_AUTH']._serialized_start=58
-  _globals['_AUTH']._serialized_end=156
-  _globals['_AUTHRESPONSE']._serialized_start=158
-  _globals['_AUTHRESPONSE']._serialized_end=240
-  _globals['_UPDATEUSERINFO']._serialized_start=242
-  _globals['_UPDATEUSERINFO']._serialized_end=301
-  _globals['_UPDATEUSERINFORESPONSE']._serialized_start=303
-  _globals['_UPDATEUSERINFORESPONSE']._serialized_end=370
-  _globals['_DELETEUSER']._serialized_start=372
-  _globals['_DELETEUSER']._serialized_end=398
-  _globals['_DELETEUSERRESPONSE']._serialized_start=400
-  _globals['_DELETEUSERRESPONSE']._serialized_end=434
-  _globals['_DUPLICATEDSIGNIN']._serialized_start=436
-  _globals['_DUPLICATEDSIGNIN']._serialized_end=468
-  _globals['_GETADSINFO']._serialized_start=470
-  _globals['_GETADSINFO']._serialized_end=496
-  _globals['_ADSINFO']._serialized_start=498
-  _globals['_ADSINFO']._serialized_end=555
+  _globals['_AUTHMETHOD']._serialized_start=472
+  _globals['_AUTHMETHOD']._serialized_end=557
+  _globals['_USERINFO']._serialized_start=23
+  _globals['_USERINFO']._serialized_end=65
+  _globals['_AUTH']._serialized_start=67
+  _globals['_AUTH']._serialized_end=159
+  _globals['_AUTHRESPONSE']._serialized_start=161
+  _globals['_AUTHRESPONSE']._serialized_end=237
+  _globals['_UPDATEUSERINFO']._serialized_start=239
+  _globals['_UPDATEUSERINFO']._serialized_end=292
+  _globals['_UPDATEUSERINFORESPONSE']._serialized_start=294
+  _globals['_UPDATEUSERINFORESPONSE']._serialized_end=355
+  _globals['_DELETEUSER']._serialized_start=357
+  _globals['_DELETEUSER']._serialized_end=369
+  _globals['_DELETEUSERRESPONSE']._serialized_start=371
+  _globals['_DELETEUSERRESPONSE']._serialized_end=391
+  _globals['_DUPLICATEDSIGNIN']._serialized_start=393
+  _globals['_DUPLICATEDSIGNIN']._serialized_end=411
+  _globals['_GETADSINFO']._serialized_start=413
+  _globals['_GETADSINFO']._serialized_end=425
+  _globals['_ADSINFO']._serialized_start=427
+  _globals['_ADSINFO']._serialized_end=470
 # @@protoc_insertion_point(module_scope)

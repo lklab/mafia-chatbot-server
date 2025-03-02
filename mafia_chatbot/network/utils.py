@@ -17,7 +17,6 @@ class ErrorCode(Enum) :
 
 def makeErrorResponse(message, code: ErrorCode, detail: str) :
     errorResponse = error_pb2.RequestError()
-    errorResponse.rqid = message.rqid
     errorResponse.rqtype = messageTypeDict[type(message)]
     errorResponse.code = code.value
     errorResponse.detail = detail

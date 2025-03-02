@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package room_pb;
+
 import "game_data.proto";
 
 message Participant {
@@ -12,70 +14,53 @@ message RoomInfo {
   int32 maxHumans = 2;
   repeated Participant participants = 3;
   string hostId = 4;
-  GameInfo gameInfo = 5;
+  game_data_pb.GameInfo gameInfo = 5;
 }
 
-message RequestMyRoomInfo {
-  string rqid = 1;
-}
+message RequestMyRoomInfo { }
 
 message MyRoomInfo {
-  string rqid = 1;
-  bool isRoomExists = 2;
-  RoomInfo info = 3;
-}
-
-message CreateRoom {
-  string rqid = 1;
-  int32 maxHumans = 2;
-  string password = 3;
-  GameInfo gameInfo = 4;
-}
-
-message CreateRoomResponse {
-  string rqid = 1;
-  RoomInfo roomInfo = 2;
-}
-
-message JoinRoom {
-  string rqid = 1;
-  string code = 2;
-  string password = 3;
-}
-
-message JoinRoomResponse {
-  string rqid = 1;
-  RoomInfo roomInfo = 2;
-}
-
-message QuitRoom {
-  string rqid = 1;
-}
-
-message QuitRoomResponse {
-  string rqid = 1;
-}
-
-message RoomInfoUpdated {
-  string rqid = 1;
+  bool isRoomExists = 1;
   RoomInfo info = 2;
 }
 
-message RoomDestroyed {
-  string rqid = 1;
+message CreateRoom {
+  int32 maxHumans = 1;
+  string password = 2;
+  game_data_pb.GameInfo gameInfo = 3;
 }
 
+message CreateRoomResponse {
+  RoomInfo roomInfo = 1;
+}
+
+message JoinRoom {
+  string code = 1;
+  string password = 2;
+}
+
+message JoinRoomResponse {
+  RoomInfo roomInfo = 1;
+}
+
+message QuitRoom { }
+
+message QuitRoomResponse { }
+
+message RoomInfoUpdated {
+  RoomInfo info = 1;
+}
+
+message RoomDestroyed { }
+
 message NewGame {
-  string rqid = 1;
-  GameInfo gameInfo = 2;
+  game_data_pb.GameInfo gameInfo = 1;
 }
 
 message NewGameResponse {
-  string rqid = 1;
-  int32 port = 2;
+  int32 port = 1;
 }
 
 message GameStarted {
-  string rqid = 1;
-  int32 port = 2;
+  int32 port = 1;
 }

@@ -24,13 +24,13 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0b\x65rror.proto\"J\n\x0cRequestError\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x0e\n\x06rqtype\x18\x02 \x01(\x05\x12\x0c\n\x04\x63ode\x18\x03 \x01(\x05\x12\x0e\n\x06\x64\x65tail\x18\x04 \x01(\tb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0b\x65rror.proto\x12\x08\x65rror_pb\"<\n\x0cRequestError\x12\x0e\n\x06rqtype\x18\x01 \x01(\x05\x12\x0c\n\x04\x63ode\x18\x02 \x01(\x05\x12\x0e\n\x06\x64\x65tail\x18\x03 \x01(\tb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'error_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_REQUESTERROR']._serialized_start=15
-  _globals['_REQUESTERROR']._serialized_end=89
+  _globals['_REQUESTERROR']._serialized_start=25
+  _globals['_REQUESTERROR']._serialized_end=85
 # @@protoc_insertion_point(module_scope)

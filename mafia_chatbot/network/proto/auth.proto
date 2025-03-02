@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package auth_pb;
+
 message UserInfo {
   string clientId = 1;
   string name = 2;
@@ -12,47 +14,34 @@ enum AuthMethod {
 }
 
 message Auth {
-  string rqid = 1;
-  AuthMethod method = 2;
-  string token = 3;
-  string password = 4;
-  bool listen = 5;
+  AuthMethod method = 1;
+  string token = 2;
+  string password = 3;
+  bool listen = 4;
 }
 
 message AuthResponse {
-  string rqid = 1;
-  UserInfo userInfo = 2;
-  string requiredVersion = 3;
+  UserInfo userInfo = 1;
+  string requiredVersion = 2;
 }
 
 message UpdateUserInfo {
-  string rqid = 1;
-  UserInfo userInfo = 2;
+  UserInfo userInfo = 1;
 }
 
 message UpdateUserInfoResponse {
-  string rqid = 1;
-  UserInfo userInfo = 2;
+  UserInfo userInfo = 1;
 }
 
-message DeleteUser {
-  string rqid = 1;
-}
+message DeleteUser { }
 
-message DeleteUserResponse {
-  string rqid = 1;
-}
+message DeleteUserResponse { }
 
-message DuplicatedSignIn {
-  string rqid = 1;
-}
+message DuplicatedSignIn { }
 
-message GetAdsInfo {
-  string rqid = 1;
-}
+message GetAdsInfo { }
 
 message AdsInfo {
-  string rqid = 1;
-  bool enabled = 2;
-  bool useTest = 3;
+  bool enabled = 1;
+  bool useTest = 2;
 }

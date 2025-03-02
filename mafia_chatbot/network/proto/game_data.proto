@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package game_data_pb;
+
 message DebugInfo {
   bool isDebug = 1;
   int32 daySeconds = 4;

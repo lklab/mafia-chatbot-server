@@ -2,6 +2,7 @@ from typing import Callable, Any
 import jwt
 from datetime import datetime, timezone
 import asyncio
+import uuid
 
 from mafia_chatbot.network.tcp_handler import TcpHandler
 from mafia_chatbot.network.client_user import ClientUser
@@ -23,7 +24,7 @@ class ClientHandler :
     def __init__(self,
                  tcpHandler: TcpHandler,
                  onAuth: Callable[[ClientHandler, str, Any], tuple[Any, ClientUser]],
-                 onMessage: Callable[[ClientHandler, Any], None],
+                 onMessage: Callable[[ClientHandler, uuid.UUID, Any], None],
                  onDisconnected: Callable[[ClientHandler], None],
                  logger: WandsLogger,
         ) :
@@ -43,10 +44,10 @@ class ClientHandler :
             onDisconnected=self._onDisconnected,
         )
 
-    def respond(self, message) :
+    def respond(self, rqid: uuid.UUID, message) :
         if self.user == None :
             return
-        self.user.respond(self.messageHandler, message)
+        self.user.respond(self.messageHandler, rqid, message)
 
     async def _onAuth(self, message) -> tuple[Any, bool] :
         self.logger.debug(f'[ClientHandler] _onAuth() addr={self.addr} message=<{message}>')
@@ -75,7 +76,6 @@ class ClientHandler :
             user.addConnection(self.messageHandler, message.listen)
 
             response = auth_pb2.AuthResponse()
-            response.rqid = message.rqid
             self.user.toProtoUserInfoMessage(response.userInfo)
             response.requiredVersion = operationManager.requiredVersion
 
@@ -88,9 +88,9 @@ class ClientHandler :
             self.logger.error(f'[ClientHandler] auth failed addr={self.addr} response=<{response}>')
             return response, False
 
-    def _onMessage(self, message) :
+    def _onMessage(self, rqid: uuid.UUID, message) :
         if self.user != None :
-            self.onMessage(self, message)
+            self.onMessage(self, rqid, message)
 
     def _onDisconnected(self) :
         if self.user != None :

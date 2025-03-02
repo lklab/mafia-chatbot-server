@@ -1,5 +1,6 @@
 from typing import Callable, Awaitable, Any
 import asyncio
+import uuid
 
 from mafia_chatbot.game.game_logger import GameLogger, TAG
 
@@ -36,7 +37,7 @@ class ClientUser :
         self.holders: dict[str, UserHolder] = {}
         self.tasks: dict[str, asyncio.Task] = {}
         self.logger: GameLogger = None
-        self.subscribers: dict[type, Callable[[MessageHandler, Any], None]] = {}
+        self.subscribers: dict[type, Callable[[MessageHandler, uuid.UUID, Any], None]] = {}
         self.isReleased: bool = False
         self.authMethod: auth_pb2.AuthMethod = auth_pb2.AuthMethod.AUTH_METHOD_UNKNOWN
 
@@ -100,20 +101,20 @@ class ClientUser :
                 self.listenConnection = None
             self._checkReleasable()
 
-    def forward(self, connection: MessageHandler, message) :
+    def forward(self, connection: MessageHandler, rqid: uuid.UUID, message) :
         # connection이 본 User와 관련된 것임을 assert
         msgType = type(message)
         if msgType in self.subscribers :
-            self.subscribers[msgType](connection, message)
+            self.subscribers[msgType](connection, rqid, message)
             return True
         else :
             return False
 
-    def respond(self, connection: MessageHandler, message) :
+    def respond(self, connection: MessageHandler, rqid: uuid.UUID, message) :
         # connection이 본 User와 관련된 것임을 assert
         if self.logger != None :
             self.logger.log(TAG.NETWORK, f'[ClientUser] respond {type(message)} message to {self.clientName}: <{message}>')
-        connection.send(message)
+        connection.send(message, rqid)
 
     def send(self, message) :
         if self.listenConnection != None :
@@ -124,7 +125,7 @@ class ClientUser :
     def setLogger(self, logger: GameLogger) :
         self.logger = logger
 
-    def subscribeMessage(self, msgType: type, listener: Callable[[MessageHandler, Any], None]) :
+    def subscribeMessage(self, msgType: type, listener: Callable[[MessageHandler, uuid.UUID, Any], None]) :
         self.subscribers[msgType] = listener
 
     def clearSubscribers(self) :
@@ -166,7 +167,6 @@ class ClientUser :
             self.clientName = name
 
             response = auth_pb2.UpdateUserInfoResponse()
-            response.rqid = message.rqid
             self.toProtoUserInfoMessage(response.userInfo)
             return response
 

@@ -1,8 +1,9 @@
 syntax = "proto3";
 
+package error_pb;
+
 message RequestError {
-  string rqid = 1;
-  int32 rqtype = 2;
-  int32 code = 3;
-  string detail = 4;
+  int32 rqtype = 1;
+  int32 code = 2;
+  string detail = 3;
 }

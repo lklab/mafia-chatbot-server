@@ -1,10 +1,9 @@
 syntax = "proto3";
 
-message RequestTimeSync {
-  string rqid = 1;
-}
+package time_pb;
+
+message RequestTimeSync { }
 
 message TimeSync {
-  string rqid = 1;
-  int64 time = 2;
+  int64 time = 1;
 }

@@ -2,6 +2,7 @@ import asyncio
 from typing import Callable
 from enum import Enum
 import traceback
+import uuid
 
 class TcpState(Enum) :
     INITIALIZED = 0
@@ -29,7 +30,7 @@ class TcpHandler :
 
         self.failCount: int = 0
 
-    def listen(self, onData: Callable[[int, bytes], None], onDisconnected: Callable[[], None]) :
+    def listen(self, onData: Callable[[int, uuid.UUID, bytes], None], onDisconnected: Callable[[], None]) :
         if self.state != TcpState.INITIALIZED :
             return
         self.state = TcpState.CONNECTED
@@ -42,7 +43,7 @@ class TcpHandler :
     def removeOnDisconnected(self, onDisconnected: Callable[[], None]) :
         self.onDisconnected.remove(onDisconnected)
 
-    async def _listen(self, onData: Callable[[int, bytes], None], onDisconnected: Callable[[], None]) :
+    async def _listen(self, onData: Callable[[int, uuid.UUID, bytes], None], onDisconnected: Callable[[], None]) :
         buffer = b''
         self.addOnDisconnected(onDisconnected)
 
@@ -64,13 +65,15 @@ class TcpHandler :
                         break
                     cursor += 4
 
-                    # get message type and payload size
-                    if len(buffer) < cursor + 8 :
+                    # get message type, payload size, rqid
+                    if len(buffer) < cursor + 24 :
                         break
                     msg_type = int.from_bytes(buffer[cursor:cursor+4], byteorder='big')
                     cursor += 4
                     payload_size = int.from_bytes(buffer[cursor:cursor+4], byteorder='big')
                     cursor += 4
+                    rqid = uuid.UUID(bytes=buffer[cursor:cursor+16])
+                    cursor += 16
 
                     # check payload size
                     if payload_size > maxPayloadSize :
@@ -89,7 +92,7 @@ class TcpHandler :
 
                     try :
                         # forward payload
-                        onData(msg_type, payload)
+                        onData(msg_type, rqid, payload)
                     except Exception as e:
                         print(f"[TcpHandler] {self.addr} onData error: {e}")
                         traceback.print_exc()
@@ -102,10 +105,10 @@ class TcpHandler :
         self.listenTask = None
         await self.close()
 
-    async def sendStr(self, type: int, payload: str) -> bool :
-        return await self.send(type, payload.encode())
+    async def sendStr(self, type: int, rqid: uuid.UUID, payload: str) -> bool :
+        return await self.send(type, rqid, payload.encode())
 
-    async def send(self, type: int, payload: bytes) -> bool :
+    async def send(self, type: int, rqid: uuid.UUID, payload: bytes) -> bool :
         if self.state != TcpState.CONNECTED :
             return False
 
@@ -113,6 +116,7 @@ class TcpHandler :
             delimiter +
             type.to_bytes(4, byteorder='big') +
             len(payload).to_bytes(4, byteorder='big') +
+            rqid.bytes +
             payload
         )
 

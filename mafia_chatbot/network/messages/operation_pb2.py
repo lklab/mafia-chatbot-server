@@ -24,15 +24,15 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0foperation.proto\"0\n\x0eGetServerState\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x10\n\x08language\x18\x02 \x01(\t\"]\n\x0bServerState\x12\x0c\n\x04rqid\x18\x01 \x01(\t\x12\x11\n\toperating\x18\x02 \x01(\x08\x12\x14\n\x0cstateMessage\x18\x03 \x01(\t\x12\x17\n\x0fmaintainEndTime\x18\x04 \x01(\tb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0foperation.proto\x12\x0coperation_pb\"\"\n\x0eGetServerState\x12\x10\n\x08language\x18\x01 \x01(\t\"O\n\x0bServerState\x12\x11\n\toperating\x18\x01 \x01(\x08\x12\x14\n\x0cstateMessage\x18\x02 \x01(\t\x12\x17\n\x0fmaintainEndTime\x18\x03 \x01(\tb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'operation_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_GETSERVERSTATE']._serialized_start=19
+  _globals['_GETSERVERSTATE']._serialized_start=33
   _globals['_GETSERVERSTATE']._serialized_end=67
   _globals['_SERVERSTATE']._serialized_start=69
-  _globals['_SERVERSTATE']._serialized_end=162
+  _globals['_SERVERSTATE']._serialized_end=148
 # @@protoc_insertion_point(module_scope)

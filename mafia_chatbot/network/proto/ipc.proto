@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package ipc_pb;
+
 import "game_data.proto";
 
 message GameParticipant {
@@ -8,9 +10,8 @@ message GameParticipant {
 }
 
 message GameServerConnected {
-  string rqid = 1;
-  int32 port = 2;
-  repeated GameParticipant gameParticipants = 3;
+  int32 port = 1;
+  repeated GameParticipant gameParticipants = 2;
 }
 
 message Client {
@@ -19,39 +20,26 @@ message Client {
 }
 
 message StartNewGame {
-  string rqid = 1;
-  string gameId = 2;
-  repeated Client clients = 3;
-  GameInfo gameInfo = 4;
+  string gameId = 1;
+  repeated Client clients = 2;
+  game_data_pb.GameInfo gameInfo = 3;
 }
 
-message StartNewGameResponse {
-  string rqid = 1;
-}
+message StartNewGameResponse { }
 
 message ClientExited {
-  string rqid = 1;
-  string gameId = 2;
-  string clientId = 3;
+  string gameId = 1;
+  string clientId = 2;
 }
 
-message ClientExitedResponse {
-  string rqid = 1;
-}
+message ClientExitedResponse { }
 
 message GameEnded {
-  string rqid = 1;
-  string gameId = 2;
+  string gameId = 1;
 }
 
-message GameEndedResponse {
-  string rqid = 1;
-}
+message GameEndedResponse { }
 
-message RestartServer {
-  string rqid = 1;
-}
+message RestartServer { }
 
-message ServerRestarted {
-  string rqid = 1;
-}
+message ServerRestarted { }

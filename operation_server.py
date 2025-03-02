@@ -1,5 +1,6 @@
 import asyncio
 from typing import Any
+import uuid
 
 from mafia_chatbot.firebase import firebase
 
@@ -38,36 +39,35 @@ class OperationServer :
         self.logger.debug(f'_onClientAuth clientId={user.clientId}')
         return None, True
 
-    def _onClientMessage(self, client: ClientHandler, message) :
+    def _onClientMessage(self, client: ClientHandler, rqid: uuid.UUID, message) :
         self.logger.debug(f'_onClientMessage clientId={client.user.clientId} name={client.user.clientName}, type={type(message)}, message=<{message}>')
         if type(message) in OperationServer._switchClientMessage :
-            OperationServer._switchClientMessage[type(message)](self, client, message)
+            OperationServer._switchClientMessage[type(message)](self, client, rqid, message)
         else :
             errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, f'Cannot process the message.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
 
     def _onClientDisconnected(self, client: ClientHandler) :
         if client.user != None :
             self.logger.debug(f'_onClientDisconnected clientId={client.user.clientId} name={client.user.clientName}')
 
-    def _switchClientMessageGetServerState(self, client: ClientHandler, message) :
+    def _switchClientMessageGetServerState(self, client: ClientHandler, rqid: uuid.UUID, message) :
         response = operation_pb2.ServerState()
-        response.rqid = message.rqid
         response.operating = operationManager.operating
         response.stateMessage = operationManager.getStateMessage(message.language)
         response.maintainEndTime = operationManager.maintainEndTime
-        self._respondToClient(client, response)
+        self._respondToClient(client, rqid, response)
 
     _switchClientMessage = {
         operation_pb2.GetServerState : _switchClientMessageGetServerState,
     }
 
-    def _respondToClient(self, client: ClientHandler, message, isError: bool = False) :
+    def _respondToClient(self, client: ClientHandler, rqid: uuid.UUID, message, isError: bool = False) :
         if isError :
             self.logger.error(f'_respondToClient id={client.user.clientId}, name={client.user.clientName}, type={type(message)}, message=<{message}>')
         else :
             self.logger.debug(f'_respondToClient id={client.user.clientId}, name={client.user.clientName}, type={type(message)}, message=<{message}>')
-        client.respond(message)
+        client.respond(rqid, message)
 
 if __name__ == "__main__" :
     server = OperationServer()

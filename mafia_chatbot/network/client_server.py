@@ -1,5 +1,6 @@
 from typing import Callable, Any
 import asyncio
+import uuid
 
 from mafia_chatbot.network.tcp_server import TcpServer
 from mafia_chatbot.network.tcp_handler import TcpHandler
@@ -14,7 +15,7 @@ class ClientServer :
     def __init__(self,
                  port: int,
                  onAuth: Callable[[ClientUser, MessageHandler, Any], tuple[Any, bool]],
-                 onMessage: Callable[[ClientHandler, Any], None],
+                 onMessage: Callable[[ClientHandler, uuid.UUID, Any], None],
                  onDisconnected: Callable[[ClientHandler], None],
                  logger: WandsLogger,
         ) :

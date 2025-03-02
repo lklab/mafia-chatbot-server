@@ -1,3 +1,5 @@
+import uuid
+
 from mafia_chatbot.main.room import Room, validateCreateRoomMessage
 
 from mafia_chatbot.network.messages import *
@@ -15,9 +17,8 @@ class RoomManager :
         self.roomByCode: dict[str, Room] = {}
         self.codeGenerator: CodeGenerator = CodeGenerator(min_digits=4)
 
-    def processMessageRequestMyRoomInfo(self, client: ClientHandler, message) :
+    def processMessageRequestMyRoomInfo(self, client: ClientHandler, rqid: uuid.UUID, message) :
         response = room_pb2.MyRoomInfo()
-        response.rqid = message.rqid
 
         room: Room = client.user.getHolder('room')
         if room != None :
@@ -26,17 +27,17 @@ class RoomManager :
         else :
             response.isRoomExists = False
 
-        self._respondToClient(client, response)
+        self._respondToClient(client, rqid, response)
 
-    def processMessageCreateRoom(self, client: ClientHandler, message) :
+    def processMessageCreateRoom(self, client: ClientHandler, rqid: uuid.UUID, message) :
         if client.user.getHolder('room') != None :
             errorResponse = makeErrorResponse(message, ErrorCode.ALREADY_EXISTS, 'You are already participating in another room.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         if not validateCreateRoomMessage(message) :
             errorResponse = makeErrorResponse(message, ErrorCode.INVALID_DATA, 'The room information is invalid.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         code: str = self.codeGenerator.issueCode()
@@ -44,19 +45,18 @@ class RoomManager :
         self.roomByCode[code] = room
 
         response = room_pb2.CreateRoomResponse()
-        response.rqid = message.rqid
         room.infoToProtoMessage(response.roomInfo)
-        self._respondToClient(client, response)
+        self._respondToClient(client, rqid, response)
 
-    def processMessageJoinRoom(self, client: ClientHandler, message) :
+    def processMessageJoinRoom(self, client: ClientHandler, rqid: uuid.UUID, message) :
         if client.user.getHolder('room') != None :
             errorResponse = makeErrorResponse(message, ErrorCode.ALREADY_EXISTS, 'You are already participating in another room.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         if message.code not in self.roomByCode :
             errorResponse = makeErrorResponse(message, ErrorCode.NOT_FOUND, 'No room matches the provided code.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         room: Room = self.roomByCode[message.code]
@@ -65,31 +65,29 @@ class RoomManager :
             room.join(client.user, message.password)
         except MessageException as e :
             errorResponse = e.makeResponse(message)
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         response = room_pb2.JoinRoomResponse()
-        response.rqid = message.rqid
         room.infoToProtoMessage(response.roomInfo)
-        self._respondToClient(client, response)
+        self._respondToClient(client, rqid, response)
 
-    def processMessageQuitRoom(self, client: ClientHandler, message) :
+    def processMessageQuitRoom(self, client: ClientHandler, rqid: uuid.UUID, message) :
         room: Room = client.user.getHolder('room')
         if room == None :
             errorResponse = makeErrorResponse(message, ErrorCode.NOT_FOUND, 'You are not participating in any room.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         try :
             room.quit(client.user)
         except MessageException as e :
             errorResponse = e.makeResponse(message)
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         response = room_pb2.QuitRoomResponse()
-        response.rqid = message.rqid
-        self._respondToClient(client, response)
+        self._respondToClient(client, rqid, response)
 
     def destroyRoom(self, room: Room) :
         room.destroy()
@@ -103,12 +101,12 @@ class RoomManager :
         if room.code in self.roomByCode :
             del self.roomByCode[room.code]
 
-    def _respondToClient(self, client: ClientHandler, message, isError: bool = False) :
+    def _respondToClient(self, client: ClientHandler, rqid: uuid.UUID, message, isError: bool = False) :
         if isError :
             self.logger.error(f'[RoomManager] _respondToClient id={client.user.clientId}, name={client.user.clientName}, type={type(message)}, message=<{message}>')
         else :
             self.logger.debug(f'[RoomManager] _respondToClient id={client.user.clientId}, name={client.user.clientName}, type={type(message)}, message=<{message}>')
-        client.respond(message)
+        client.respond(rqid, message)
 
     def _sendToUser(self, user: ClientUser, message, isError: bool = False) :
         if isError :

@@ -1,158 +1,117 @@
 syntax = "proto3";
 
+package game_pb;
+
 import "game_data.proto";
 
-message CheckCurrentGame {
-  string rqid = 1;
-}
+message CheckCurrentGame { }
 
 message CurrentGame {
-  string rqid = 1;
-  bool isGameExists = 2;
-  int32 port = 3;
+  bool isGameExists = 1;
+  int32 port = 2;
 }
 
-message RequestCurrentGameInfo {
-  string rqid = 1;
-}
+message RequestCurrentGameInfo { }
 
 message CurrentGameInfo {
-  string rqid = 1;
-  GameInfo info = 2;
+  game_data_pb.GameInfo info = 1;
 }
 
-message ReadyGame {
-  string rqid = 1;
-}
+message ReadyGame { }
 
-message ReadyGameResponse {
-  string rqid = 1;
-}
+message ReadyGameResponse { }
 
-message RequestGamePhase {
-  string rqid = 1;
-}
+message RequestGamePhase { }
 
 message GamePhase {
-  string rqid = 1;
-  int32 round = 2;
-  Phase phase = 3;
-  float phaseEndTime = 4;
-  float phaseRemainTime = 5;
+  int32 round = 1;
+  game_data_pb.Phase phase = 2;
+  float phaseEndTime = 3;
+  float phaseRemainTime = 4;
 }
 
-message RequestGameState {
-  string rqid = 1;
-}
+message RequestGameState { }
 
 message GameState {
-  string rqid = 1;
+  string language = 1;
+  repeated game_data_pb.Player players = 2;
+  game_data_pb.Player me = 3;
 
-  string language = 2;
-  repeated Player players = 3;
-  Player me = 4;
+  int32 mafiaCount = 4;
+  int32 remainMafiaCount = 5;
 
-  int32 mafiaCount = 5;
-  int32 remainMafiaCount = 6;
+  GamePhase phase = 6;
 
-  GamePhase phase = 7;
+  int32 remainMyChat = 7;
+  int32 maxMyChat = 8;
 
-  int32 remainMyChat = 8;
-  int32 maxMyChat = 9;
-
-  bool canCancelKillWithAds = 10;
+  bool canCancelKillWithAds = 9;
 }
 
-message RequestChatList {
-  string rqid = 1;
-}
+message RequestChatList { }
 
 message ChatList {
-  string rqid = 1;
-  repeated Chat chats = 2;
+  repeated game_data_pb.Chat chats = 1;
 }
 
 message RequestAddChat {
-  string rqid = 1;
-  Chat chat = 2;
+  game_data_pb.Chat chat = 1;
 }
 
 message GetChat {
-  string rqid = 1;
-  int32 index = 2;
+  int32 index = 1;
 }
 
 message AddChat {
-  string rqid = 1;
-  Chat chat = 2;
-  int32 remainMyChat = 3;
-  int32 maxMyChat = 4;
+  game_data_pb.Chat chat = 1;
+  int32 remainMyChat = 2;
+  int32 maxMyChat = 3;
 }
 
 message SetTarget {
-  string rqid = 1;
-  TargetType type = 2;
-  string target = 3;
+  game_data_pb.TargetType type = 1;
+  string target = 2;
 }
 
-message SetTargetResponse {
-  string rqid = 1;
-}
+message SetTargetResponse { }
 
 message GetVoteState {
-  string rqid = 1;
-  TargetType type = 2;
+  game_data_pb.TargetType type = 1;
 }
 
 message VoteState {
-  string rqid = 1;
-  TargetType type = 2;
-  map<string, Voters> votersMap = 3;
+  game_data_pb.TargetType type = 1;
+  map<string, game_data_pb.Voters> votersMap = 2;
 }
 
 message Removed {
-  string rqid = 1;
-  RemoveReason reason = 2;
+  game_data_pb.RemoveReason reason = 1;
 }
 
 message GameEnd {
-  string rqid = 1;
-  GameEndReason reason = 2;
+  game_data_pb.GameEndReason reason = 1;
 }
 
-message QuitGame {
-  string rqid = 1;
-}
+message QuitGame { }
 
-message QuitGameResponse {
-  string rqid = 1;
-}
+message QuitGameResponse { }
 
 message ReportChat {
-  string rqid = 1;
-  string reporterId = 2;
-  int32 chatIndex = 3;
-  string comment = 4;
+  string reporterId = 1;
+  int32 chatIndex = 2;
+  string comment = 3;
 }
 
-message ReportChatResponse {
-  string rqid = 1;
-}
+message ReportChatResponse { }
 
-message CanCancelKillWithAds {
-  string rqid = 1;
-}
+message CanCancelKillWithAds { }
 
 message CancelKillWithAds {
-  string rqid = 1;
-  bool cancel = 2;
+  bool cancel = 1;
 }
 
-message CancelKillWithAdsResponse {
-  string rqid = 1;
-}
+message CancelKillWithAdsResponse { }
 
 message UnlockAchievement {
-  string rqid = 1;
-  string achievementKey = 2;
+  string achievementKey = 1;
 }

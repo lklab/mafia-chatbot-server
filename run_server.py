@@ -192,14 +192,14 @@ class MainProcess :
         messageHandler = MessageHandler(
             tcpHandler=tcpHandler,
             onAuth=None,
-            onMessage=lambda m: self._onGameProcessMessage(messageHandler, m),
+            onMessage=lambda rqid, m: self._onGameProcessMessage(messageHandler, rqid, m),
             onDisconnected=lambda: self._onGameProcessDisconnected(messageHandler),
         )
 
-    def _onGameProcessMessage(self, messageHandler: MessageHandler, message) :
+    def _onGameProcessMessage(self, messageHandler: MessageHandler, rqid: uuid.UUID, message) :
         self.logger.debug(f'_onGameProcessMessage() addr={messageHandler.addr}, desc={messageHandler.desc}, type={type(message)}, message=<{message}>')
         if type(message) in MainProcess._switchGameProcessMessage :
-            MainProcess._switchGameProcessMessage[type(message)](self, messageHandler, message)
+            MainProcess._switchGameProcessMessage[type(message)](self, messageHandler, rqid, message)
 
     def _onGameProcessDisconnected(self, messageHandler: MessageHandler) :
         self.logger.error(f'_onGameProcessDisconnected() addr={messageHandler.addr}, desc={messageHandler.desc}')
@@ -207,7 +207,7 @@ class MainProcess :
         del self.gameProcessPortDict[messageHandler]
         self.gameProcessHandlers[port].setMessageHandler(None)
 
-    def _switchGameProcessMessageGameServerConnected(self, messageHandler: MessageHandler, message) :
+    def _switchGameProcessMessageGameServerConnected(self, messageHandler: MessageHandler, rqid: uuid.UUID, message) :
         port = message.port
         self.gameProcessPortDict[messageHandler] = port
 
@@ -235,7 +235,7 @@ class MainProcess :
             participants[gameId] = [user.clientId for user in self.gameToProcessDict[gameId].games[gameId].users]
         self.logger.debug(f'_switchGameProcessMessageGameServerConnected port={port} game participants(after) = {participants}')
 
-    def _switchGameProcessMessageClientExited(self, messageHandler: MessageHandler, message) :
+    def _switchGameProcessMessageClientExited(self, messageHandler: MessageHandler, rqid: uuid.UUID, message) :
         user: ClientUser = self.mainServer.getUser(message.clientId, onlyExists=True)
         if user == None :
             return
@@ -245,10 +245,9 @@ class MainProcess :
             game.removeUser(user)
 
         response = ipc_pb2.ClientExitedResponse()
-        response.rqid = message.rqid
-        self._sendToGameProcess(messageHandler, response)
+        self._sendToGameProcess(messageHandler, rqid, response)
 
-    def _switchGameProcessMessageGameEnded(self, messageHandler: MessageHandler, message) :
+    def _switchGameProcessMessageGameEnded(self, messageHandler: MessageHandler, rqid: uuid.UUID, message) :
         gameId: str = message.gameId
 
         if gameId in self.gameToProcessDict :
@@ -257,8 +256,7 @@ class MainProcess :
             del self.gameToProcessDict[gameId]
 
         response = ipc_pb2.GameEndedResponse()
-        response.rqid = message.rqid
-        self._sendToGameProcess(messageHandler, response)
+        self._sendToGameProcess(messageHandler, rqid, response)
 
     _switchGameProcessMessage = {
         ipc_pb2.GameServerConnected : _switchGameProcessMessageGameServerConnected,
@@ -271,52 +269,50 @@ class MainProcess :
         self.logger.debug(f'_onClientAuth clientId={user.clientId}')
         return None, True
 
-    def _onClientMessage(self, client: ClientHandler, message) :
+    def _onClientMessage(self, client: ClientHandler, rqid: uuid.UUID, message) :
         self.logger.debug(f'_onClientMessage clientId={client.user.clientId} name={client.user.clientName}, type={type(message)}, message=<{message}>')
         if type(message) in MainProcess._switchClientMessage :
-            MainProcess._switchClientMessage[type(message)](self, client, message)
+            MainProcess._switchClientMessage[type(message)](self, client, rqid, message)
         else :
             errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, f'Cannot process the message.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
 
     def _onClientDisconnected(self, client: ClientHandler) :
         if client.user != None :
             self.logger.debug(f'_onClientDisconnected clientId={client.user.clientId} name={client.user.clientName}')
 
-    def _switchClientMessageUpdateUserInfo(self, client: ClientHandler, message) :
+    def _switchClientMessageUpdateUserInfo(self, client: ClientHandler, rqid: uuid.UUID, message) :
         async def _updateInfo() :
             response = await client.user.updateInfo(message)
-            self._respondToClient(client, response, isError=isinstance(response, error_pb2.RequestError))
+            self._respondToClient(client, rqid, response, isError=isinstance(response, error_pb2.RequestError))
 
         if not client.user.createTask('updateUserInfo', _updateInfo) :
             errorResponse = makeErrorResponse(message, ErrorCode.BUSY, f'It is already being processed.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
 
-    def _switchClientMessageDeleteUser(self, client: ClientHandler, message) :
+    def _switchClientMessageDeleteUser(self, client: ClientHandler, rqid: uuid.UUID, message) :
         try :
             client.user.delete()
         except :
             errorResponse = makeErrorResponse(message, ErrorCode.SERVER_ERROR, 'Fail to delete user')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         response = auth_pb2.DeleteUserResponse()
-        response.rqid = message.rqid
-        self._respondToClient(client, response)
+        self._respondToClient(client, rqid, response)
 
         client.user.disconnect()
 
-    def _switchClientMessageGetAdsInfo(self, client: ClientHandler, message) :
+    def _switchClientMessageGetAdsInfo(self, client: ClientHandler, rqid: uuid.UUID, message) :
         response = auth_pb2.AdsInfo()
-        response.rqid = message.rqid
         response.enabled = operationManager.enableAds
         response.useTest = operationManager.useTestAds
-        self._respondToClient(client, response)
+        self._respondToClient(client, rqid, response)
 
-    def _switchClientMessageRequestMyRoomInfo(self, client: ClientHandler, message) :
-        self.roomManager.processMessageRequestMyRoomInfo(client, message)
+    def _switchClientMessageRequestMyRoomInfo(self, client: ClientHandler, rqid: uuid.UUID, message) :
+        self.roomManager.processMessageRequestMyRoomInfo(client, rqid, message)
 
-    def _switchClientMessageCreateRoom(self, client: ClientHandler, message) :
+    def _switchClientMessageCreateRoom(self, client: ClientHandler, rqid: uuid.UUID, message) :
         # check operating
         if not operationManager.operating :
             errorResponse = makeErrorResponse(
@@ -324,53 +320,53 @@ class MainProcess :
                 ErrorCode.NOT_OPERATING,
                 operationManager.getStateMessage(message.gameInfo.language)
             )
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         # check sign up
         if client.user.isNeedToSignUp() :
             errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'The player has not been fully configured.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         # check current game
         if client.user.getHolder('gamehandler') != None :
             errorResponse = makeErrorResponse(message, ErrorCode.ALREADY_EXISTS, 'The game is already running.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         # check game info
         if not varifyGameInfo(message.gameInfo) :
             errorResponse = makeErrorResponse(message, ErrorCode.INVALID_DATA, 'The game information is invalid.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         # check human count
         if message.maxHumans > message.gameInfo.playerCount :
             errorResponse = makeErrorResponse(message, ErrorCode.INVALID_DATA, 'The number of humans cannot exceed the number of players.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         self.roomManager.processMessageCreateRoom(client, message)
 
-    def _switchClientMessageJoinRoom(self, client: ClientHandler, message) :
+    def _switchClientMessageJoinRoom(self, client: ClientHandler, rqid: uuid.UUID, message) :
         # check sign up
         if client.user.isNeedToSignUp() :
             errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'The player has not been fully configured.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         if client.user.getHolder('gamehandler') != None :
             errorResponse = makeErrorResponse(message, ErrorCode.ALREADY_EXISTS, 'The game is already running.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
-        self.roomManager.processMessageJoinRoom(client, message)
+        self.roomManager.processMessageJoinRoom(client, rqid, message)
 
-    def _switchClientMessageQuitRoom(self, client: ClientHandler, message) :
-        self.roomManager.processMessageQuitRoom(client, message)
+    def _switchClientMessageQuitRoom(self, client: ClientHandler, rqid: uuid.UUID, message) :
+        self.roomManager.processMessageQuitRoom(client, rqid, message)
 
-    def _switchClientMessageNewGame(self, client: ClientHandler, message) :
+    def _switchClientMessageNewGame(self, client: ClientHandler, rqid: uuid.UUID, message) :
         async def _newGame(room: Room) :
             # find free game process
             targetProcess: GameProcessHandler = None
@@ -389,7 +385,7 @@ class MainProcess :
 
             if targetProcess == None :
                 errorResponse = makeErrorResponse(message, ErrorCode.SERVER_ERROR, f'Unable to connect to the game process.')
-                self._respondToClient(client, errorResponse, isError=True)
+                self._respondToClient(client, rqid, errorResponse, isError=True)
                 return
 
             # create new game
@@ -425,7 +421,7 @@ class MainProcess :
             except Exception as e :
                 self.logger.error(f'startNewGame failed for {client.user.clientId}: {e}')
                 errorResponse = makeErrorResponse(message, ErrorCode.SERVER_ERROR, f'startNewGame failed {e}')
-                self._respondToClient(client, errorResponse, isError=True)
+                self._respondToClient(client, rqid, errorResponse, isError=True)
                 return
 
             # assign game
@@ -439,9 +435,8 @@ class MainProcess :
 
             # response port to users
             newGameResponse = room_pb2.NewGameResponse()
-            newGameResponse.rqid = message.rqid
             newGameResponse.port = game.port
-            self._respondToClient(client, newGameResponse)
+            self._respondToClient(client, rqid, newGameResponse)
 
             gameStartedMessage = room_pb2.GameStarted()
             gameStartedMessage.port = game.port
@@ -455,52 +450,50 @@ class MainProcess :
                 ErrorCode.NOT_OPERATING,
                 operationManager.getStateMessage(message.gameInfo.language)
             )
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         # check sign up
         if client.user.isNeedToSignUp() :
             errorResponse = makeErrorResponse(message, ErrorCode.BAD_REQUEST, 'The player has not been fully configured.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         # check exist game
         if client.user.getHolder('gamehandler') != None :
             errorResponse = makeErrorResponse(message, ErrorCode.ALREADY_EXISTS, 'The game is already running.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         # check room
         room: Room = client.user.getHolder('room')
         if room != None and not room.isHostUser(client.user) :
             errorResponse = makeErrorResponse(message, ErrorCode.NO_PERMISSION, 'You are not the host of the room.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         # check game info
         # 방이 있는 경우 방에 설정된 검증된 game info를 사용
         if room == None and not varifyGameInfo(message.gameInfo) :
             errorResponse = makeErrorResponse(message, ErrorCode.INVALID_DATA, 'The game information is invalid.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
             return
 
         if not client.user.createTask('newGame', _newGame, room) :
             errorResponse = makeErrorResponse(message, ErrorCode.BUSY, f'It is already being processed.')
-            self._respondToClient(client, errorResponse, isError=True)
+            self._respondToClient(client, rqid, errorResponse, isError=True)
 
-    def _switchClientMessageCheckCurrentGame(self, client: ClientHandler, message) :
+    def _switchClientMessageCheckCurrentGame(self, client: ClientHandler, rqid: uuid.UUID, message) :
         game: GameHandler = client.user.getHolder('gamehandler')
         if game != None :
             response = game_pb2.CurrentGame()
-            response.rqid = message.rqid
             response.isGameExists = True
             response.port = game.port
-            self._respondToClient(client, response)
+            self._respondToClient(client, rqid, response)
         else :
             response = game_pb2.CurrentGame()
-            response.rqid = message.rqid
             response.isGameExists = False
-            self._respondToClient(client, response)
+            self._respondToClient(client, rqid, response)
 
     _switchClientMessage = {
         auth_pb2.UpdateUserInfo : _switchClientMessageUpdateUserInfo,
@@ -514,9 +507,9 @@ class MainProcess :
         game_pb2.CheckCurrentGame : _switchClientMessageCheckCurrentGame,
     }
 
-    def _sendToGameProcess(self, messageHandler: MessageHandler, message) :
+    def _sendToGameProcess(self, messageHandler: MessageHandler, rqid: uuid.UUID, message) :
         self.logger.debug(f'_sendToGameProcess() addr={messageHandler.addr}, desc={messageHandler.desc}, type={type(message)}, message=<{message}>')
-        messageHandler.send(message)
+        messageHandler.send(message, rqid)
 
     async def _sendAwaitResponseToGameProcess(self, messageHandler: MessageHandler, message, timeout: float = 10) :
         self.logger.debug(f'_sendAwaitResponseToGameProcess() send addr={messageHandler.addr}, desc={messageHandler.desc}, type={type(message)}, message=<{message}>')
@@ -524,12 +517,12 @@ class MainProcess :
         self.logger.debug(f'_sendAwaitResponseToGameProcess() response addr={messageHandler.addr}, desc={messageHandler.desc}, type={type(response)}, message=<{response}>')
         return response
 
-    def _respondToClient(self, client: ClientHandler, message, isError: bool = False) :
+    def _respondToClient(self, client: ClientHandler, rqid: uuid.UUID, message, isError: bool = False) :
         if isError :
             self.logger.error(f'_respondToClient id={client.user.clientId}, name={client.user.clientName}, type={type(message)}, message=<{message}>')
         else :
             self.logger.debug(f'_respondToClient id={client.user.clientId}, name={client.user.clientName}, type={type(message)}, message=<{message}>')
-        client.respond(message)
+        client.respond(rqid, message)
 
     def _sendToUser(self, user: ClientUser, message, isError: bool = False) :
         if isError :

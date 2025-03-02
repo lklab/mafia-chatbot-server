@@ -1,13 +1,13 @@
 syntax = "proto3";
 
+package operation_pb;
+
 message GetServerState {
-  string rqid = 1;
-  string language = 2;
+  string language = 1;
 }
 
 message ServerState {
-  string rqid = 1;
-  bool operating = 2;
-  string stateMessage = 3;
-  string maintainEndTime = 4;
+  bool operating = 1;
+  string stateMessage = 2;
+  string maintainEndTime = 3;
 }
